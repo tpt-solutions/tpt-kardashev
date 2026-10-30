@@ -1,0 +1,462 @@
+# tpt-kardashev: Foundation Libraries for Operating at Planetary-to-Galactic Scale
+
+**Status:** Draft v1, pre-scaffold
+**Author:** TPT Solutions
+**Date:** October 30, 2026
+**License:** MIT OR Apache-2.0
+**Repo name:** `tpt-kardashev` (spelling as in Nikolai Kardashev; the working name `tpt-k4` and the spelling "kardeshev" were used in conversation. Final name to be confirmed.)
+
+---
+
+## 1. Executive Summary
+
+`tpt-kardashev` is a single Cargo workspace of ten small, independent, reusable Rust library crates. Together they cover the software foundations that a civilisation operating at stellar and galactic scale would need and that TPT Solutions does not yet have as clean libraries: relativistic time and causality, orbital mechanics, delay-tolerant networking, error-correcting codes for long-duration data, radiation-tolerant computing, fusion and radiation physics, hierarchical agreement across high latency, verified self-modification, in-situ resource planning, and energy accounting.
+
+Kardashev's original scale stops at Type III. "K4" is TPT's own extension (roughly universe-scale), so this repo does not claim to build K4 technology. It builds the **invariants** such systems share: verified autonomy, tolerance of unbounded delay, self-sufficient fabrication, durable data, and honest energy accounting. Most of them are useful today for lunar, orbital and deep-space work, which is how they will be tested.
+
+**Where this fits.** The org already contains substantial but non-reusable implementations of parts of this (zenith, substrate, equinox, replicate, hiveforge, ignis, `tpt-sci-astro`, `tpt-transportation`). Those repos are application suites and were not designed as libraries. This repo is the clean-room, library-grade layer; the older repos are references, and migrating them onto these crates is a separate, later step.
+
+---
+
+## 2. Goals and Non-Goals
+
+### Goals
+1. Ten crates, each with one concern, a small trait-based public API, and no mandatory dependency on any other crate in this repo.
+2. `no_std` cores (with `alloc` where required), zero runtime dependencies by default.
+3. Verifiable correctness: known-answer vectors from published standards and references, property tests, and formal proofs (Kani) where the logic is small enough.
+4. Every crate usable on its own from crates.io-style or git dependencies, with independent versioning.
+5. A consolidation point for duplicated code in the org (astrodynamics exists three times, redundancy primitives twice, DTN twice).
+
+### Non-Goals
+- No applications, daemons, UIs or CLIs beyond `examples/`.
+- No hardware drivers, flight software buses or ground-station control (those stay in astrobus, zenith, equinox).
+- No claim of standards **compliance** or flight qualification. Crates implement published standards and test against published vectors; compliance claims require independent conformance testing.
+- No physics beyond what each crate's scope states. Speculative physics (warp metrics, exotic matter) is out of scope.
+- No bundled datasets (nuclear data libraries, ephemerides). Crates read standard formats; users supply data.
+
+---
+
+## 3. Design Principles
+
+1. **One concern per crate.** Small public API, trait-based, documented with examples.
+2. **No mandatory internal dependencies.** Cross-crate integration is optional and goes through feature flags or neutral data types. Every crate must build with only its own declared dependencies.
+3. **`no_std` first.** `#![no_std]` core; `alloc` and `std` are features. A thumbv7em-none-eabihf build is part of CI for crates that claim embedded use.
+4. **Zero runtime dependencies by default.** Optional features may pull `tpt-math-*` sub-crates, `tpt-zero-bytes` or `tpt-crypto`. Dev-dependencies (proptest, criterion) are allowed. Every runtime, optional and build dependency must satisfy the licence policy in §4.5; dev-dependencies are exempt.
+5. **No sibling path dependencies.** Never `path = "../tpt-xyz"` to another repo (the pattern ignis and norma use). Git or registry dependencies on foundation sub-crates only.
+6. **Deterministic.** No hidden global state, no `HashMap` iteration order dependence in outputs, seeded randomness only, simulators driven by explicit virtual time.
+7. **Errors, not panics.** `#[non_exhaustive]` error enums; no `unwrap` in library code; `#![forbid(unsafe_code)]` except where a crate documents why it needs `unsafe` (radhard).
+8. **Reference code is ported, not linked.** Each crate records origin in `docs/provenance.md`.
+9. **Honest about assumptions.** Each crate's README states what it does not model (e.g. astrodynamics states its force-model limits).
+10. **MIT-selectable dependencies only.** No GPL-family (GPL, LGPL, AGPL) dependencies and no Apache-2.0-only dependencies, anywhere in the runtime, optional and build dependency tree (dev-dependencies are exempt). See §4.5.
+
+---
+
+## 4. Architecture
+
+### 4.1 Layout
+
+```
+tpt-kardashev/
+├── Cargo.toml              # workspace, shared lints, shared [workspace.package]
+├── rust-toolchain.toml     # pinned toolchain (see §9)
+├── deny.toml
+├── spec.txt  README.md  todo.md  CLAUDE.md
+├── crates/
+│   ├── tpt-kardashev-archive-codes/
+│   ├── tpt-kardashev-relativity/
+│   ├── tpt-kardashev-radhard/
+│   ├── tpt-kardashev-energy-ledger/
+│   ├── tpt-kardashev-dtn/
+│   ├── tpt-kardashev-astrodynamics/
+│   ├── tpt-kardashev-nuclear-plasma/
+│   ├── tpt-kardashev-causal-consensus/
+│   ├── tpt-kardashev-isru/
+│   └── tpt-kardashev-reflect/
+├── examples/               # cross-crate examples only (each uses feature flags)
+├── docs/
+│   └── provenance/         # one file per crate: what was ported from where
+└── .github/workflows/
+```
+
+**Naming.** Every crate is prefixed with the repo name: `tpt-kardashev-<thing>` (for example `tpt-kardashev-dtn`). This follows the org's multi-crate convention (`hiveforge-spatial`, `astrobus-core`, `tpt-equinox-tmr`) and keeps the crates grouped and recognisable when published. Directory names match crate names. Rust identifiers use underscores (`tpt_kardashev_dtn`). The names are long, so each crate's README opens with a one-line description, and an optional umbrella crate `tpt-kardashev` (feature-gated re-exports, no code of its own) can be added later if a single entry point is wanted. Each crate lives in its own directory with its own README, CHANGELOG, `todo.md` section and `examples/`.
+
+### 4.2 Dependency policy
+
+No crate has a mandatory dependency on another crate in the repo. Optional edges (feature flags only):
+
+| From | To | Feature | Purpose |
+|---|---|---|---|
+| `tpt-kardashev-astrodynamics` | `tpt-kardashev-relativity` | `relativity` | Relativistic time-scale relations (TT, TCG, TCB, TDB) |
+| `tpt-kardashev-astrodynamics` | `tpt-kardashev-dtn` | `dtn` | Emit a `ContactPlan` from visibility windows |
+| `tpt-kardashev-dtn` | `tpt-kardashev-archive-codes` | `fec` | Link-layer error correction |
+| `tpt-kardashev-causal-consensus` | `tpt-kardashev-relativity` | `relativity` | Causal ordering across frames |
+| `tpt-kardashev-isru` | `tpt-kardashev-energy-ledger` | `energy` | Energy accounts for processes |
+| `tpt-kardashev-reflect` | none | | Independent |
+| `tpt-kardashev-nuclear-plasma` | none | | Independent |
+
+The graph is acyclic by construction; CI includes a check that every crate builds alone (`cargo build -p <crate> --no-default-features`).
+
+### 4.3 External dependencies
+
+Allowed as optional features only: `tpt-math-*` sub-crates (units, linalg-fixed, numeric, prob-monte-carlo, pde-operators, signal-fft, autodiff, geometry), `tpt-zero-bytes` (CRC, hex), `tpt-crypto` (signatures, hashes for receipts). The foundation repos themselves are not dependencies; only these sub-crates, and only behind a feature.
+
+### 4.4 Cross-cutting conventions
+
+- **Units and time:** each crate defines its own small newtypes (`Joules`, `Seconds`, `Kilometres`) with explicit conversions, to avoid forcing a shared units crate on `no_std` users. A `units` feature maps them to `tpt-math-units` where useful.
+- **Scalars:** public numeric APIs are generic over a minimal `Scalar` trait where it matters (astrodynamics, relativity, nuclear-plasma), defaulting to `f64`.
+- **Simulation:** where a crate has behaviour over time (dtn, causal-consensus), it ships a deterministic simulator with seeded fault injection (loss, delay, partition, duplication, reordering), following `tpt-replicate`'s pattern.
+- **Serialisation:** optional `serde` feature on data types; wire formats (BPv7, CCSDS frames) are implemented by hand in the relevant crate.
+
+### 4.5 Dependency licence policy
+
+The repo is dual-licensed MIT OR Apache-2.0, and users must be able to take it under MIT alone. So every dependency (runtime, optional and build, direct and transitive; **dev-dependencies are exempt**) must be **MIT-selectable**: usable under a permissive licence that does not force the Apache-2.0 patent terms or any copyleft on downstream users.
+
+| Class | Licences | Policy |
+|---|---|---|
+| Allowed | MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unlicense, CC0-1.0, and dual/compound expressions where MIT (or another allowed licence) is one of the options, such as `MIT OR Apache-2.0` | Allow |
+| Denied | GPL-2.0, GPL-3.0, LGPL, AGPL (any version, any `-or-later`/`-only` form) | Deny |
+| Denied | Apache-2.0 **alone** (including `Apache-2.0 WITH LLVM-exception` with no MIT alternative) | Deny |
+| Denied (decided) | MPL-2.0 (weak copyleft, file-level) | Deny |
+| Decision needed | `Unicode-3.0` (permissive, used by `unicode-ident` and similar), any other licence not listed above | Default deny until decided; see §12 |
+
+**Enforcement.** `deny.toml` at the workspace root uses an explicit allow-list of the licences above, so anything not listed fails (including unknown or missing licence fields). `cargo deny check licenses` runs in CI on the full dependency tree for every crate, with all features enabled and again with default features, so optional-feature dependencies are covered. Dev-dependencies are excluded from the licence check (`exclude-dev = true` in the `[graph]` table of `deny.toml`; confirm the exact key against the cargo-deny version in use). A dependency that is `MIT OR Apache-2.0` passes because MIT is selectable; one that is `Apache-2.0` only fails.
+
+**Scope notes.**
+- **Dev-dependencies are exempt** because they are used only for tests, benches and examples and do not appear in a published crate's dependency list, so they do not affect downstream licensing. The exemption does not cover copying: no code from a dev-dependency (or any other source) may be pasted into library source unless its licence meets the allow-list.
+- The policy covers crates linked or compiled into the library. External verification and benchmarking *tools* that are run but not linked (for example Kani) are outside it, but their use must not require shipping their code.
+- The org's own foundation crates (`tpt-math-*`, `tpt-zero-bytes`, `tpt-crypto`) are `MIT OR Apache-2.0` and pass. `tpt-substrate` states MIT only, which also passes but is inconsistent with the dual-licence convention.
+- Code ported from the older org repos is the org's own and dual-licensed, so provenance does not introduce licence problems. Code ported or adapted from third-party sources needs its licence recorded in `docs/provenance` and must meet the same allow-list.
+- Reference implementations of standards (CCSDS, IETF) are read as documents, not copied; do not paste from third-party GPL or Apache-only implementations when porting algorithms.
+
+---
+
+## 5. Crate Specifications
+
+Each section gives purpose, scope, public API sketch, references, verification, and v0.1 exit criteria. API sketches are illustrative, not final.
+
+### 5.1 `tpt-kardashev-archive-codes`
+
+**Purpose.** Error-detecting and error-correcting codes for data in transit and at rest over long durations and noisy channels.
+
+**Scope.**
+- Reed-Solomon over GF(2^8), including the CCSDS-style (255,223) configuration with interleaving.
+- Convolutional encoding (rate 1/2, constraint length 7) with a Viterbi decoder (hard and soft decision).
+- LDPC codes (block codes with iterative belief-propagation decoding, soft-decision input).
+- Erasure/fountain codes (LT-style first; Raptor/RaptorQ is a stretch goal, see risks).
+- Block interleavers, CRC variants, attached sync markers, and a self-describing archival framing (header with code parameters so data can be decoded without out-of-band knowledge).
+- Turbo codes are deferred to a later release.
+
+**API sketch.**
+```rust
+pub trait BlockEncoder { const K: usize; const N: usize; fn encode(&self, data: &[u8], out: &mut [u8]) -> Result<(), CodeError>; }
+pub trait BlockDecoder { fn decode(&self, received: &mut [u8]) -> Result<DecodeReport, CodeError>; }   // hard decision
+pub trait SoftDecoder  { fn decode_soft(&self, llr: &[i8], out: &mut [u8]) -> Result<DecodeReport, CodeError>; }
+pub trait ErasureCoder { fn encode_symbol(&self, source: &[&[u8]], index: u32, out: &mut [u8]); /* + decoder session */ }
+pub struct DecodeReport { pub corrected: usize, pub uncorrectable: bool }
+```
+Fixed-size code parameters use const generics so everything can be allocation-free.
+
+**References.** CCSDS 131.0-B (TM Synchronization and Channel Coding), which specifies the codes above; `tpt-zenith/rf-pipeline/src/fec.rs` for the existing Encoder/Decoder traits (Hamming(7,4) only). Code parameters, polynomials and sync-marker values must be taken from the current revision of the standard, not from memory.
+
+**Verification.** Known-answer vectors from the standard; round-trip property tests (`decode(encode(x) with ≤ t symbol errors) == x`); decoders never panic on arbitrary input (fuzz); decoding-failure detection where the code allows; bit-error-rate curves in benches against theory (e.g. coding gain), as regression checks, not guarantees.
+
+**v0.1 exit.** RS(255,223) with interleaving and CCSDS test vectors; rate-1/2 K=7 convolutional + Viterbi; CRC; framing; `no_std` and no-alloc build for the fixed-size paths.
+
+### 5.2 `tpt-kardashev-relativity`
+
+**Purpose.** Frames, events, proper time and causal ordering, so software can reason about time and simultaneity when distances are large and speeds are not negligible.
+
+**Scope.**
+- `Event` (four-position), `FourVector`, `Interval` classification (timelike, spacelike, lightlike).
+- Lorentz boosts (including composition via rapidity), time dilation, length contraction, relativistic Doppler.
+- Inertial `Frame`s and frame-to-frame transforms.
+- Causal predicates: `precedes(a, b)`, `light_cone_contains`, `causally_disconnected`.
+- Weak-field gravitational time dilation (Schwarzschild approximation), and the relations between proper time and coordinate time for a moving, gravitating observer.
+- Time-scale rate relations (TT, TCG, TCB, TDB) as functions; calendar handling stays in astrodynamics.
+- A `Metric` trait (Minkowski, Schwarzschild first) for later geodesic work. Full geodesic integration is deferred.
+
+**API sketch.**
+```rust
+pub struct Event<S = f64> { pub t: S, pub x: [S; 3] }                  // in a given frame, c = 1 internally via Units
+pub fn interval(a: &Event, b: &Event) -> Interval;                      // Timelike | Spacelike | Lightlike
+pub fn boost(v: [f64; 3]) -> Lorentz;                                   // |v| < c enforced
+pub fn proper_time(path: &[Event]) -> Seconds;
+pub trait CausalOrder { fn precedes(&self, other: &Self) -> bool; }     // neutral trait consumed by other crates
+pub trait Metric { fn g(&self, x: &Event) -> [[f64; 4]; 4]; }
+```
+
+**References.** Standard special-relativity texts for the formulas; IAU resolutions for time-scale relations. Compare with the bounded-drift assumption in `tpt-replicate`'s hybrid logical clock.
+
+**Verification.** Invariants as property tests (interval invariant under boosts; boost composition law; `|v| ≥ c` rejected); known values (for example the net GPS clock offset of roughly +38 µs/day from combined velocity and gravity effects, as an order-of-magnitude regression check); tolerance-aware comparisons documented per test.
+
+**v0.1 exit.** Events, intervals, boosts, proper time, causal predicates, Doppler, weak-field redshift, and a documented float-tolerance policy.
+
+### 5.3 `tpt-kardashev-radhard`
+
+**Purpose.** Software-level fault tolerance against radiation-induced upsets: voting, error-correcting memory types, scrubbing and rollback.
+
+**Scope.**
+- `Tmr<T>`: triple modular redundancy with majority vote and scrub-on-mismatch; N-modular variant.
+- SECDED (single-error-correct, double-error-detect) memory words, for example (72,64) Hamming-based.
+- CRC-protected cells and checksummed buffers.
+- `Checkpoint<T>` with rollback and a watchdog-friendly progress marker.
+- A fault-injection model (`FaultInjector`: seeded bit flips, burst errors) for testing.
+- Typestate wrappers that make "unvoted" and "voted" values different types.
+
+**Boundary with `tpt-kardashev-archive-codes`.** `tpt-kardashev-radhard` protects memory and computation (words, cells, state); `tpt-kardashev-archive-codes` protects data in transit and at rest (frames, files, streams). They do not depend on each other; SECDED is small enough to live in radhard.
+
+**References.** `tpt-equinox/crates/tpt-equinox-tmr` (scrub-on-mismatch, Kani harness) and `tpt-formal/crates/tpt-for-redundancy` (majority vote, parity). This crate consolidates both.
+
+**Verification.** Kani proofs for the voter (no single corrupted replica changes the result) and the SECDED corrector (every single-bit error corrected, every double-bit error detected); exhaustive tests over small word sizes; injector-driven property tests.
+
+**v0.1 exit.** `Tmr`, SECDED(72,64), checksummed cells, checkpoint/rollback, injector, Kani proofs for voter and SECDED. `unsafe` limited to documented volatile access, behind a feature.
+
+### 5.4 `tpt-kardashev-energy-ledger`
+
+**Purpose.** Honest energy accounting for systems where compute, storage and waste heat are all first-class.
+
+**Scope.**
+- Newtypes `Joules`, `Watts`, `Kelvin`.
+- A double-entry style `Ledger`: every transfer debits one account and credits another, with an explicit `WasteHeat` account, so conservation is a checked invariant (sum of all accounts changes only through declared sources and sinks).
+- `landauer_limit(bits_erased, temperature)`: the minimum energy to erase information, `k_B · T · ln 2` (at 300 K, about 2.9 × 10⁻²¹ J per bit), as a lower-bound check and reporting aid, not a scheduler.
+- Radiator capacity from Stefan-Boltzmann (`ε · σ · A · T⁴`), and a `HeatBudget` that reports headroom.
+- `EnergyOracle` trait: a hook other crates or schedulers can query for "energy cost of this operation and what budget remains".
+
+**References.** `tpt-equinox-power` and `tpt-energy` for supply-side modelling (this crate does not duplicate those); `tpt-thermodynamics` for the physics, not the code.
+
+**Verification.** Conservation property tests (random transfer sequences never create or destroy energy); constants cross-checked against CODATA values; unit tests for Landauer and Stefan-Boltzmann against hand calculations.
+
+**v0.1 exit.** Ledger with conservation checks, Landauer and radiator functions, `EnergyOracle`, examples for a compute node with a radiator.
+
+### 5.5 `tpt-kardashev-dtn`
+
+**Purpose.** Delay- and disruption-tolerant networking: store-and-forward bundles over links that are intermittent and slow.
+
+**Scope.**
+- Bundle Protocol version 7 (RFC 9171): primary block, canonical blocks (payload, previous node, bundle age, hop count), `dtn:` and `ipn:` endpoint ids, a minimal in-crate CBOR codec, bundle CRCs.
+- A `BundleStore` trait (in-memory and file-backed implementations).
+- Contact-graph routing driven by a `ContactPlan` (contacts with start, end, data rate and one-way light time), following the CGR family (standardised as CCSDS SABR).
+- A convergence-layer trait, with an LTP (Licklider Transmission Protocol) implementation as the first concrete layer.
+- A reliability extension in place of BPv6-style custody transfer (see note).
+- A deterministic simulator with a virtual clock and contact-plan-driven link behaviour.
+
+**Note on custody transfer.** BPv6 had custody transfer in its core; BPv7's core spec (RFC 9171) removed it, leaving reliability to a separate extension. This crate therefore treats custody/reliability as an extension module, not as part of the core codec. Which extension to implement is an open question (§12).
+
+**API sketch.**
+```rust
+pub struct ContactPlan { pub contacts: Vec<Contact> }
+pub struct Contact { pub from: NodeId, pub to: NodeId, pub start: Time, pub end: Time, pub rate_bps: u64, pub owlt: Duration }
+pub trait BundleStore { fn put(&mut self, b: Bundle) -> Result<(), StoreError>; fn next_for(&mut self, hop: &NodeId, now: Time) -> Option<Bundle>; /* … */ }
+pub trait ConvergenceLayer { fn send(&mut self, hop: &NodeId, b: &Bundle) -> Result<(), ClError>; }
+pub trait Router { fn route(&self, b: &Bundle, now: Time, plan: &ContactPlan) -> Option<NextHop>; }
+```
+
+**References.** `substrate-dtn` (about 580 lines, bundle/router/store, custody only as a flag) and `tpt-zenith/routing` (Go, RFC 9171 store-and-forward). The other IETF/CCSDS documents likely needed (BPSec RFC 9172/9173, TCPCLv4 RFC 9174, LTP RFC 5326 and CCSDS 734.1-B) should be confirmed against the current documents when the work starts.
+
+**Verification.** RFC 9171 appendix examples as byte-exact vectors; encode/decode round-trip and fuzzing of the CBOR/bundle parser; routing tests against hand-computed contact-plan scenarios; simulator tests for delivery under disruption.
+
+**v0.1 exit.** BPv7 codec with vectors, store trait with memory and file stores, contact-graph router, LTP convergence layer, simulator.
+
+### 5.6 `tpt-kardashev-astrodynamics`
+
+**Purpose.** One consolidated, reusable orbital-mechanics library to replace three overlapping implementations in the org.
+
+**Scope.**
+- Epochs and time scales (UTC, TAI, TT, TDB), Julian dates; relativistic scale relations via the optional `relativity` feature.
+- Reference frames: inertial (ECI/GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic; transformations between them.
+- Element sets (Keplerian, equinoctial) and state-vector conversions.
+- Two-body propagation (universal variables) and a **combined numerical force model** (Cowell) with a force trait: central body, zonal harmonics J2…Jn, third bodies, solar radiation pressure with shadow model, atmospheric drag, thrust.
+- Integrators: fixed-step RK4, an adaptive high-order Runge-Kutta, and a symplectic integrator for N-body.
+- Lambert solver, impulsive manoeuvres (Hohmann, bi-elliptic, plane change), and later low-thrust (Edelbaum-type approximations).
+- An `Ephemeris` trait with a low-precision analytic provider and, behind a feature, a reader for the SPICE SPK (Chebyshev) format.
+- Optional `sgp4` module: SGP4/SDP4 and TLE parsing, ported from zenith.
+- Visibility and contact computation, with optional `ContactPlan` output (`dtn` feature).
+
+**What is consolidated.** `tpt-sci-astro` (Kepler, ECI frames, J2/J4, drag, third-body, SRP as independent secular add-ons), `tpt-transportation/crates/space` (Keplerian elements, Hohmann, bi-elliptic, plane change), and `tpt-zenith/orbital-mechanics` (SGP4/SDP4, TLE, visibility, handoff). The main new work is the **integrated** force model; the existing code treats perturbations as separate first-order secular effects.
+
+**Verification.** Published verification sets (SGP4 reference vectors, textbook Lambert and Kepler cases); conservation checks (energy and angular momentum drift for the symplectic and adaptive integrators over long arcs); frame round-trips; cross-checks between the new force model and the old secular formulas where both apply. The crosscheck binary in zenith is a pattern to reuse.
+
+**v0.1 exit.** Time scales, frames, elements, two-body + Cowell with J2/third-body/SRP/drag, RK4 and adaptive integrator, Lambert, impulsive manoeuvres, analytic ephemeris, SGP4 behind a feature.
+
+### 5.7 `tpt-kardashev-nuclear-plasma`
+
+**Purpose.** Fusion-relevant plasma equilibrium and radiation transport as reusable solvers (not data platforms or UIs).
+
+**Scope (as modules, behind features).**
+- `equilibrium`: fixed-boundary Grad-Shafranov solver on an (R, Z) grid; flux-surface extraction and safety-factor profile; analytic benchmark cases. Free-boundary support is later.
+- `neutronics`: Monte Carlo particle transport: constructive solid geometry, multigroup cross-section handling, tallies (flux, reaction rates), implicit capture, Russian roulette and splitting; fixed-source first, eigenvalue (criticality) problems later. Shielding calculations reuse the same machinery, which also serves spacecraft radiation shielding.
+- `mhd`: simple finite-volume ideal/resistive MHD in 1D then 2D, later.
+- Format readers for standard nuclear-data inputs. No data is bundled.
+
+**Relationship to ignis.** Ignis is a fusion data/visualisation/twin platform with stand-in physics (a parametrised equilibrium and an inverse-square neutron flux). Its spec lists "MHD solvers" under its own physics-math crate, so overlap on equilibrium and MHD is possible. This crate is independent; ignis can adopt it later or keep its own. Resolve when ignis reaches that phase.
+
+**Building blocks.** `tpt-math-prob-monte-carlo`, `tpt-math-pde-operators`, `tpt-math-linalg-*` (optional features).
+
+**Verification.** Analytic equilibria (for example Solov'ev solutions) for the Grad-Shafranov solver; analytic attenuation in a purely absorbing slab (exponential law) and infinite-medium cases for transport; statistical tests with fixed seeds; convergence-order tests for the grid solver.
+
+**Size risk.** The largest crate (roughly 10-25k lines by estimate). If it grows past a maintainable size, split into sub-crates inside `crates/` without changing the public names.
+
+**v0.1 exit.** Grad-Shafranov fixed-boundary with Solov'ev validation, Monte Carlo fixed-source transport with slab-attenuation validation, tallies, cross-section reader for one documented format.
+
+### 5.8 `tpt-kardashev-causal-consensus`
+
+**Purpose.** Agreement across domains separated by large latency, built on a causal layer and explicit about what it cannot provide.
+
+**Design.**
+- **Causal layer:** hybrid/vector clocks and causally ordered operation logs (reference: `tpt-replicate`), with the `CausalOrder` trait from `tpt-kardashev-relativity` as an optional ordering source.
+- **Domain layer:** each low-latency domain (a lunar base, a habitat ring) runs Raft-style leader-based consensus internally.
+- **Federation layer:** domains exchange signed, hash-chained epoch summaries. Operations are classified per call:
+
+| Level | Meaning | Needs cross-domain round trip? |
+|---|---|---|
+| `Commutative` | CRDT-style merge, no agreement | No |
+| `Causal` | Delivered in causal order | No |
+| `DomainLinearizable` | Linearizable within one domain | No |
+| `GlobalAgreed` | All domains agree before commit | Yes, so latency ≥ the slowest one-way delay × round trips |
+
+- The API reports a **latency lower bound** for each requested level, so callers see the physics instead of hiding it.
+- Byzantine tolerance is a later phase behind a feature.
+
+**API sketch.** `Domain`, `Federation`, `Proposal<Op>`, `ConsistencyLevel`, `Transport` (pluggable), plus a deterministic simulator with partitions, delay and duplication.
+
+**Honest limits.** Under partition, availability and global consistency cannot both hold; this crate exposes the choice, it does not remove it.
+
+**References.** `tpt-replicate` (hybrid logical clock, causal log, merge, sync), `hiveforge-consensus` (local leaderless arbitration), `tpt-scheduler` (Raft over tokio, not `no_std`), and the placeholder arbitration in `tpt-fabric`'s distributed-state crate.
+
+**Verification.** Deterministic simulation with randomised partitions and delays; invariant checks (no two domains commit conflicting `GlobalAgreed` values; causal order never violated); linearizability checking for the domain layer on small histories.
+
+**v0.1 exit.** Causal layer, domain consensus, federation with epoch summaries, consistency-level API with latency bounds, simulator.
+
+### 5.9 `tpt-kardashev-isru`
+
+**Purpose.** In-situ resource utilisation planning: given local resources and a library of processes, decide what can be made locally and how much must be imported.
+
+**Scope.**
+- Types: `Element`/`Material` (composition by mass fraction), `Resource` (source with availability and extraction rate), `Process` (inputs → outputs, energy, time, yield, constraints).
+- **Elemental mass-balance validation:** a process whose atoms do not balance (within tolerance) is rejected at load time.
+- A planner that formulates the production plan as a linear program over a horizon (built-in simplex for small problems; adapter trait for external solvers).
+- **Closure scores:** the fraction of a target bill of materials (and of energy) that the system can supply from local or recycled sources, and the list of imports that limit closure.
+- Optional energy accounts via `tpt-kardashev-energy-ledger` (`energy` feature).
+
+**References.** `tpt-process` (`tpt-proc-mass-balance`, `tpt-proc-flowsheet`), `tpt-systems-optimisation` (MILP), `hiveforge-resources` (energy, feedstock, tool wear). The process crates' internals have not been reviewed in detail.
+
+**Verification.** Conservation tests (total mass and each element conserved through any plan); closed-form toy systems with known optima; closure score monotonicity (adding a process never lowers closure).
+
+**v0.1 exit.** Process/resource types, balance validation, LP planner, closure score, one worked lunar-regolith example.
+
+### 5.10 `tpt-kardashev-reflect`
+
+**Purpose.** A gate that lets an autonomous agent change itself only if it can show the change preserves its core constraints. Research-grade; built last.
+
+**Design.**
+- `Invariant`: a machine-checkable constraint on agent behaviour. Phase 1 supports **linear resource and safety bounds** (systems of linear inequalities over policy parameters).
+- `Update`: a proposed change to the agent's policy or code, with a `Certificate`.
+- `Verifier`: a **small, fixed trusted checker**. For Phase 1, certificates are Farkas-style multipliers proving that the new policy's feasible region is contained in the old one, which a checker verifies with simple arithmetic.
+- `UpdateGate`: accepts an update and issues a hash-chained `Receipt`, or rejects it with a reason. Receipts form an audit log.
+- **The checker itself is not modifiable through the gate.** Replacing it requires an external attestation path, which avoids needing the agent to prove its own soundness (a known obstacle for self-referential proof systems).
+
+**Open research risk.** Beyond linear bounds, the invariant language and proof formats are undetermined. Candidate bridges to `tpt-formal` (proof AST, verification-condition generation) and `tpt-solver` (SMT certificates) are optional adapters, not dependencies. `tpt-norma` (queued) covers bounds on single agent actions; this crate covers bounds across self-updates, and the two should interoperate.
+
+**Verification.** Checker correctness proofs (Kani) for the arithmetic core; soundness property tests (no accepted update escapes the old feasible region, using randomly generated polytopes); adversarial tests with malformed and truncated certificates.
+
+**v0.1 exit.** Linear invariants, containment certificates and checker, gate with receipts, audit-chain verification.
+
+---
+
+## 6. Verification Strategy (repo-wide)
+
+1. **Standards vectors first.** Anything implementing a published standard ships the standard's own test vectors where freely available.
+2. **Property tests** for algebraic laws and round trips; seeds recorded for reproducibility.
+3. **Formal proofs (Kani)** for small safety-critical cores: radhard voter and SECDED, reflect checker arithmetic, selected arithmetic in archive-codes.
+4. **Deterministic simulation** for networking and consensus.
+5. **Fuzzing** for every parser (CBOR/bundles, frames, TLE, cross-section files).
+6. **No-std builds** in CI for each crate that claims it.
+7. **Documented tolerance policy** for floating-point comparisons in physics crates.
+
+---
+
+## 7. Release and Versioning
+
+- Independent semver per crate; tags of the form `<crate>-v<x.y.z>`.
+- Pre-1.0 until the public traits have survived one consolidation pass against the older repos.
+- `CHANGELOG.md` per crate.
+- A crate does not publish until its v0.1 exit criteria are met and its README states what it does not model.
+
+---
+
+## 8. CI and Quality Gates
+
+Per-crate matrix: `fmt`, `clippy -D warnings`, tests (default and all features), `no_std` build, `cargo deny` (licences per §4.5, excluding dev-dependencies, plus advisories, on the full tree with all features and with default features), doc build, and a "builds alone" job. Kani and fuzz jobs run on a schedule. Dual-licence files and SPDX headers enforced.
+
+---
+
+## 9. Toolchain and Conventions
+
+- MSRV and pinned toolchain: to be set at scaffold time. `tpt-replicate` requires Rust 1.85 and ignis pins 1.90.0, so choose one and record it. Not decided here.
+- `[workspace.lints]`: `unsafe_code = "forbid"` by default; `clippy::all = "warn"`.
+- Each repo ships `README.md`, `spec.txt`, `todo.md` (the checkbox format the org tracker counts), `CLAUDE.md`, `deny.toml`, `rustfmt.toml`, `clippy.toml`.
+
+---
+
+## 10. Phasing
+
+| Phase | Content | Exit |
+|---|---|---|
+| 0 | Scaffold workspace, CI, lint config, provenance docs | CI green on empty crates |
+| 1 | `tpt-kardashev-archive-codes`, `tpt-kardashev-relativity`, `tpt-kardashev-radhard`, `tpt-kardashev-energy-ledger` (leaves, no internal deps) | Each at v0.1 exit |
+| 2 | `tpt-kardashev-dtn`, `tpt-kardashev-astrodynamics`, `tpt-kardashev-nuclear-plasma` | Each at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demonstrated in an example |
+| 3 | `tpt-kardashev-causal-consensus`, `tpt-kardashev-isru`, `tpt-kardashev-reflect` | Each at v0.1 exit |
+| 4 | Consolidation: draft migration notes for zenith, substrate, equinox, tpt-sci-astro, tpt-transportation, tpt-formal onto the new crates | Per-repo migration plans, not code changes |
+
+Rough size estimates (guesses scaled from existing references, not measured): relativity 1-3k lines, radhard 1-2k, energy-ledger 1-2k, isru 3-6k, reflect 3-8k, archive-codes 3-8k, dtn 4-8k, causal-consensus 5-10k, astrodynamics 5-10k, nuclear-plasma 10-25k; total about 35-75k.
+
+---
+
+## 11. Risks
+
+| Risk | Mitigation |
+|---|---|
+| `tpt-kardashev-nuclear-plasma` outgrows a single crate | Feature-gated modules; split into sub-crates later without renaming |
+| `tpt-kardashev-reflect` has no proven approach beyond linear bounds | Ship only Phase 1; keep scope explicit; build last |
+| Standards drift or misreading (CCSDS, IETF) | Take parameters from the current documents, use standard vectors, avoid compliance claims |
+| Patent/licensing exposure for some codes (RaptorQ) | Start with LT-style fountain codes; check licensing before any Raptor-family work |
+| Consolidation diverges from the older repos | Provenance docs and cross-check tests against old implementations |
+| Theme repo becomes a dumping ground | Admission rule: one concern, small trait API, no app code, builds alone |
+| A transitive dependency carries an Apache-only or GPL-family licence | Explicit allow-list in `deny.toml`; `cargo deny` on the full tree in CI; prefer in-crate implementations for small needs (CBOR, CRC, GF arithmetic) |
+| Long crate names hurt ergonomics | Short crate-level re-exports in docs and examples; optional umbrella crate `tpt-kardashev` later |
+| Overlap with ignis on equilibrium/MHD | Independent crate; coordinate when ignis reaches its physics phase |
+
+---
+
+## 12. Open Questions
+
+1. Final repo name and spelling (`tpt-kardashev`, `tpt-k4`).
+2. Which BPv7 reliability extension to implement in place of custody transfer.
+3. MSRV and toolchain pin (1.85 vs 1.90 or newer).
+4. Whether astrodynamics should keep SGP4 in the main crate behind a feature or split it out.
+5. Which data format `tpt-kardashev-nuclear-plasma` reads first for cross sections.
+6. Contents of `tpt-rfc` and `tpt-aion` (not inspected) may already cover CBOR or archival coding; check before writing those pieces.
+7. Whether a general Lambert solver already exists in `tpt-sci-astro` or `tpt-transportation` (an example named lambert_transfer exists; not verified).
+8. Publishing: crates.io, or git-only for now.
+9. Is `Unicode-3.0` acceptable (permissive, pulled in by common crates such as `unicode-ident`)? Denied by default under §4.5 until decided. (MPL-2.0 is decided: denied.)
+
+**Resolved:**
+- MPL-2.0: denied.
+- Dev-dependencies: exempt from the licence policy (decided 2026-10-30).
+
+---
+
+## 13. Provenance (what exists elsewhere, for reference)
+
+| New crate | Learn from (not depend on) |
+|---|---|
+| archive-codes | `tpt-zenith/rf-pipeline/src/fec.rs`, `astrobus-cfdp` |
+| relativity | none; compare `tpt-replicate/src/clock.rs` |
+| radhard | `tpt-equinox-tmr`, `tpt-for-redundancy` |
+| energy-ledger | `tpt-equinox-power`, `tpt-energy`, `tpt-thermodynamics` |
+| dtn | `substrate-dtn`, `tpt-zenith/routing` |
+| astrodynamics | `tpt-sci-astro`, `tpt-transportation/crates/space`, `tpt-zenith/orbital-mechanics`, `tpt-equinox-orbital` |
+| nuclear-plasma | `tpt-ignis` (`tpt-physics-math`, `tpt-aether`) |
+| causal-consensus | `tpt-replicate`, `hiveforge-consensus`, `tpt-scheduler`, `tpt-fabric` (distributed-state placeholders) |
+| isru | `tpt-process` (mass-balance, flowsheet), `tpt-systems-optimisation`, `hiveforge-resources` |
+| reflect | `tpt-formal`, `tpt-writ`, `tpt-norma` (queued) |
