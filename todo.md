@@ -96,14 +96,14 @@ Exit: each crate at its v0.1 exit.
 - [ ] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`) — partial: `BlockEncoder`/`BlockDecoder` done; `SoftDecoder`/`ErasureCoder` not yet defined
 - [x] GF(2^8) arithmetic (in-crate, tables generated at const time)
 - [x] Reed-Solomon RS(255,223) encoder with const generics, no alloc (runtime parameters, not const generics)
-- [ ] Reed-Solomon decoder (syndromes, Berlekamp-Massey, Chien, Forney), erasure support — partial: errors only; erasure support pending
+- [x] Reed-Solomon decoder (syndromes, Berlekamp-Massey, Chien, Forney), erasure support (errors-and-erasures, 2t + e <= nroots)
 - [x] Block interleaver / de-interleaver (depth configurable)
 - [ ] CCSDS dual-basis (conventional/Berlekamp) representation handling
 - [x] CRC variants (CRC-16, CRC-32, others as needed) in-crate
 - [x] Attached sync markers (ASM) insert/detect (byte-aligned search only)
 - [x] Convolutional encoder, rate 1/2, K=7
 - [x] Viterbi decoder, hard decision
-- [ ] Viterbi decoder, soft decision
+- [x] Viterbi decoder, soft decision (confidence byte per coded bit)
 - [x] Self-describing archival framing (header with code parameters, versioned) (version 1; header CRC-16, payload CRC-32C)
 - [ ] LDPC block codes with iterative belief-propagation decoder (soft input)
 - [ ] LT-style fountain/erasure codes encoder and decoder session
