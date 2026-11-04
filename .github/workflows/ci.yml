@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+name: ci
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features: [default, all]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test default features
+        if: matrix.features == 'default'
+        run: cargo test --workspace
+      - name: Test all features
+        if: matrix.features == 'all'
+        run: cargo test --workspace --all-features
+
+  no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build no_std core for thumbv7em-none-eabihf
+        run: cargo build --workspace --no-default-features --target thumbv7em-none-eabihf
+
+  builds-alone:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          - tpt-kardashev-archive-codes
+          - tpt-kardashev-relativity
+          - tpt-kardashev-radhard
+          - tpt-kardashev-energy-ledger
+          - tpt-kardashev-dtn
+          - tpt-kardashev-astrodynamics
+          - tpt-kardashev-nuclear-plasma
+          - tpt-kardashev-causal-consensus
+          - tpt-kardashev-isru
+          - tpt-kardashev-reflect
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build -p ${{ matrix.crate }} --no-default-features
+
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Licences, all features
+        run: cargo deny --all-features check licenses
+      - name: Licences, default features
+        run: cargo deny --no-default-features check licenses
+      - name: Advisories
+        run: cargo deny check advisories
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+  spdx-and-licences:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dual-licence files present
+        run: test -f LICENSE-MIT && test -f LICENSE-APACHE
+      - name: SPDX header on every Rust source file
+        run: |
+          missing=0
+          while IFS= read -r f; do
+            if ! head -n 1 "$f" | grep -qx '// SPDX-License-Identifier: MIT OR Apache-2.0'; then
+              echo "missing SPDX header: $f"
+              missing=1
+            fi
+          done < <(find crates -name '*.rs' -not -path '*/target/*')
+          exit $missing

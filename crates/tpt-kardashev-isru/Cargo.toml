@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-isru"
+description = "In-situ resource planning: elemental mass-balance checks, LP planning over a horizon and closure scores."
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+energy = []
+
+[dependencies]
+
+[lints]
+workspace = true

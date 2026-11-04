@@ -45,7 +45,7 @@ Kardashev's original scale stops at Type III. "K4" is TPT's own extension (rough
 5. **No sibling path dependencies.** Never `path = "../tpt-xyz"` to another repo (the pattern ignis and norma use). Git or registry dependencies on foundation sub-crates only.
 6. **Deterministic.** No hidden global state, no `HashMap` iteration order dependence in outputs, seeded randomness only, simulators driven by explicit virtual time.
 7. **Errors, not panics.** `#[non_exhaustive]` error enums; no `unwrap` in library code; `#![forbid(unsafe_code)]` except where a crate documents why it needs `unsafe` (radhard).
-8. **Reference code is ported, not linked.** Each crate records origin in `docs/provenance.md`.
+8. **Reference code is ported, not linked.** Each crate records origin in `docs/provenance/<crate>.md`.
 9. **Honest about assumptions.** Each crate's README states what it does not model (e.g. astrodynamics states its force-model limits).
 10. **MIT-selectable dependencies only.** No GPL-family (GPL, LGPL, AGPL) dependencies and no Apache-2.0-only dependencies, anywhere in the runtime, optional and build dependency tree (dev-dependencies are exempt). See §4.5.
 
@@ -59,7 +59,8 @@ Kardashev's original scale stops at Type III. "K4" is TPT's own extension (rough
 tpt-kardashev/
 ├── Cargo.toml              # workspace, shared lints, shared [workspace.package]
 ├── rust-toolchain.toml     # pinned toolchain (see §9)
-├── deny.toml
+├── rustfmt.toml  clippy.toml  deny.toml
+├── LICENSE-MIT  LICENSE-APACHE  CONTRIBUTING.md
 ├── spec.txt  README.md  todo.md  CLAUDE.md
 ├── crates/
 │   ├── tpt-kardashev-archive-codes/
@@ -392,7 +393,7 @@ Per-crate matrix: `fmt`, `clippy -D warnings`, tests (default and all features),
 
 ## 9. Toolchain and Conventions
 
-- MSRV and pinned toolchain: to be set at scaffold time. `tpt-replicate` requires Rust 1.85 and ignis pins 1.90.0, so choose one and record it. Not decided here.
+- MSRV and pinned toolchain: **Rust 1.90.0 pinned** in `rust-toolchain.toml`; **MSRV 1.90** in `[workspace.package].rust-version` (decided 2026-10-30). Aligns with ignis; `tpt-replicate` (1.85) builds under it as a reference only, not a dependency.
 - `[workspace.lints]`: `unsafe_code = "forbid"` by default; `clippy::all = "warn"`.
 - Each repo ships `README.md`, `spec.txt`, `todo.md` (the checkbox format the org tracker counts), `CLAUDE.md`, `deny.toml`, `rustfmt.toml`, `clippy.toml`.
 
@@ -430,19 +431,20 @@ Rough size estimates (guesses scaled from existing references, not measured): re
 
 ## 12. Open Questions
 
-1. Final repo name and spelling (`tpt-kardashev`, `tpt-k4`).
-2. Which BPv7 reliability extension to implement in place of custody transfer.
-3. MSRV and toolchain pin (1.85 vs 1.90 or newer).
-4. Whether astrodynamics should keep SGP4 in the main crate behind a feature or split it out.
-5. Which data format `tpt-kardashev-nuclear-plasma` reads first for cross sections.
-6. Contents of `tpt-rfc` and `tpt-aion` (not inspected) may already cover CBOR or archival coding; check before writing those pieces.
-7. Whether a general Lambert solver already exists in `tpt-sci-astro` or `tpt-transportation` (an example named lambert_transfer exists; not verified).
-8. Publishing: crates.io, or git-only for now.
-9. Is `Unicode-3.0` acceptable (permissive, pulled in by common crates such as `unicode-ident`)? Denied by default under §4.5 until decided. (MPL-2.0 is decided: denied.)
+1. ~~Final repo name and spelling~~ **Resolved:** `tpt-kardashev`; crates are `tpt-kardashev-<thing>`.
+2. ~~Which BPv7 reliability extension to implement in place of custody transfer.~~ **Resolved:** v0.1 uses LTP-level reliability only; bundle-level reliability extension deferred.
+3. ~~MSRV and toolchain pin.~~ **Resolved:** pinned Rust 1.90.0, MSRV 1.90 (§9).
+4. ~~Whether astrodynamics should keep SGP4 in the main crate behind a feature or split it out.~~ **Resolved:** SGP4/SDP4 stays inside `tpt-kardashev-astrodynamics` behind a feature.
+5. Which data format `tpt-kardashev-nuclear-plasma` reads first for cross sections. **Open:** chosen by a research task at the start of the nuclear-plasma crate.
+6. Contents of `tpt-rfc` and `tpt-aion` (not inspected) may already cover CBOR or archival coding; check before writing those pieces. **Open:** prior-art check is the first item in the archive-codes and dtn sections.
+7. Whether a general Lambert solver already exists in `tpt-sci-astro` or `tpt-transportation` (an example named lambert_transfer exists; not verified). **Open:** prior-art check is the first item in the astrodynamics section.
+8. ~~Publishing: crates.io, or git-only for now.~~ **Resolved:** git-only for now (tags `<crate>-v<x.y.z>`); crates.io is a later decision. Crates carry `publish = false`.
+9. ~~Is `Unicode-3.0` acceptable.~~ **Resolved:** denied (not on the §4.5 allow-list). Revisit only if a required dependency needs it.
 
-**Resolved:**
+**Resolved earlier:**
 - MPL-2.0: denied.
 - Dev-dependencies: exempt from the licence policy (decided 2026-10-30).
+- Nuclear-data format: chosen by a research task at the start of the nuclear-plasma crate (see item 5).
 
 ---
 

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-astrodynamics"
+description = "Time scales, reference frames, orbital elements, propagation, Lambert solving and impulsive manoeuvres."
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+relativity = []
+dtn = []
+
+[dependencies]
+
+[lints]
+workspace = true

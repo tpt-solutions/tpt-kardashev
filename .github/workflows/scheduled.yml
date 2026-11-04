@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+name: scheduled
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  kani:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Kani proofs if any exist
+        run: |
+          if grep -rl --include='*.rs' '#\[kani::proof\]' crates; then
+            cargo install --locked kani-verifier
+            cargo kani setup
+            cargo kani --workspace
+          else
+            echo "No Kani proofs yet (first proofs land with radhard and archive-codes)."
+          fi
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run fuzz targets if any exist
+        run: |
+          if ls crates/*/fuzz/Cargo.toml >/dev/null 2>&1; then
+            cargo install --locked cargo-fuzz
+            for dir in crates/*/fuzz; do
+              crate_dir="$(dirname "$dir")"
+              (
+                cd "$crate_dir"
+                for target in $(cargo fuzz list); do
+                  cargo fuzz run "$target" -- -max_total_time=60
+                done
+              )
+            done
+          else
+            echo "No fuzz targets yet."
+          fi

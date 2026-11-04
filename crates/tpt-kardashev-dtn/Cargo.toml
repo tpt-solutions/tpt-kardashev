@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-dtn"
+description = "Delay-tolerant networking: BPv7 bundles, bundle stores, contact-graph routing and an LTP convergence layer."
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+fec = []
+
+[dependencies]
+
+[lints]
+workspace = true

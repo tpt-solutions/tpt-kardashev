@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# cargo-deny policy for tpt-kardashev. See spec.txt §4.5.
+#
+# Licence rule: every runtime, optional and build dependency must be
+# MIT-selectable. Dev-dependencies are excluded from the graph below.
+# Anything not in `allow` fails, including unknown or missing licence fields.
+
+[graph]
+all-features = true
+exclude-dev = true
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+# Explicit allow-list (spec §4.5). Denied by omission: GPL/LGPL/AGPL,
+# Apache-2.0 alone, MPL-2.0, Unicode-3.0 and anything else not listed here.
+allow = [
+    "MIT",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "CC0-1.0",
+]
+
+[advisories]
+version = 2
+unmaintained = "workspace"
+yanked = "deny"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
