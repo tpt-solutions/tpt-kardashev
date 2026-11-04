@@ -1,0 +1,2 @@
+# Keep line endings LF in the repository and in every checkout, so rustfmt newline_style = "Unix" holds on all platforms.
+* text=auto eol=lf
