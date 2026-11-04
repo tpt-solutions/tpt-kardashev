@@ -2,7 +2,7 @@
 
 Radiation-tolerant primitives: triple and N-modular redundancy with scrubbing, SECDED(72,64) words, CRC-protected cells and buffers, a checkpoint with rollback and a watchdog marker, and a seeded fault injector for tests.
 
-**Status:** partial Phase 1.3 implementation. Not yet at v0.1 exit (see below). Not published (`publish = false`).
+**Status:** Phase 1.3 implementation, missing only the Kani proofs for v0.1 exit (see below). Not published (`publish = false`).
 
 ## What it provides
 
@@ -11,6 +11,7 @@ Radiation-tolerant primitives: triple and N-modular redundancy with scrubbing, S
 - `CheckedCell` and `ChecksummedBuffer<N>`: 64-bit values with CRC-32C. Corruption is detected and reported, not corrected.
 - `Checkpoint<T>`: saved state with rollback, and a progress marker. `Watchdog` reports `Stalled` when the marker does not advance between checks. Nothing reads a clock.
 - `FaultInjector`: xorshift64* with a caller-supplied seed. Single bit flips, bursts, and codeword flips.
+- `volatile` feature (off by default): `VolatileRegister<T>`, the crate's only `unsafe` code. Its constructor is `unsafe` and documents the caller's contract; reads and writes use volatile access. With the feature off, the crate forbids `unsafe` entirely.
 
 ## Verification
 
@@ -24,8 +25,15 @@ Radiation-tolerant primitives: triple and N-modular redundancy with scrubbing, S
 - Radiation physics: upset rates, cross-sections, latch-up, and single-event functional interrupts.
 - Multi-bit bursts in SECDED words. Bursts of two or more bits are detected only if they produce a non-zero syndrome with even overall parity.
 - Scrubbing schedules and time. Nothing here decides when to scrub.
-- Volatile access and the documented `unsafe` exception. Not implemented; the crate still forbids `unsafe`.
 - Kani proofs for the voter and SECDED corrector (todo, once the verifier is available).
+
+## Examples
+
+```sh
+cargo run -p tpt-kardashev-radhard --example scrub_demo
+```
+
+Upsets TMR replicas, SECDED words and a checked cell with the seeded injector, and shows each layer recovering.
 
 ## Dependencies
 

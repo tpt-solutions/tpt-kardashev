@@ -15,8 +15,17 @@ publish.workspace = true
 default = ["std"]
 std = []
 alloc = []
+# The one documented unsafe exception: volatile register access (spec 5.3).
+volatile = []
 
 [dependencies]
 
-[lints]
-workspace = true
+# Overrides the workspace `forbid(unsafe_code)` so the `volatile` module can use unsafe.
+# The rest of the crate still contains no unsafe code; see src/lib.rs.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"

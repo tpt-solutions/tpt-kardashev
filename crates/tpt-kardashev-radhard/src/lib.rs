@@ -6,14 +6,15 @@
 //! This crate protects memory and computation (words, cells, state). Data in transit and at rest
 //! is the job of `tpt-kardashev-archive-codes`. The two crates do not depend on each other.
 //!
-//! `unsafe` is not used yet. The spec allows one documented exception: volatile access behind a
-//! feature. It is not implemented, so the crate still forbids `unsafe`.
+//! `unsafe` is forbidden unless the `volatile` feature is enabled. That feature gates the only
+//! module allowed to use `unsafe`: volatile register access, which needs a caller-checked address.
 //!
 //! No Kani proofs are included yet. The verifier is not installed in this environment. The
 //! voter and SECDED properties are covered by exhaustive tests instead.
 
 #![no_std]
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "volatile"), forbid(unsafe_code))]
+#![cfg_attr(feature = "volatile", deny(unsafe_code))]
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -27,6 +28,8 @@ pub mod error;
 pub mod inject;
 pub mod secded;
 pub mod tmr;
+#[cfg(feature = "volatile")]
+pub mod volatile;
 
 pub use cell::{CheckedCell, ChecksummedBuffer};
 pub use checkpoint::{Checkpoint, Watchdog};

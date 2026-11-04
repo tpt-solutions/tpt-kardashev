@@ -7,4 +7,6 @@
 - CRC-32C-checked cells and buffers.
 - Checkpoint with rollback and a watchdog progress marker.
 - Seeded fault injector.
-- Exhaustive and injector-driven tests. Kani proofs and volatile access are not yet implemented.
+- `volatile` feature: `VolatileRegister<T>` with volatile read and write; the only `unsafe` in the crate.
+- `scrub_demo` example.
+- Exhaustive and injector-driven tests. Kani proofs are not yet implemented.
