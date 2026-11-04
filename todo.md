@@ -161,22 +161,22 @@ Exit: each crate at its v0.1 exit.
 
 ### 1.4 `tpt-kardashev-energy-ledger`
 - [ ] Review `tpt-equinox-power`, `tpt-energy`, `tpt-thermodynamics` (physics only, no code duplication)
-- [ ] Newtypes `Joules`, `Watts`, `Kelvin`
-- [ ] Physical constants (k_B, σ) with CODATA source and year recorded
-- [ ] Double-entry `Ledger` with explicit `WasteHeat` account
-- [ ] Declared sources and sinks; checked conservation invariant
-- [ ] `landauer_limit(bits_erased, temperature)`
-- [ ] Radiator capacity from Stefan-Boltzmann (`ε σ A T⁴`)
-- [ ] `HeatBudget` with headroom report
-- [ ] `EnergyOracle` trait
+- [x] Newtypes `Joules`, `Watts`, `Kelvin`
+- [x] Physical constants (k_B, σ) with CODATA source and year recorded
+- [x] Double-entry `Ledger` with explicit `WasteHeat` account
+- [x] Declared sources and sinks; checked conservation invariant
+- [x] `landauer_limit(bits_erased, temperature)`
+- [x] Radiator capacity from Stefan-Boltzmann (`ε σ A T⁴`)
+- [x] `HeatBudget` with headroom report
+- [x] `EnergyOracle` trait
 - [ ] Optional `units` feature mapping to `tpt-math-units`
 - [ ] Optional `serde` feature
-- [ ] Conservation property tests (random transfer sequences)
-- [ ] Constants cross-checked against CODATA; hand-calculation tests for Landauer (≈2.9×10⁻²¹ J/bit at 300 K) and radiator
-- [ ] `no_std` build
-- [ ] README states what is not modelled
-- [ ] Example: compute node with radiator
-- [ ] **v0.1 exit:** ledger with checks, Landauer, radiator, oracle, example
+- [x] Conservation property tests (random transfer sequences)
+- [x] Constants cross-checked against CODATA; hand-calculation tests for Landauer (≈2.9×10⁻²¹ J/bit at 300 K) and radiator
+- [x] `no_std` build
+- [x] README states what is not modelled
+- [x] Example: compute node with radiator
+- [x] **v0.1 exit:** ledger with checks, Landauer, radiator, oracle, example
 
 ### Phase 1 close
 - [ ] All four crates at v0.1 exit
