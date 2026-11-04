@@ -142,21 +142,21 @@ Exit: each crate at its v0.1 exit.
 
 ### 1.3 `tpt-kardashev-radhard`
 - [ ] Review `tpt-equinox-tmr` and `tpt-for-redundancy`; record in provenance
-- [ ] `Tmr<T>` with majority vote and scrub-on-mismatch
-- [ ] N-modular variant
-- [ ] Typestate wrappers (unvoted vs voted types)
-- [ ] SECDED (72,64) encode/decode
-- [ ] CRC-protected cells and checksummed buffers
-- [ ] `Checkpoint<T>` with rollback and watchdog-friendly progress marker
-- [ ] `FaultInjector` (seeded bit flips, burst errors)
-- [ ] Volatile access behind a feature, `unsafe` documented (the one exception to forbid-unsafe)
-- [ ] Kani proof: no single corrupted replica changes the voter result
-- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error
-- [ ] Exhaustive tests over small word sizes
-- [ ] Injector-driven property tests
-- [ ] `no_std` build, thumbv7em build
-- [ ] README states what is not modelled
-- [ ] Examples
+- [x] `Tmr<T>` with majority vote and scrub-on-mismatch
+- [x] N-modular variant
+- [x] Typestate wrappers (unvoted vs voted types)
+- [x] SECDED (72,64) encode/decode
+- [x] CRC-protected cells and checksummed buffers
+- [x] `Checkpoint<T>` with rollback and watchdog-friendly progress marker
+- [x] `FaultInjector` (seeded bit flips, burst errors)
+- [ ] Volatile access behind a feature, `unsafe` documented (the one exception to forbid-unsafe) — not implemented; crate still forbids unsafe
+- [ ] Kani proof: no single corrupted replica changes the voter result — not run: Kani not installed; exhaustive voter test instead
+- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error — not run: Kani not installed; exhaustive SECDED test instead
+- [x] Exhaustive tests over small word sizes
+- [x] Injector-driven property tests
+- [x] `no_std` build, thumbv7em build
+- [x] README states what is not modelled
+- [ ] Examples — none yet for radhard
 - [ ] **v0.1 exit:** Tmr, SECDED(72,64), checksummed cells, checkpoint/rollback, injector, Kani proofs
 
 ### 1.4 `tpt-kardashev-energy-ledger`
