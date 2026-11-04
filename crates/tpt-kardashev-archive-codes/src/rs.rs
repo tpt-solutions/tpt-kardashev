@@ -94,8 +94,8 @@ impl ReedSolomon {
         syn
     }
 
-    /// Berlekamp-Massey: returns the error locator `lambda` (with `lambda[0] = 1`) and its degree `L`.
-    fn berlekamp_massey(&self, syn: &[u8; MAX_PARITY]) -> ([u8; MAX_PARITY + 1], usize) {
+    /// Berlekamp-Massey over `len` syndromes: returns the locator `sigma` (with `sigma[0] = 1`) and its degree `L`.
+    fn berlekamp_massey(syn: &[u8], len: usize) -> ([u8; MAX_PARITY + 1], usize) {
         let mut c = [0u8; MAX_PARITY + 1];
         let mut b = [0u8; MAX_PARITY + 1];
         c[0] = 1;
@@ -103,7 +103,7 @@ impl ReedSolomon {
         let mut l = 0usize;
         let mut m = 1usize;
         let mut bb = 1u8;
-        for n in 0..self.nroots {
+        for n in 0..len {
             let mut d = syn[n];
             for i in 1..=l {
                 d ^= mul(c[i], syn[n - i]);
@@ -127,6 +127,11 @@ impl ReedSolomon {
             }
         }
         (c, l)
+    }
+
+    /// Field element alpha^(prim * p) locating a symbol at power p.
+    fn locator(&self, p: usize) -> u8 {
+        alpha_pow(i64::from(self.prim) * p as i64)
     }
 
     fn check_length(&self, len: usize) -> Result<(), CodeError> {
@@ -176,23 +181,94 @@ impl BlockEncoder for ReedSolomon {
 }
 
 impl BlockDecoder for ReedSolomon {
-    /// Corrects up to `nroots / 2` symbol errors in place.
+    /// Corrects up to `nroots / 2` symbol errors in place, with no erasure information.
     ///
     /// On `Uncorrectable` the word is left unchanged. A word with more errors than the code can
     /// correct may still decode to a different valid codeword. This is inherent to bounded-distance decoding.
     fn decode(&self, word: &mut [u8]) -> Result<DecodeReport, CodeError> {
+        self.correct(word, &[])
+    }
+}
+
+impl ReedSolomon {
+    /// Corrects errors and erasures in place.
+    ///
+    /// `erasures` lists codeword indices known to be unreliable. The code corrects `e` erasures and
+    /// `t` errors whenever 2t + e <= nroots. An erasure whose value happens to be correct is not
+    /// counted as corrected. On failure the word is left unchanged.
+    pub fn decode_with_erasures(
+        &self,
+        word: &mut [u8],
+        erasures: &[usize],
+    ) -> Result<DecodeReport, CodeError> {
+        self.correct(word, erasures)
+    }
+
+    fn correct(&self, word: &mut [u8], erasures: &[usize]) -> Result<DecodeReport, CodeError> {
         let n = word.len();
         self.check_length(n)?;
+        let e = erasures.len();
+        if e > self.nroots {
+            return Err(CodeError::Uncorrectable);
+        }
+        let mut erasure_pow = [0usize; MAX_PARITY];
+        for (k, &j) in erasures.iter().enumerate() {
+            if j >= n {
+                return Err(CodeError::InvalidParameter {
+                    name: "erasure index",
+                });
+            }
+            if erasures[..k].contains(&j) {
+                return Err(CodeError::InvalidParameter {
+                    name: "duplicate erasure",
+                });
+            }
+            erasure_pow[k] = n - 1 - j;
+        }
+
         let syn = self.syndromes(word);
         if syn[..self.nroots].iter().all(|&s| s == 0) {
             return Ok(DecodeReport { corrected: 0 });
         }
-        let (lambda, l) = self.berlekamp_massey(&syn);
-        if l == 0 || 2 * l > self.nroots {
+
+        // Erasure locator gamma(x) = prod (1 + X_k x), with X_k the locator of each erasure.
+        let mut gamma = [0u8; MAX_PARITY + 1];
+        gamma[0] = 1;
+        for &p in &erasure_pow[..e] {
+            let x = self.locator(p);
+            for i in (1..=MAX_PARITY).rev() {
+                gamma[i] ^= mul(x, gamma[i - 1]);
+            }
+        }
+
+        // Modified syndromes T = S * gamma mod x^nroots. Berlekamp-Massey runs on T[e..], which
+        // removes the known erasures from the problem.
+        let mut modified = [0u8; MAX_PARITY];
+        for (i, t) in modified.iter_mut().enumerate().take(self.nroots) {
+            let mut acc = 0u8;
+            for k in 0..=i.min(e) {
+                acc ^= mul(gamma[k], syn[i - k]);
+            }
+            *t = acc;
+        }
+        let (sigma, l) = Self::berlekamp_massey(&modified[e..self.nroots], self.nroots - e);
+        if l == 0 && e == 0 {
+            return Err(CodeError::Uncorrectable);
+        }
+        if 2 * l + e > self.nroots {
             return Err(CodeError::Uncorrectable);
         }
 
-        // Error evaluator omega(x) = S(x) lambda(x) mod x^nroots.
+        // Full locator lambda = sigma * gamma, and evaluator omega = S * lambda mod x^nroots.
+        let mut lambda = [0u8; MAX_PARITY + 1];
+        for (i, &si) in sigma[..=l].iter().enumerate() {
+            for (j, &gj) in gamma[..=e].iter().enumerate() {
+                if i + j <= MAX_PARITY {
+                    lambda[i + j] ^= mul(si, gj);
+                }
+            }
+        }
+        let deg = lambda.iter().rposition(|&c| c != 0).unwrap_or(0);
         let mut omega = [0u8; MAX_PARITY];
         for (j, o) in omega.iter_mut().enumerate().take(self.nroots) {
             for i in 0..=j {
@@ -205,24 +281,24 @@ impl BlockDecoder for ReedSolomon {
         let mut count = 0usize;
         for p in 0..n {
             let xi = alpha_pow(-i64::from(self.prim) * p as i64);
-            if eval(&lambda[..=l], xi) == 0 {
-                if count == l {
+            if eval(&lambda[..=deg], xi) == 0 {
+                if count >= deg {
                     return Err(CodeError::Uncorrectable);
                 }
                 positions[count] = p;
                 count += 1;
             }
         }
-        if count != l {
+        if count != deg {
             return Err(CodeError::Uncorrectable);
         }
 
-        // Forney: e = X^(1 - fcr) * omega(X^-1) / lambda'(X^-1), with X = alpha^(prim p).
+        // Forney: value = X^(1 - fcr) * omega(X^-1) / lambda'(X^-1), with X = alpha^(prim p).
         let mut values = [0u8; MAX_PARITY];
         for (k, &p) in positions[..count].iter().enumerate() {
             let xi = alpha_pow(-i64::from(self.prim) * p as i64);
             let num = eval(&omega[..self.nroots], xi);
-            let den = eval_derivative(&lambda[..=l], xi);
+            let den = eval_derivative(&lambda[..=deg], xi);
             if den == 0 {
                 return Err(CodeError::Uncorrectable);
             }
@@ -240,7 +316,8 @@ impl BlockDecoder for ReedSolomon {
             }
             return Err(CodeError::Uncorrectable);
         }
-        Ok(DecodeReport { corrected: count })
+        let corrected = values[..count].iter().filter(|&&v| v != 0).count();
+        Ok(DecodeReport { corrected })
     }
 }
 
@@ -340,6 +417,54 @@ mod tests {
         let code = ReedSolomon::ccsds_255_223().expect("valid parameters");
         assert_eq!(code.correctable(), 16);
         round_trip(&code, 223, 0xC0FFEE, 16);
+    }
+
+    #[test]
+    fn corrects_nroots_erasures_at_known_positions() {
+        let code = ReedSolomon::ccsds_255_223().expect("valid");
+        let msg: std::vec::Vec<u8> = (0..223).map(|i| (i * 13 + 5) as u8).collect();
+        let mut cw = std::vec![0u8; 255];
+        code.encode(&msg, &mut cw).expect("encode");
+        let original = cw.clone();
+        let erasures: std::vec::Vec<usize> = (0..32).map(|i| i * 7 + 1).collect();
+        for &j in &erasures {
+            cw[j] = 0xEE;
+        }
+        code.decode_with_erasures(&mut cw, &erasures)
+            .expect("32 erasures are correctable");
+        assert_eq!(cw, original);
+    }
+
+    #[test]
+    fn corrects_mixed_erasures_and_errors_within_budget() {
+        // 10 erasures and 11 errors: 2 * 11 + 10 = 32 = nroots.
+        let code = ReedSolomon::ccsds_255_223().expect("valid");
+        let msg: std::vec::Vec<u8> = (0..223).map(|i| (i * 31 + 7) as u8).collect();
+        let mut cw = std::vec![0u8; 255];
+        code.encode(&msg, &mut cw).expect("encode");
+        let original = cw.clone();
+        let erasures: std::vec::Vec<usize> = (0..10).map(|i| 20 + i * 11).collect();
+        for &j in &erasures {
+            cw[j] ^= 0x55;
+        }
+        for k in 0..11 {
+            cw[200 + k * 4] ^= 0xA1 + k as u8;
+        }
+        code.decode_with_erasures(&mut cw, &erasures)
+            .expect("within budget");
+        assert_eq!(cw, original);
+    }
+
+    #[test]
+    fn rejects_bad_erasure_lists_and_leaves_word_unchanged() {
+        let code = ReedSolomon::new(8, 1, 1).expect("valid");
+        let mut cw = [0u8; 20];
+        let before = cw;
+        assert!(code.decode_with_erasures(&mut cw, &[25]).is_err());
+        assert!(code.decode_with_erasures(&mut cw, &[3, 3]).is_err());
+        let too_many: std::vec::Vec<usize> = (0..9).collect();
+        assert!(code.decode_with_erasures(&mut cw, &too_many).is_err());
+        assert_eq!(cw, before);
     }
 
     #[test]
