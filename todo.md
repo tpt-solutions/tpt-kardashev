@@ -104,13 +104,13 @@ Exit: each crate at its v0.1 exit.
 - [x] Convolutional encoder, rate 1/2, K=7
 - [x] Viterbi decoder, hard decision
 - [ ] Viterbi decoder, soft decision
-- [ ] Self-describing archival framing (header with code parameters, versioned)
+- [x] Self-describing archival framing (header with code parameters, versioned) (version 1; header CRC-16, payload CRC-32C)
 - [ ] LDPC block codes with iterative belief-propagation decoder (soft input)
 - [ ] LT-style fountain/erasure codes encoder and decoder session
 - [ ] Optional `serde` feature on data types
 - [ ] Known-answer tests from the CCSDS standard
 - [x] Round-trip property tests (≤ t symbol errors always recovered)
-- [ ] Fuzz: decoders and frame parser never panic on arbitrary input
+- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: deterministic pseudo-random tests only; no coverage-guided fuzzer yet
 - [ ] Kani proofs for selected arithmetic (GF ops)
 - [ ] Benchmarks: BER curves vs theory as regression checks
 - [x] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
