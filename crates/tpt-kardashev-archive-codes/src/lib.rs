@@ -22,6 +22,7 @@ pub mod codec;
 pub mod conv;
 pub mod crc;
 pub mod error;
+pub mod frame;
 pub mod interleave;
 pub mod rs;
 pub mod sync;

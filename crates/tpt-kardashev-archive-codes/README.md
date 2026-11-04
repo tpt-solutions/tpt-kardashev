@@ -12,6 +12,7 @@ Archival and error-correcting codes: Reed-Solomon, block interleaving, a rate-1/
 - `crc16_ccitt_false`, `crc32_ieee`, `crc32c`, each checked against its standard check value.
 - `conv::encode` and `conv::viterbi_decode`: rate 1/2, K=7, polynomials 171 and 133 (octal). Hard decisions only.
 - `sync`: CCSDS ASM (`0x1ACFFC1D`) attach and byte-aligned search with a bit-error tolerance.
+- `frame`: self-describing archival frames. An 11-byte versioned header records the code kind and parameters and carries a CRC-16 of itself; a CRC-32C trailer protects the payload. Parsing is total: arbitrary input returns an error, never a panic.
 - `CodeError` and `DecodeReport`.
 
 No allocation is needed. Every codec works on caller-provided buffers.
@@ -26,7 +27,9 @@ The Reed-Solomon parameters (field polynomial 0x187, `fcr = 112`, `prim = 11`, 3
 - Erasure decoding. The RS decoder corrects errors only.
 - Soft-decision Viterbi, LDPC codes, and LT fountain codes.
 - Turbo codes (deferred) and RaptorQ (excluded, patent exposure; see spec §11).
-- Self-describing archival framing. ASM handling is byte-aligned only.
+- Forward error correction applied by the frame itself. The frame records parameters; the caller encodes and decodes the payload.
+- Fuzzing with a coverage-guided fuzzer. The frame and decoder inputs are covered by deterministic pseudo-random tests only.
+- ASM handling is byte-aligned only.
 - Bit-level frame synchronisation.
 - Termination of the convolutional trellis. The decoder selects the best end state.
 

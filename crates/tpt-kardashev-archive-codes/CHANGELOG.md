@@ -9,4 +9,5 @@
 - CRC-16/CCITT-FALSE, CRC-32 (IEEE), CRC-32C, checked against standard check values.
 - Rate-1/2 K=7 convolutional encoder and hard-decision Viterbi decoder.
 - Attached sync marker attach and byte-aligned search.
+- Self-describing archival frame format (version 1) with header CRC-16 and payload CRC-32C; total parser.
 - Property-style tests with a fixed seed; end-to-end RS + interleave integration test; `rs_interleave` example.
