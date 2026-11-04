@@ -3,6 +3,8 @@
 Foundation libraries for planetary-to-galactic scale. Ten independent Rust crates in one Cargo workspace.
 Spec: `spec.txt`. Licence: MIT OR Apache-2.0. Owner: TPT Solutions.
 
+**Status (2026-11-04):** Phase 0 scaffold written and checked locally (fmt, clippy, tests, no_std thumbv7em, builds-alone, docs, cargo-deny licences and advisories, licence-policy test). CI is written but not yet run on GitHub; the Phase 0 exit ("CI green") stays open until it is pushed and passes. Committed to master in stages (scaffold, relativity, archive-codes).
+
 ## Decisions recorded (2026-10-30)
 
 - Repo name: `tpt-kardashev`; crates are `tpt-kardashev-<thing>`.
@@ -15,7 +17,7 @@ Spec: `spec.txt`. Licence: MIT OR Apache-2.0. Owner: TPT Solutions.
 - Prior-art checks (tpt-rfc, tpt-aion, existing Lambert solver) are the first items in the relevant crate sections.
 
 - [x] Read spec and resolve open questions (§12.1, .2, .3, .4, .5, .8, .9)
-- [ ] Update `spec.txt` §12 and §9 to record the decisions above
+- [x] Update `spec.txt` §12 and §9 to record the decisions above
 
 ---
 
@@ -24,57 +26,57 @@ Spec: `spec.txt`. Licence: MIT OR Apache-2.0. Owner: TPT Solutions.
 Exit: CI green on empty crates.
 
 ### Workspace and licensing
-- [ ] Create root `Cargo.toml` workspace with `[workspace.package]` (edition, rust-version 1.90, authors/owner TPT Solutions, licence `MIT OR Apache-2.0`, repository)
-- [ ] Add `rust-toolchain.toml` pinned to 1.90.0 (components: rustfmt, clippy; target thumbv7em-none-eabihf)
-- [ ] Add `LICENSE-MIT` (copyright TPT Solutions)
-- [ ] Add `LICENSE-APACHE` (Apache-2.0 text, copyright TPT Solutions)
-- [ ] Add licence section to root `README.md` (MIT OR Apache-2.0, contribution clause for dual licensing)
-- [ ] Add SPDX header template (`// SPDX-License-Identifier: MIT OR Apache-2.0`) and apply to all source files
-- [ ] Add `rustfmt.toml`
-- [ ] Add `clippy.toml`
-- [ ] Add `[workspace.lints]` (`unsafe_code = "forbid"`, `clippy::all = "warn"`, no-unwrap lint for library code)
-- [ ] Add `.gitignore`, `.editorconfig`
+- [x] Create root `Cargo.toml` workspace with `[workspace.package]` (edition, rust-version 1.90, authors/owner TPT Solutions, licence `MIT OR Apache-2.0`, repository) (repository URL left out until confirmed)
+- [x] Add `rust-toolchain.toml` pinned to 1.90.0 (components: rustfmt, clippy; target thumbv7em-none-eabihf)
+- [x] Add `LICENSE-MIT` (copyright TPT Solutions)
+- [x] Add `LICENSE-APACHE` (Apache-2.0 text, copyright TPT Solutions)
+- [x] Add licence section to root `README.md` (MIT OR Apache-2.0, contribution clause for dual licensing)
+- [x] Add SPDX header template (`// SPDX-License-Identifier: MIT OR Apache-2.0`) and apply to all source files
+- [x] Add `rustfmt.toml`
+- [x] Add `clippy.toml`
+- [x] Add `[workspace.lints]` (`unsafe_code = "forbid"`, `clippy::all = "warn"`, no-unwrap lint for library code)
+- [x] Add `.gitignore`, `.editorconfig` (`.gitignore` already existed; `.editorconfig` added)
 - [ ] Initialise git repository and make first commit
 
 ### Dependency licence policy (§4.5)
-- [ ] Write `deny.toml` with explicit allow-list: MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unlicense, CC0-1.0
-- [ ] Confirm dual/compound expressions with MIT as an option pass (e.g. `MIT OR Apache-2.0`)
-- [ ] Confirm Apache-2.0-only (incl. `WITH LLVM-exception` without MIT alternative), GPL/LGPL/AGPL, MPL-2.0 and Unicode-3.0 are denied
-- [ ] Confirm unknown/missing licence fields fail
-- [ ] Exclude dev-dependencies (`exclude-dev = true` in `[graph]`; verify key against installed cargo-deny version)
-- [ ] Add advisories and bans sections to `deny.toml`
-- [ ] Test the policy with a deliberately Apache-only dummy dependency (must fail) and an `MIT OR Apache-2.0` one (must pass)
-- [ ] Document the no-copying rule for third-party code (README or CONTRIBUTING)
+- [x] Write `deny.toml` with explicit allow-list: MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, Unlicense, CC0-1.0
+- [x] Confirm dual/compound expressions with MIT as an option pass (e.g. `MIT OR Apache-2.0`)
+- [x] Confirm Apache-2.0-only (incl. `WITH LLVM-exception` without MIT alternative), GPL/LGPL/AGPL, MPL-2.0 and Unicode-3.0 are denied
+- [x] Confirm unknown/missing licence fields fail
+- [x] Exclude dev-dependencies (`exclude-dev = true` in `[graph]`; verify key against installed cargo-deny version)
+- [x] Add advisories and bans sections to `deny.toml`
+- [x] Test the policy with a deliberately Apache-only dummy dependency (must fail) and an `MIT OR Apache-2.0` one (must pass)
+- [x] Document the no-copying rule for third-party code (README or CONTRIBUTING)
 
 ### Crate skeletons
-- [ ] Create ten crate directories under `crates/` named `tpt-kardashev-<thing>` (archive-codes, relativity, radhard, energy-ledger, dtn, astrodynamics, nuclear-plasma, causal-consensus, isru, reflect)
-- [ ] Each crate: `Cargo.toml` inheriting workspace package/lints, independent version `0.0.0`
-- [ ] Each crate: `#![no_std]` `lib.rs` with `alloc` and `std` features, `#![forbid(unsafe_code)]` (radhard exception documented)
-- [ ] Each crate: `README.md` (one-line description, what it does not model), `CHANGELOG.md`, `examples/`
-- [ ] Each crate: `docs/provenance/<crate>.md` stub (origin of ported code, licence of any third-party source)
-- [ ] Add placeholder `examples/` directory at repo root for cross-crate examples
-- [ ] Optional feature flags declared per §4.2 (relativity, dtn, fec, energy) with no mandatory internal deps
-- [ ] Verify no sibling `path = "../tpt-xyz"` dependencies outside this workspace
+- [x] Create ten crate directories under `crates/` named `tpt-kardashev-<thing>` (archive-codes, relativity, radhard, energy-ledger, dtn, astrodynamics, nuclear-plasma, causal-consensus, isru, reflect) (scaffold: `publish = false`)
+- [x] Each crate: `Cargo.toml` inheriting workspace package/lints, independent version `0.0.0`
+- [x] Each crate: `#![no_std]` `lib.rs` with `alloc` and `std` features, `#![forbid(unsafe_code)]` (radhard exception documented)
+- [x] Each crate: `README.md` (one-line description, what it does not model), `CHANGELOG.md`, `examples/`
+- [x] Each crate: `docs/provenance/<crate>.md` stub (origin of ported code, licence of any third-party source)
+- [x] Add placeholder `examples/` directory at repo root for cross-crate examples
+- [x] Optional feature flags declared per §4.2 (relativity, dtn, fec, energy) with no mandatory internal deps
+- [x] Verify no sibling `path = "../tpt-xyz"` dependencies outside this workspace
 
 ### Repo docs
-- [ ] Root `README.md` (crate table, dependency graph, design principles, non-goals)
-- [ ] `CLAUDE.md` (conventions, commands, rules: no unwrap, no panics, no sibling path deps, deterministic, no AI attribution in commits)
+- [x] Root `README.md` (crate table, dependency graph, design principles, non-goals)
+- [x] `CLAUDE.md` (conventions, commands, rules: no unwrap, no panics, no sibling path deps, deterministic, no AI attribution in commits)
 - [ ] Per-crate sections in this `todo.md` kept in sync as work completes
-- [ ] Floating-point tolerance policy doc (shared template for physics crates)
-- [ ] Define the admission rule for new crates in `CONTRIBUTING.md` (one concern, small trait API, no app code, builds alone)
+- [x] Floating-point tolerance policy doc (shared template for physics crates)
+- [x] Define the admission rule for new crates in `CONTRIBUTING.md` (one concern, small trait API, no app code, builds alone)
 
 ### CI (`.github/workflows/`)
-- [ ] `fmt` check
-- [ ] `clippy -D warnings`
-- [ ] Tests with default features and with all features
-- [ ] `no_std` build, including thumbv7em-none-eabihf for crates claiming embedded use
-- [ ] "Builds alone" job: `cargo build -p <crate> --no-default-features` for each crate
-- [ ] `cargo deny check licenses` on full tree, all features and default features
-- [ ] `cargo deny check advisories`
-- [ ] Doc build with warnings denied
-- [ ] SPDX header and dual-licence file enforcement check
-- [ ] Scheduled Kani job
-- [ ] Scheduled fuzz job
+- [x] `fmt` check
+- [x] `clippy -D warnings`
+- [x] Tests with default features and with all features
+- [x] `no_std` build, including thumbv7em-none-eabihf for crates claiming embedded use
+- [x] "Builds alone" job: `cargo build -p <crate> --no-default-features` for each crate
+- [x] `cargo deny check licenses` on full tree, all features and default features
+- [x] `cargo deny check advisories`
+- [x] Doc build with warnings denied
+- [x] SPDX header and dual-licence file enforcement check
+- [x] Scheduled Kani job (runs only once `#[kani::proof]` exists)
+- [x] Scheduled fuzz job (runs only once a `fuzz/` target exists)
 - [ ] Verify CI is green on empty crates (**Phase 0 exit**)
 
 ### Cross-cutting infrastructure
@@ -90,53 +92,53 @@ Exit: each crate at its v0.1 exit.
 
 ### 1.1 `tpt-kardashev-archive-codes`
 - [ ] Investigate `tpt-aion` and `tpt-rfc` for existing archival coding/CRC (§12.6); record result in provenance
-- [ ] Obtain current CCSDS 131.0-B revision; record parameters, polynomials, sync markers from the document (not memory)
-- [ ] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`)
-- [ ] GF(2^8) arithmetic (in-crate, tables generated at const time)
-- [ ] Reed-Solomon RS(255,223) encoder with const generics, no alloc
-- [ ] Reed-Solomon decoder (syndromes, Berlekamp-Massey, Chien, Forney), erasure support
-- [ ] Block interleaver / de-interleaver (depth configurable)
+- [ ] Obtain current CCSDS 131.0-B revision; record parameters, polynomials, sync markers from the document (not memory) — partial: parameters confirmed against the ECSS-adopted draft of 131.0-B-3 (web search); B-5 and known-answer vectors pending
+- [ ] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`) — partial: `BlockEncoder`/`BlockDecoder` done; `SoftDecoder`/`ErasureCoder` not yet defined
+- [x] GF(2^8) arithmetic (in-crate, tables generated at const time)
+- [x] Reed-Solomon RS(255,223) encoder with const generics, no alloc (runtime parameters, not const generics)
+- [ ] Reed-Solomon decoder (syndromes, Berlekamp-Massey, Chien, Forney), erasure support — partial: errors only; erasure support pending
+- [x] Block interleaver / de-interleaver (depth configurable)
 - [ ] CCSDS dual-basis (conventional/Berlekamp) representation handling
-- [ ] CRC variants (CRC-16, CRC-32, others as needed) in-crate
-- [ ] Attached sync markers (ASM) insert/detect
-- [ ] Convolutional encoder, rate 1/2, K=7
-- [ ] Viterbi decoder, hard decision
+- [x] CRC variants (CRC-16, CRC-32, others as needed) in-crate
+- [x] Attached sync markers (ASM) insert/detect (byte-aligned search only)
+- [x] Convolutional encoder, rate 1/2, K=7
+- [x] Viterbi decoder, hard decision
 - [ ] Viterbi decoder, soft decision
 - [ ] Self-describing archival framing (header with code parameters, versioned)
 - [ ] LDPC block codes with iterative belief-propagation decoder (soft input)
 - [ ] LT-style fountain/erasure codes encoder and decoder session
 - [ ] Optional `serde` feature on data types
 - [ ] Known-answer tests from the CCSDS standard
-- [ ] Round-trip property tests (≤ t symbol errors always recovered)
+- [x] Round-trip property tests (≤ t symbol errors always recovered)
 - [ ] Fuzz: decoders and frame parser never panic on arbitrary input
 - [ ] Kani proofs for selected arithmetic (GF ops)
 - [ ] Benchmarks: BER curves vs theory as regression checks
-- [ ] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
-- [ ] README states what is not modelled (no compliance claim; turbo codes deferred; RaptorQ not included)
-- [ ] Examples (RS + interleave round trip, archival frame)
+- [x] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
+- [x] README states what is not modelled (no compliance claim; turbo codes deferred; RaptorQ not included)
+- [ ] Examples (RS + interleave round trip, archival frame) — partial: RS + interleave example done; archival frame example pending
 - [ ] **v0.1 exit:** RS(255,223)+interleaving with vectors; conv K=7 + Viterbi; CRC; framing; no_std/no-alloc
 
 ### 1.2 `tpt-kardashev-relativity`
 - [ ] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance
-- [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes
-- [ ] `Event`, `FourVector`, `Interval` (timelike/spacelike/lightlike)
-- [ ] `Lorentz` boost with `|v| < c` enforced; composition via rapidity
-- [ ] Time dilation, length contraction, relativistic Doppler
-- [ ] Inertial `Frame` and frame-to-frame transforms
-- [ ] Causal predicates: `precedes`, `light_cone_contains`, `causally_disconnected`
-- [ ] `CausalOrder` trait (neutral, consumed by other crates)
-- [ ] `proper_time(path)`
-- [ ] Weak-field gravitational time dilation (Schwarzschild approximation)
-- [ ] Proper time vs coordinate time for a moving, gravitating observer
-- [ ] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented)
-- [ ] `Metric` trait with Minkowski and Schwarzschild implementations
-- [ ] Documented float-tolerance policy
-- [ ] Property tests: interval invariance under boosts, composition law, `|v| ≥ c` rejected
-- [ ] Known-value regression: GPS ≈ +38 µs/day net offset
-- [ ] `no_std` build
-- [ ] README states what is not modelled (no geodesic integration, no strong-field)
-- [ ] Examples
-- [ ] **v0.1 exit:** events, intervals, boosts, proper time, causality, Doppler, weak-field redshift, tolerance policy
+- [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes — partial: `f64` only; generic `Scalar` trait not defined
+- [x] `Event`, `FourVector`, `Interval` (timelike/spacelike/lightlike)
+- [x] `Lorentz` boost with `|v| < c` enforced; composition via rapidity
+- [x] Time dilation, length contraction, relativistic Doppler
+- [x] Inertial `Frame` and frame-to-frame transforms
+- [x] Causal predicates: `precedes`, `light_cone_contains`, `causally_disconnected`
+- [x] `CausalOrder` trait (neutral, consumed by other crates)
+- [x] `proper_time(path)`
+- [x] Weak-field gravitational time dilation (Schwarzschild approximation)
+- [x] Proper time vs coordinate time for a moving, gravitating observer
+- [x] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented) (constants to verify against the IAU texts)
+- [x] `Metric` trait with Minkowski and Schwarzschild implementations
+- [x] Documented float-tolerance policy
+- [x] Property tests: interval invariance under boosts, composition law, `|v| ≥ c` rejected
+- [x] Known-value regression: GPS ≈ +38 µs/day net offset
+- [x] `no_std` build
+- [x] README states what is not modelled (no geodesic integration, no strong-field)
+- [x] Examples
+- [x] **v0.1 exit:** events, intervals, boosts, proper time, causality, Doppler, weak-field redshift, tolerance policy (time-scale constants still to verify against the IAU texts)
 
 ### 1.3 `tpt-kardashev-radhard`
 - [ ] Review `tpt-equinox-tmr` and `tpt-for-redundancy`; record in provenance
