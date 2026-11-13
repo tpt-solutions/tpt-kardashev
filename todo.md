@@ -91,32 +91,32 @@ Exit: CI green on empty crates.
 Exit: each crate at its v0.1 exit.
 
 ### 1.1 `tpt-kardashev-archive-codes`
-- [ ] Investigate `tpt-aion` and `tpt-rfc` for existing archival coding/CRC (§12.6); record result in provenance
-- [ ] Obtain current CCSDS 131.0-B revision; record parameters, polynomials, sync markers from the document (not memory) — partial: parameters confirmed against the ECSS-adopted draft of 131.0-B-3 (web search); B-5 and known-answer vectors pending
-- [ ] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`) — partial: `BlockEncoder`/`BlockDecoder` done; `SoftDecoder`/`ErasureCoder` not yet defined
+- [ ] Investigate `tpt-aion` and `tpt-rfc` for existing archival coding/CRC (§12.6); record result in provenance — blocked: neither repo is in the local workspace; provenance records this
+- [x] Obtain current CCSDS 131.0-B revision; record parameters, polynomials, sync markers from the document (not memory) — CCSDS 131.0-B-5 (Sept 2023) fetched and read; sources in `docs/provenance/tpt-kardashev-archive-codes.md`
+- [x] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`)
 - [x] GF(2^8) arithmetic (in-crate, tables generated at const time)
 - [x] Reed-Solomon RS(255,223) encoder with const generics, no alloc (runtime parameters, not const generics)
 - [x] Reed-Solomon decoder (syndromes, Berlekamp-Massey, Chien, Forney), erasure support (errors-and-erasures, 2t + e <= nroots)
 - [x] Block interleaver / de-interleaver (depth configurable)
-- [ ] CCSDS dual-basis (conventional/Berlekamp) representation handling
+- [x] CCSDS dual-basis (conventional/Berlekamp) representation handling (`dual::DualBasisRs`, §4.3.9 and Annex F)
 - [x] CRC variants (CRC-16, CRC-32, others as needed) in-crate
 - [x] Attached sync markers (ASM) insert/detect (byte-aligned search only)
 - [x] Convolutional encoder, rate 1/2, K=7
 - [x] Viterbi decoder, hard decision
 - [x] Viterbi decoder, soft decision (confidence byte per coded bit)
 - [x] Self-describing archival framing (header with code parameters, versioned) (version 1; header CRC-16, payload CRC-32C)
-- [ ] LDPC block codes with iterative belief-propagation decoder (soft input)
-- [ ] LT-style fountain/erasure codes encoder and decoder session
-- [ ] Optional `serde` feature on data types
-- [ ] Known-answer tests from the CCSDS standard
+- [x] LDPC block codes with iterative belief-propagation decoder (soft input) — normalised min-sum variant; sum-product, encoder and standard matrices not implemented
+- [x] LT-style fountain/erasure codes encoder and decoder session (peeling; robust soliton needs `std`)
+- [x] Optional `serde` feature on data types
+- [x] Known-answer tests from the CCSDS standard — from its tables and definitions (Annex F matrix, Annex G generator, §9.2 ASM, §4.4.1 interleaving, §3.3 convolutional code). The standard has no codeword vectors.
 - [x] Round-trip property tests (≤ t symbol errors always recovered)
-- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: deterministic pseudo-random tests only; no coverage-guided fuzzer yet
-- [ ] Kani proofs for selected arithmetic (GF ops)
-- [ ] Benchmarks: BER curves vs theory as regression checks
+- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: targets in `fuzz/` ran 60 s each on nightly (frame ~6M runs, RS ~44k, soft Viterbi ~348k, LDPC ~1.7M) with no crash; longer campaigns and a kept corpus are still to do
+- [x] Kani proofs for selected arithmetic (GF ops) — 5 GF(2^8) harnesses and 2 dual-basis harnesses, all verified with Kani 0.68 (run in WSL Ubuntu; Kani does not support Windows)
+- [x] Benchmarks: BER curves vs theory as regression checks — `tests/ber.rs` (exhaustive-ML minimum-metric check; soft BER within the converged union bound at 3 dB) and `examples/ber_curve` (2–4 dB table, release mode). Criterion timing benchmarks are not part of this item.
 - [x] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
 - [x] README states what is not modelled (no compliance claim; turbo codes deferred; RaptorQ not included)
-- [ ] Examples (RS + interleave round trip, archival frame) — partial: RS + interleave example done; archival frame example pending
-- [ ] **v0.1 exit:** RS(255,223)+interleaving with vectors; conv K=7 + Viterbi; CRC; framing; no_std/no-alloc
+- [x] Examples (RS + interleave round trip, archival frame)
+- [x] **v0.1 exit:** RS(255,223)+interleaving with vectors (standard tables: Annex F, Annex G, §4.4.1; the standard has no codeword vectors); conv K=7 + Viterbi (ML-checked, BER-checked); CRC; framing; no_std/no-alloc
 
 ### 1.2 `tpt-kardashev-relativity`
 - [ ] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance
@@ -170,7 +170,7 @@ Exit: each crate at its v0.1 exit.
 - [x] `HeatBudget` with headroom report
 - [x] `EnergyOracle` trait
 - [ ] Optional `units` feature mapping to `tpt-math-units`
-- [ ] Optional `serde` feature
+- [x] Optional `serde` feature
 - [x] Conservation property tests (random transfer sequences)
 - [x] Constants cross-checked against CODATA; hand-calculation tests for Landauer (≈2.9×10⁻²¹ J/bit at 300 K) and radiator
 - [x] `no_std` build
@@ -190,14 +190,14 @@ Exit: each crate at its v0.1 exit.
 Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demonstrated in an example.
 
 ### 2.1 `tpt-kardashev-dtn`
-- [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance
-- [ ] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6)
-- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents
-- [ ] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
-- [ ] Endpoint ids: `dtn:` and `ipn:`
-- [ ] Primary block, canonical blocks (payload, previous node, bundle age, hop count)
-- [ ] Bundle CRCs (CRC-16 X.25, CRC-32C)
-- [ ] `Bundle` encode/decode with strict validation
+- [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance — blocked: neither repo is in the local workspace; provenance records this
+- [ ] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6) — blocked: not in the local workspace; provenance records this
+- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171 and RFC 8949 confirmed; RFC 5326, CCSDS 734.1-B and SABR not yet
+- [x] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
+- [x] Endpoint ids: `dtn:` and `ipn:`
+- [ ] Primary block, canonical blocks (payload, previous node, bundle age, hop count) — partial: primary block and payload block; previous-node, bundle-age and hop-count blocks have no typed interface yet
+- [x] Bundle CRCs (CRC-16 X.25, CRC-32C)
+- [x] `Bundle` encode/decode with strict validation
 - [ ] `BundleStore` trait; in-memory store
 - [ ] File-backed store
 - [ ] `ContactPlan` and `Contact` types (start, end, rate, one-way light time)
@@ -208,13 +208,13 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Optional `fec` feature wiring to `tpt-kardashev-archive-codes`
 - [ ] Deterministic simulator with virtual clock and contact-plan-driven links
 - [ ] Seeded fault injection (loss, delay, partition, duplication, reordering)
-- [ ] RFC 9171 appendix examples as byte-exact vectors
-- [ ] Round-trip tests and fuzzing of CBOR/bundle parser
+- [ ] RFC 9171 appendix examples as byte-exact vectors — partial: RFC 9171 has no byte-level examples (its appendix B is CDDL). Used a bundle derived by hand from the CDDL, and the RFC 8949 Appendix A CBOR examples
+- [ ] Round-trip tests and fuzzing of CBOR/bundle parser — partial: round-trip and bit-flip tests written; fuzz targets ran 60 s each on nightly, no crash; longer campaigns to do
 - [ ] Routing tests against hand-computed contact-plan scenarios
 - [ ] Simulator tests for delivery under disruption
 - [ ] Optional `serde` feature
-- [ ] `no_std` + `alloc` build
-- [ ] README states what is not modelled (no compliance claim; no BPSec, no TCPCL in v0.1)
+- [x] `no_std` + `alloc` build (thumbv7em, with and without `alloc`)
+- [x] README states what is not modelled (no compliance claim; no BPSec, no TCPCL in v0.1)
 - [ ] **v0.1 exit:** BPv7 codec with vectors, stores, CGR router, LTP layer, simulator
 
 ### 2.2 `tpt-kardashev-astrodynamics`
