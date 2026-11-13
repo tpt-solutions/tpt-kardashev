@@ -61,6 +61,19 @@ pub enum Error {
         /// The rule that failed.
         rule: &'static str,
     },
+    /// A bundle with the same identity (source and creation timestamp) is already stored.
+    DuplicateBundle,
+    /// The store has reached its capacity.
+    StoreFull,
+    /// No stored bundle has the given identity.
+    NotFound,
+    /// A contact or contact plan is invalid.
+    InvalidContact {
+        /// The rule that failed.
+        rule: &'static str,
+    },
+    /// A file-backed store could not read or write its directory.
+    Io,
 }
 
 impl fmt::Display for Error {
@@ -80,6 +93,11 @@ impl fmt::Display for Error {
             Error::UnknownScheme { code } => write!(f, "unsupported URI scheme code {code}"),
             Error::InvalidEid { reason } => write!(f, "invalid endpoint ID: {reason}"),
             Error::InvalidBundle { rule } => write!(f, "invalid bundle: {rule}"),
+            Error::DuplicateBundle => write!(f, "a bundle with this identity is already stored"),
+            Error::StoreFull => write!(f, "bundle store is full"),
+            Error::NotFound => write!(f, "no bundle with this identity"),
+            Error::InvalidContact { rule } => write!(f, "invalid contact: {rule}"),
+            Error::Io => write!(f, "file store I/O failed"),
         }
     }
 }

@@ -106,7 +106,7 @@ impl CrcType {
 }
 
 /// Creation timestamp (§4.2.7): DTN time in milliseconds and a sequence number.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CreationTimestamp {
     /// Milliseconds since 2000-01-01 00:00:00 UTC (DTN time).
     pub time: u64,
@@ -159,6 +159,16 @@ pub struct CanonicalBlock {
     pub data: Vec<u8>,
 }
 
+/// Identity of a bundle: its source endpoint and creation timestamp. Two bundles with the same
+/// identity are the same bundle (RFC 9171 §3.1), ignoring fragmentation.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BundleId {
+    /// The source endpoint.
+    pub source: Eid,
+    /// The creation timestamp.
+    pub created: CreationTimestamp,
+}
+
 /// A bundle: a primary block followed by canonical blocks, the payload block last.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bundle {
@@ -175,6 +185,22 @@ impl Bundle {
             .iter()
             .find(|b| b.block_type == BLOCK_TYPE_PAYLOAD)
             .map(|b| b.data.as_slice())
+    }
+
+    /// The bundle's identity: its source and creation timestamp (RFC 9171 §3.1).
+    pub fn id(&self) -> BundleId {
+        BundleId {
+            source: self.primary.source.clone(),
+            created: self.primary.created,
+        }
+    }
+
+    /// DTN time (milliseconds) at which the bundle's lifetime ends. Saturates at `u64::MAX`.
+    pub fn expires_at(&self) -> u64 {
+        self.primary
+            .created
+            .time
+            .saturating_add(self.primary.lifetime)
     }
 
     /// Checks the rules of RFC 9171 that this crate enforces. Encoding and decoding both call it.
