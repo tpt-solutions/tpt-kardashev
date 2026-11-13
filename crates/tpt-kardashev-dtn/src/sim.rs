@@ -18,6 +18,7 @@ use crate::contact::{Contact, ContactPlan};
 use crate::convergence::{ConvergenceLayer, LtpConvergence};
 use crate::eid::Eid;
 use crate::error::Error;
+use crate::extension::{HOP_COUNT, hop_count_data, parse_hop_count};
 use crate::ltp::session::Config;
 use crate::route::EarliestArrival;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -230,7 +231,7 @@ impl Network {
     /// Handles a bundle that a node `at` has received from `from` (or originates, when `from ==
     /// at`). Returns whether the bundle was delivered or forwarded.
     fn handle_bundle(&mut self, at: u64, from: u64, payload: Vec<u8>) -> bool {
-        let Ok(bundle) = Bundle::decode(&payload) else {
+        let Ok(mut bundle) = Bundle::decode(&payload) else {
             self.discarded += 1;
             return false;
         };
@@ -246,6 +247,39 @@ impl Network {
                 return false;
             }
         };
+        // A bundle that arrives from another node has been forwarded once more. A Hop Count block
+        // records that; a bundle whose count then exceeds its limit is deleted (RFC 9171 §4.4.3).
+        // The origin's own handling is not a forward, so it does not count.
+        let mut payload = payload;
+        let hop_index = (from != at)
+            .then(|| bundle.blocks.iter().position(|b| b.block_type == HOP_COUNT))
+            .flatten();
+        if let Some(index) = hop_index {
+            let hop = &mut bundle.blocks[index];
+            let Ok((limit, count)) = parse_hop_count(&hop.data) else {
+                self.discarded += 1;
+                return false;
+            };
+            let count = count + 1;
+            if count > u64::from(limit) {
+                self.discarded += 1;
+                return false;
+            }
+            match hop_count_data(limit, count) {
+                Ok(data) => hop.data = data,
+                Err(_) => {
+                    self.discarded += 1;
+                    return false;
+                }
+            }
+            match bundle.encode() {
+                Ok(updated) => payload = updated,
+                Err(_) => {
+                    self.discarded += 1;
+                    return false;
+                }
+            }
+        }
         if dest == at {
             self.inbox.entry(at).or_default().push((from, payload));
             return true;
