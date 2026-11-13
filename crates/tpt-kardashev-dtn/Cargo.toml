@@ -15,9 +15,15 @@ publish.workspace = true
 default = ["std"]
 std = ["alloc"]
 alloc = []
+serde = ["dep:serde"]
 fec = []
 
 [dependencies]
+# No `derive` feature: serde_derive pulls in a Unicode-3.0 dependency, which the licence policy denies.
+serde = { version = "1.0.229", default-features = false, features = ["alloc"], optional = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+serde_json = "1.0.152"

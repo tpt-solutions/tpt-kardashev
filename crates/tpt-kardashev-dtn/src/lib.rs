@@ -23,7 +23,10 @@ extern crate alloc;
 pub mod cbor;
 pub mod crc;
 pub mod error;
+
 pub mod sdnv;
+#[cfg(feature = "serde")]
+mod serde_impls;
 
 #[cfg(feature = "alloc")]
 pub mod bundle;
