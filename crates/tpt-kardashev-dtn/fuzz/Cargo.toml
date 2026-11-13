@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-dtn-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tpt-kardashev-dtn]
+path = ".."
+
+[[bin]]
+name = "bundle_decode"
+path = "fuzz_targets/bundle_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cbor_read"
+path = "fuzz_targets/cbor_read.rs"
+test = false
+doc = false
+bench = false
+
+# Separate workspace: the fuzzer is not part of the main workspace or its licence graph.
+[workspace]
