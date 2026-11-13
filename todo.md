@@ -192,7 +192,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 ### 2.1 `tpt-kardashev-dtn`
 - [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance — blocked: neither repo is in the local workspace; provenance records this
 - [ ] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6) — blocked: not in the local workspace; provenance records this
-- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171, RFC 8949 and RFC 5326 read; CCSDS 734.1-B and SABR not yet
+- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171, RFC 8949 and RFC 5326 read; CCSDS 734.1-B not yet; SABR (CCSDS 734.3-B-1) read
 - [x] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
 - [x] Endpoint ids: `dtn:` and `ipn:`
 - [x] Primary block, canonical blocks (payload, previous node, bundle age, hop count) — typed previous-node, bundle-age and hop-count blocks (`extension`), validated on encode and decode; the simulator enforces the hop limit from the Hop Count block
@@ -201,7 +201,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] `BundleStore` trait; in-memory store
 - [x] File-backed store
 - [x] `ContactPlan` and `Contact` types (start, end, rate, one-way light time)
-- [ ] Contact-graph router (CGR/SABR family), `Router` trait — partial: `Router` trait and `EarliestArrival` (earliest-arrival over the contact plan, with waiting and store-and-forward) are written, and the simulator holds bundles and routes them hop by hop with them (opt-in), re-routing when the contact plan changes during a run; volume and queue limits, multiple copies, and the CGR/SABR rules are not
+- [ ] Contact-graph router (CGR/SABR family), `Router` trait — partial: `Router` trait and `EarliestArrival` (earliest-arrival over the contact plan, with waiting and store-and-forward) are written, and the simulator holds bundles and routes them hop by hop with them (opt-in), re-routing when the contact plan changes during a run; SABR expiry, OWLT margin and per-contact volume (CCSDS 734.3-B-1 §2.4.1–2.4.3, §3.2.6.9) are applied in the simulator, with volume reserved when a bundle is routed; not done: multiple copies, critical bundles, excluded neighbours, fragmentation (§2.4.4–2.4.5, §3.2.8.2), and backlog measured in volume
 - [x] `ConvergenceLayer` trait (`convergence`)
 - [ ] LTP convergence layer (segments, sessions, reliability via report/ack, timers on virtual clock) — partial: segment codec (`ltp::segment`), red-part sessions with report/ack and countdown timers on a virtual clock (`ltp::session`), and `convergence::LtpConvergence` carrying one encoded bundle per LTP block; green part, cancellation procedures and link-state scheduling not modelled
 - [x] Reliability note: bundle-level custody/reliability extension deferred, documented as such (README)

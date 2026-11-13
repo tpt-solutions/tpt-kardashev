@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `route::route_constrained` with `RouteConstraints`: the SABR expiry rule (a route arriving after the bundle expires is ignored), an OWLT margin added to each contact's light time, and the contact-volume rule (a contact with less unreserved volume than the bundle's EVC is skipped). `route_with_free_at` is now a wrapper with no limits.
+- `sim`: SABR constraints applied to held bundles. Each contact's volume is its rate times its length; a bundle's volume is claimed on every contact of its route while it waits and stays claimed once it is handed on. `Network::set_owlt_margin` sets the margin. Tests in `tests/sabr.rs`: volume forces the third bundle onto the relay; expiry prevents routing; a large margin prevents routing.
+
 - Strict CBOR reader and writer for the BPv7 subset (RFC 8949): shortest integer forms, definite strings, indefinite arrays. Byte-exact RFC 8949 Appendix A checks.
 - CRC-16/X-25 and CRC-32C, checked against their standard check values.
 - Endpoint IDs for `dtn` and `ipn`, with URI parsing, display and the RFC 9171 CBOR form.
