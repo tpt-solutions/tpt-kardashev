@@ -2,34 +2,52 @@
 
 Delay-tolerant networking: BPv7 bundles, bundle stores, contact-graph routing and an LTP convergence layer.
 
-**Status:** partial Phase 2 implementation. The bundle codec is written. Stores, routing, the LTP layer and the simulator are not. Not published (`publish = false`).
+**Status:** partial Phase 2 implementation. The bundle codec, bundle stores, contact plans, earliest-arrival routing, the LTP segment codec and red-part sessions, a convergence-layer trait with an LTP implementation, and a deterministic contact-plan simulator are written. The TCP convergence layer, serialisation, and the full contact-graph routing are not. Not published (`publish = false`).
 
 ## What it provides
 
 - `cbor`: a strict CBOR reader and writer for the subset BPv7 uses. The reader rejects non-shortest integer forms, reserved additional information, and indefinite-length strings. It accepts indefinite-length arrays, as RFC 9171 requires for bundles. The writer always emits shortest, definite-length forms.
 - `crc`: CRC-16/X-25 and CRC-32C, each checked against its standard check value.
+- `sdnv`: self-delimiting numeric values (RFC 5326 §2). The decoder rejects non-shortest forms and values wider than 64 bits.
 - `Eid`: endpoint IDs for the `dtn` and `ipn` schemes, with URI parsing and display, and the CBOR form of RFC 9171 §4.2.5.1. `dtn:none` is the integer 0 in CBOR.
-- `Bundle`: a primary block, canonical blocks and the payload block, with `encode`, `decode` and `validate`. Each block's CRC is verified on decode and computed on encode. Decoding rejects trailing bytes, unknown CRC types and unsupported versions.
+- `Bundle`: a primary block, canonical blocks and the payload block, with `encode`, `decode` and `validate`. Each block's CRC is verified on decode and computed on encode. Decoding rejects trailing bytes, unknown CRC types and unsupported versions. `Bundle::id` gives the identity (source and creation timestamp), and `expires_at` gives the end of the lifetime.
+- `BundleStore`: a trait for bundle storage keyed by identity, with a default `expire`. `MemoryStore` is in memory, optionally bounded. `store::FileStore` (feature `std`) keeps one file per bundle and reopens from the directory.
+- `Contact` and `ContactPlan`: scheduled windows between nodes, with a rate and a one-way light time. Each contact is checked on construction.
+- `Router` and `EarliestArrival`: earliest-arrival routing over a contact plan. A bundle of a given size, ready at a given time, is routed along the route that delivers it first. Relays store and forward, and may wait for the next contact.
+- `ltp::segment`: LTP segments (RFC 5326 §3): the control byte, session ID, header and trailer extensions, and the content of data (red and green), report, report-acknowledgment and cancel segments. Encoding and decoding are strict: undefined type codes, bad report scopes, out-of-order claims and zero serials are rejected.
+- `convergence`: the `ConvergenceLayer` trait (send a payload to a neighbour, take datagrams to transmit, take datagrams in, take completed payloads out). `LtpConvergence` implements it by carrying each payload as one LTP red-part block.
+- `sim::Network`: a deterministic simulator (`fail_link` makes a link fail silently; the failure is learned from the cancelled session, after which the bundle is re-routed around the link). Nodes run `LtpConvergence`; a datagram moves only inside a contact window, at the contact's rate, plus the one-way light time. Seeded jitter, loss and duplication are optional. Runs are reproducible for a fixed seed.
+- `ltp::session`: `Sender` and `Receiver` for reliable red-part transmission of one block. The sender checkpoints the last segment; the receiver reports on each new checkpoint; the sender retransmits what a report shows missing, with a new checkpoint. Countdown timers retransmit unanswered checkpoints and reports, and a transmission limit cancels the session. Engines take a virtual clock and do no I/O.
 
-The bundle types need the `alloc` feature, which `std` enables. The CBOR reader and the CRCs do not allocate.
+The bundle, store, contact, routing and LTP types need the `alloc` feature, which `std` enables. The CBOR reader, the SDNV decoder and the CRCs do not allocate.
 
 ## Checks
 
 - CBOR: the byte-exact integer, string and array examples of RFC 8949 Appendix A, in both directions, plus rejection tests for non-canonical forms.
 - Bundles: one bundle whose bytes are derived by hand from the RFC 9171 CDDL (Appendix B) and checked byte for byte. Round trips for every CRC type and for fragments. Every single-bit change to a CRC-32C bundle is rejected, and the same change to a bundle with no CRC is accepted, so the sweep is testing the CRC.
-- Fuzzing: `fuzz/` has two libFuzzer targets, one for the bundle decoder (which also checks that any bundle that decodes re-encodes to the same bytes) and one for the CBOR reader. Each ran 60 seconds on nightly with no crash.
+- Routing: hand-computed scenarios. Each expected arrival time is worked out in the test comment: a direct contact with light time, a window too short for the bundle, a relay that waits for its second contact, store-and-forward without overlap, a choice between two routes, a window skipped because the bundle is not yet ready, and a disconnected graph.
+- Stores: identity ordering, duplicate rejection, capacity, expiry at the lifetime boundary, validation before storage, and persistence across reopening a file store.
+- LTP segments: byte-exact layouts derived from RFC 5326 §3 for red and green data, checkpoints with end of red-part and end of block, reports, acknowledgments, cancels, and header and trailer extensions. Rejection tests for undefined codes, bad versions, zero serials, invalid report scopes, and truncation.
+- LTP transfers: a 1000-byte block over a lossless link completes with exactly the expected 12 segments. Over a link losing 30% of segments, blocks complete for three seeds, and the test asserts that retransmission actually happened. A link that drops everything cancels the session at its transmission limit. The checkpoint serial numbers increase by one across a retransmission (asserted). Blocks of 1 byte and of exact multiples of the MTU also complete under loss.
+- Fuzzing: `fuzz/` has four libFuzzer targets: the bundle decoder, the CBOR reader, the LTP segment decoder, and the SDNV decoder. The bundle and segment targets check that anything that decodes re-encodes to the same bytes. Each ran 60 seconds on nightly with no crash.
 
 RFC 9171 contains no byte-level bundle examples; its appendix B is a CDDL schema. The bundle vector here is therefore derived from the schema, not taken from a published example.
 
 ## What it does not model
 
-- No compliance claim against RFC 9171. The rules that are enforced are listed on `Bundle::validate`.
+- No compliance claim against RFC 9171 or RFC 5326. The rules that are enforced are listed on `Bundle::validate` and in `ltp::segment`.
 - Canonical block types beyond the payload block are carried as opaque data. Previous-node, bundle-age and hop-count blocks have no typed interface yet.
 - Bundle Protocol Security (BPSec), including Block Integrity and Confidentiality blocks.
 - Fragmentation and reassembly. The fragment fields are encoded and checked, but no fragmenter exists.
-- Bundle stores, contact-graph routing, the LTP convergence layer, the simulator, and the TCP convergence layer. No bundle-level reliability; LTP-level only (spec §12.2).
+- Contact-graph routing in its full form. `EarliestArrival` gives the earliest-delivering route only. It does not model contact volume or queues, several bundles competing for a contact, multiple copies or multipath routing, or the SABR rules.
+- LTP beyond red-part reliable transfer of one block. Not modelled: green-part data, asynchronous reports, the cancellation procedures beyond reacting to a peer's cancel and the cancel issued at a retransmission limit, client-service notices, extension processing, the link-state scheduling procedures (suspend and resume timers), and the aggregated-acknowledgment rules of the security annex. Sender and receiver assume one session at a time per pair of engines.
+- The TCP convergence layer is not written. Only LTP carries payloads.
+- The simulator has no partition events beyond link failures and the contact plan's windows. Disruption comes from the windows, seeded loss, duplication and jitter, and link failures. A failed link stays listed in the plan, so a node learns of the failure only when its session on that link is cancelled at the retransmission limit. Nodes do not move, and no clock drift is modelled.
+- Routing in the simulator is opt-in (`Network::set_routing`). With it on, a node holds each bundle it receives and routes it with `EarliestArrival` against the current contact plan and link backlog. The bundle is handed to the layer only when its route's first hop can start. A bundle with no route stays held until a route appears; it is discarded when its lifetime ends or it has been handled more than `max_hops` times. The router counts a link as busy until its last transmission and until every datagram already queued for it has been sent. Plans can change during a run (`Network::schedule_plan`), and held bundles are re-routed against the new plan. The simulator wakes at each route's start time, at each plan change, and at each lifetime end.
+- No bundle-level reliability; LTP-level only (spec §12.2).
 - Administrative records and status reports. The flags are encoded and checked; the records are not built or parsed.
 - Only the `dtn` and `ipn` URI schemes. Other scheme codes decode to `Error::UnknownScheme`.
+- Routing works on node numbers. Mapping an endpoint to a node is the caller's job; a `dtn` endpoint has no node number here.
 - The `fec` feature is declared per spec §4.2 and has no code behind it yet.
 
 ## Licence

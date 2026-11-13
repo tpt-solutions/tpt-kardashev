@@ -192,26 +192,26 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 ### 2.1 `tpt-kardashev-dtn`
 - [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance — blocked: neither repo is in the local workspace; provenance records this
 - [ ] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6) — blocked: not in the local workspace; provenance records this
-- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171 and RFC 8949 confirmed; RFC 5326, CCSDS 734.1-B and SABR not yet
+- [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171, RFC 8949 and RFC 5326 read; CCSDS 734.1-B and SABR not yet
 - [x] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
 - [x] Endpoint ids: `dtn:` and `ipn:`
 - [ ] Primary block, canonical blocks (payload, previous node, bundle age, hop count) — partial: primary block and payload block; previous-node, bundle-age and hop-count blocks have no typed interface yet
 - [x] Bundle CRCs (CRC-16 X.25, CRC-32C)
 - [x] `Bundle` encode/decode with strict validation
-- [ ] `BundleStore` trait; in-memory store
-- [ ] File-backed store
-- [ ] `ContactPlan` and `Contact` types (start, end, rate, one-way light time)
-- [ ] Contact-graph router (CGR/SABR family), `Router` trait
-- [ ] `ConvergenceLayer` trait
-- [ ] LTP convergence layer (segments, sessions, reliability via report/ack, timers on virtual clock)
-- [ ] Reliability note: bundle-level custody/reliability extension deferred, documented as such
+- [x] `BundleStore` trait; in-memory store
+- [x] File-backed store
+- [x] `ContactPlan` and `Contact` types (start, end, rate, one-way light time)
+- [ ] Contact-graph router (CGR/SABR family), `Router` trait — partial: `Router` trait and `EarliestArrival` (earliest-arrival over the contact plan, with waiting and store-and-forward) are written, and the simulator holds bundles and routes them hop by hop with them (opt-in), re-routing when the contact plan changes during a run; volume and queue limits, multiple copies, and the CGR/SABR rules are not
+- [x] `ConvergenceLayer` trait (`convergence`)
+- [ ] LTP convergence layer (segments, sessions, reliability via report/ack, timers on virtual clock) — partial: segment codec (`ltp::segment`), red-part sessions with report/ack and countdown timers on a virtual clock (`ltp::session`), and `convergence::LtpConvergence` carrying one encoded bundle per LTP block; green part, cancellation procedures and link-state scheduling not modelled
+- [x] Reliability note: bundle-level custody/reliability extension deferred, documented as such (README)
 - [ ] Optional `fec` feature wiring to `tpt-kardashev-archive-codes`
-- [ ] Deterministic simulator with virtual clock and contact-plan-driven links
-- [ ] Seeded fault injection (loss, delay, partition, duplication, reordering)
+- [x] Deterministic simulator with virtual clock and contact-plan-driven links (`sim::Network`: a datagram moves only inside a contact window, at the contact's rate, plus one-way light time)
+- [ ] Seeded fault injection (loss, delay, partition, duplication, reordering) — partial: seeded loss, duplication, and delay jitter (which reorders); link failures (`fail_link`) learned from cancelled sessions; partitions are the contact windows of the plan, with no separate partition events yet
 - [ ] RFC 9171 appendix examples as byte-exact vectors — partial: RFC 9171 has no byte-level examples (its appendix B is CDDL). Used a bundle derived by hand from the CDDL, and the RFC 8949 Appendix A CBOR examples
 - [ ] Round-trip tests and fuzzing of CBOR/bundle parser — partial: round-trip and bit-flip tests written; fuzz targets ran 60 s each on nightly, no crash; longer campaigns to do
-- [ ] Routing tests against hand-computed contact-plan scenarios
-- [ ] Simulator tests for delivery under disruption
+- [x] Routing tests against hand-computed contact-plan scenarios
+- [x] Simulator tests for delivery under disruption — bundles delivered across a relay whose second link opens late (store-and-forward, transmissions checked against windows), under 25% loss with duplication and jitter (exactly one copy), and determinism for a fixed seed
 - [ ] Optional `serde` feature
 - [x] `no_std` + `alloc` build (thumbv7em, with and without `alloc`)
 - [x] README states what is not modelled (no compliance claim; no BPSec, no TCPCL in v0.1)
