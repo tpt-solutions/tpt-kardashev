@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-archive-codes-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tpt-kardashev-archive-codes]
+path = ".."
+
+[[bin]]
+name = "frame_decode"
+path = "fuzz_targets/frame_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rs_decode"
+path = "fuzz_targets/rs_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "conv_soft"
+path = "fuzz_targets/conv_soft.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ldpc_decode"
+path = "fuzz_targets/ldpc_decode.rs"
+test = false
+doc = false
+bench = false
+
+# Separate workspace: the fuzzer is not part of the main workspace or its licence graph.
+[workspace]
