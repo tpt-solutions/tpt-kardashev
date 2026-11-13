@@ -1,0 +1,619 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! LTP sessions for red-part (reliable) transmission of one block, after RFC 5326 §6 and §8.
+//!
+//! A [`Sender`] splits a block into data segments. The last one is a checkpoint that ends the
+//! red-part and the block. The [`Receiver`] answers each new checkpoint with a report segment (RS)
+//! covering the block prefix up to the checkpoint. The sender retransmits whatever a report shows
+//! missing, ending the retransmission with one new checkpoint. Each checkpoint and each report has
+//! a countdown timer. A timer that expires retransmits the segment, until the transmission limit
+//! is reached, and then the session is cancelled.
+//!
+//! Engines do no I/O. The caller drives them with a virtual clock: [`Sender::poll`] and
+//! [`Receiver::poll`] return the next segment to send, [`Sender::on_segment`] and
+//! [`Receiver::on_segment`] take in what arrived, and `next_timeout` says when to poll again.
+//!
+//! Not modelled: green-part data, cancellation beyond reacting to a peer's cancel and the cancel
+//! issued at a retransmission limit, client-service notices, extension processing, link-state
+//! scheduling, and asynchronous reports.
+
+use super::ranges::RangeSet;
+use super::segment::{
+    Body, Checkpoint, Claim, Color, DataSegment, Party, ReportSegment, Segment, SessionId,
+};
+use crate::error::Error;
+use alloc::collections::{BTreeMap, BTreeSet, VecDeque};
+use alloc::vec::Vec;
+
+/// Reason code for "retransmission limit exceeded" (RFC 5326 §3.2.4).
+pub const REASON_RLEXC: u8 = 2;
+
+/// Timer deadline of a segment that is queued for (re)transmission and has no running timer.
+const NOT_TIMED: u64 = u64::MAX;
+
+/// Parameters shared by a sender and a receiver.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Config {
+    /// Largest number of block bytes in one data segment. Positive.
+    pub mtu: usize,
+    /// How long to wait for the answer to a checkpoint or a report, in milliseconds. Positive.
+    pub timeout_ms: u64,
+    /// Total transmissions allowed for one checkpoint or one report, including the first. At
+    /// least 1.
+    pub max_transmissions: u32,
+    /// First serial number used. A sender's checkpoint serials and a receiver's report serials
+    /// count up from here. Must be non-zero. RFC 5326 §3.2.1 asks for it to be chosen at random.
+    pub first_serial: u64,
+}
+
+impl Config {
+    fn check(&self) -> Result<(), Error> {
+        if self.mtu == 0 {
+            return Err(Error::Ltp {
+                what: "mtu must be positive",
+            });
+        }
+        if self.timeout_ms == 0 {
+            return Err(Error::Ltp {
+                what: "timeout must be positive",
+            });
+        }
+        if self.max_transmissions == 0 {
+            return Err(Error::Ltp {
+                what: "at least one transmission is needed",
+            });
+        }
+        if self.first_serial == 0 {
+            return Err(Error::Ltp {
+                what: "serial numbers must not start at zero",
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Where a session stands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Status {
+    /// The session is running.
+    Active,
+    /// The session finished successfully.
+    Completed,
+    /// The session was cancelled, by a peer or by a retransmission limit. `reason` is the RFC 5326
+    /// reason code.
+    Cancelled {
+        /// Reason code.
+        reason: u8,
+    },
+}
+
+/// A checkpoint or report that is waiting for its answer.
+#[derive(Clone, Debug)]
+struct Inflight {
+    segment: Segment,
+    /// When the countdown timer expires, or `NOT_TIMED` while the segment is queued again.
+    deadline: u64,
+    /// Transmissions so far.
+    transmissions: u32,
+}
+
+/// The checkpoint carried by a segment, if it is a checkpoint data segment.
+fn checkpoint_of(seg: &Segment) -> Option<Checkpoint> {
+    match &seg.body {
+        Body::Data(d) => d.checkpoint,
+        _ => None,
+    }
+}
+
+/// Splits block bytes `[start, end)` into data segments of at most `mtu` bytes, with no
+/// checkpoint. The segment that reaches the end of the block is marked EORP and EOB, because the
+/// red-part ends with the block and its offset plus length gives the red-part size.
+fn data_segments(
+    block_len: u64,
+    start: u64,
+    end: u64,
+    mtu: u64,
+    client_service: u64,
+    block: &[u8],
+) -> Vec<DataSegment> {
+    let mut out = Vec::new();
+    let mut offset = start;
+    while offset < end {
+        let chunk_end = (offset + mtu).min(end);
+        let at_block_end = chunk_end == block_len;
+        out.push(DataSegment {
+            color: Color::Red,
+            checkpoint: None,
+            eorp: at_block_end,
+            eob: at_block_end,
+            client_service,
+            offset,
+            data: block[offset as usize..chunk_end as usize].to_vec(),
+        });
+        offset = chunk_end;
+    }
+    out
+}
+
+/// Sends one red-part block reliably.
+#[derive(Clone, Debug)]
+pub struct Sender {
+    session: SessionId,
+    client_service: u64,
+    config: Config,
+    block: Vec<u8>,
+    queue: VecDeque<Segment>,
+    /// Checkpoints awaiting a report, keyed by checkpoint serial.
+    inflight: BTreeMap<u64, Inflight>,
+    /// Block bytes known to be received, from all reports so far.
+    covered: RangeSet,
+    /// Reports already processed, so duplicates are not acted on twice.
+    reports_seen: BTreeSet<u64>,
+    /// Serial number the next checkpoint will use.
+    next_serial: u64,
+    status: Status,
+}
+
+impl Sender {
+    /// Prepares the transmission of `block` in `session`, to `client_service`.
+    ///
+    /// The block must not be empty. A zero-length block has an empty report scope, and RFC 5326
+    /// forbids reports for those, so the exchange could never finish.
+    pub fn new(
+        session: SessionId,
+        client_service: u64,
+        block: Vec<u8>,
+        config: Config,
+    ) -> Result<Self, Error> {
+        config.check()?;
+        if block.is_empty() {
+            return Err(Error::Ltp {
+                what: "a zero-length block cannot be reported on",
+            });
+        }
+        let block_len = block.len() as u64;
+        let mut sender = Sender {
+            session,
+            client_service,
+            config,
+            block,
+            queue: VecDeque::new(),
+            inflight: BTreeMap::new(),
+            covered: RangeSet::new(),
+            reports_seen: BTreeSet::new(),
+            next_serial: config.first_serial,
+            status: Status::Active,
+        };
+        let mut segments = data_segments(
+            block_len,
+            0,
+            block_len,
+            config.mtu as u64,
+            client_service,
+            &sender.block,
+        );
+        sender.checkpoint_last(&mut segments, 0);
+        sender.enqueue(segments);
+        Ok(sender)
+    }
+
+    /// Marks the last segment of `segments` as a checkpoint with the next serial number. The
+    /// checkpoint answers the report with serial `report_serial`, or none if it is zero.
+    fn checkpoint_last(&mut self, segments: &mut [DataSegment], report_serial: u64) {
+        if let Some(last) = segments.last_mut() {
+            let serial = self.next_serial;
+            self.next_serial += 1;
+            last.checkpoint = Some(Checkpoint {
+                serial,
+                report_serial,
+            });
+        }
+    }
+
+    fn enqueue(&mut self, segments: Vec<DataSegment>) {
+        for d in segments {
+            self.queue
+                .push_back(Segment::new(self.session, Body::Data(d)));
+        }
+    }
+
+    /// The next segment to transmit at virtual time `now`, if any. Expired timers are handled
+    /// first: an unanswered checkpoint is queued again, or the session is cancelled.
+    pub fn poll(&mut self, now: u64) -> Option<Segment> {
+        self.expire(now);
+        let seg = self.queue.pop_front()?;
+        if let Some(cp) = checkpoint_of(&seg) {
+            let entry = self.inflight.entry(cp.serial).or_insert_with(|| Inflight {
+                segment: seg.clone(),
+                deadline: NOT_TIMED,
+                transmissions: 0,
+            });
+            entry.segment = seg.clone();
+            entry.transmissions += 1;
+            entry.deadline = now.saturating_add(self.config.timeout_ms);
+        }
+        Some(seg)
+    }
+
+    fn expire(&mut self, now: u64) {
+        if self.status != Status::Active {
+            return;
+        }
+        let due: Vec<u64> = self
+            .inflight
+            .iter()
+            .filter(|(_, f)| f.deadline <= now)
+            .map(|(serial, _)| *serial)
+            .collect();
+        for serial in due {
+            let Some(entry) = self.inflight.get_mut(&serial) else {
+                continue;
+            };
+            if entry.transmissions >= self.config.max_transmissions {
+                self.cancel(REASON_RLEXC);
+                return;
+            }
+            entry.deadline = NOT_TIMED;
+            self.queue.push_back(entry.segment.clone());
+        }
+    }
+
+    fn cancel(&mut self, reason: u8) {
+        self.status = Status::Cancelled { reason };
+        self.inflight.clear();
+        self.queue.push_back(Segment::new(
+            self.session,
+            Body::Cancel {
+                from: Party::Sender,
+                reason,
+            },
+        ));
+    }
+
+    /// Processes a segment from the receiver. Segments for other sessions, and segments that
+    /// arrive after the session has ended, are ignored.
+    pub fn on_segment(&mut self, seg: &Segment) {
+        if seg.session != self.session {
+            return;
+        }
+        match (self.status, &seg.body) {
+            // A completed session still acknowledges reports: the receiver may have missed the
+            // earlier acknowledgment and is waiting for it (RFC 5326 §6.13).
+            (Status::Completed, Body::Report(rs)) => {
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::ReportAck {
+                        report_serial: rs.report_serial,
+                    },
+                ));
+            }
+            (Status::Active, Body::Report(rs)) => self.on_report(rs),
+            (
+                Status::Active,
+                Body::Cancel {
+                    from: Party::Receiver,
+                    reason,
+                },
+            ) => {
+                self.status = Status::Cancelled { reason: *reason };
+                self.inflight.clear();
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::CancelAck {
+                        to: Party::Receiver,
+                    },
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    fn on_report(&mut self, rs: &ReportSegment) {
+        // Acknowledge every report, including duplicates, so the receiver can stop its timer.
+        self.queue.push_back(Segment::new(
+            self.session,
+            Body::ReportAck {
+                report_serial: rs.report_serial,
+            },
+        ));
+        if rs.checkpoint_serial != 0 {
+            self.inflight.remove(&rs.checkpoint_serial);
+        }
+        if !self.reports_seen.insert(rs.report_serial) {
+            return;
+        }
+        for c in &rs.claims {
+            let start = rs.lower.saturating_add(c.offset);
+            self.covered.insert(start, start.saturating_add(c.length));
+        }
+        let block_len = self.block.len() as u64;
+        if self.covered.covers(0, block_len) {
+            self.status = Status::Completed;
+            self.inflight.clear();
+            return;
+        }
+        // Retransmit what the report's scope still lacks. If nothing is missing in that scope,
+        // resend the final segment, so that the receiver gets a checkpoint for the rest.
+        let mut gaps = self.covered.missing(rs.lower, rs.upper);
+        if gaps.is_empty() {
+            let mtu = self.config.mtu as u64;
+            let last_start = (block_len - 1) / mtu * mtu;
+            gaps.push((last_start, block_len));
+        }
+        let mtu = self.config.mtu as u64;
+        let mut segments = Vec::new();
+        for (start, end) in gaps {
+            segments.extend(data_segments(
+                block_len,
+                start,
+                end,
+                mtu,
+                self.client_service,
+                &self.block,
+            ));
+        }
+        // RFC 5326 §6.13: only the last segment is a checkpoint, carrying the next serial number
+        // and the report it answers.
+        self.checkpoint_last(&mut segments, rs.report_serial);
+        self.enqueue(segments);
+    }
+
+    /// When the next countdown timer expires, if any.
+    pub fn next_timeout(&self) -> Option<u64> {
+        if self.status != Status::Active {
+            return None;
+        }
+        self.inflight
+            .values()
+            .map(|f| f.deadline)
+            .filter(|&d| d != NOT_TIMED)
+            .min()
+    }
+
+    /// Where the session stands.
+    pub fn status(&self) -> Status {
+        self.status
+    }
+
+    /// Block bytes confirmed received so far, as merged `[start, end)` ranges.
+    pub fn confirmed(&self) -> Vec<(u64, u64)> {
+        self.covered.intersect(0, self.block.len() as u64)
+    }
+}
+
+/// Receives one red-part block and reports on it.
+#[derive(Clone, Debug)]
+pub struct Receiver {
+    session: SessionId,
+    config: Config,
+    queue: VecDeque<Segment>,
+    /// Received block bytes, keyed by offset.
+    chunks: BTreeMap<u64, Vec<u8>>,
+    received: RangeSet,
+    /// Red-part size, known once the EORP segment arrives.
+    block_len: Option<u64>,
+    client_service: Option<u64>,
+    /// Report serial issued for each checkpoint serial already answered.
+    answered: BTreeMap<u64, u64>,
+    /// Reports awaiting acknowledgment, keyed by report serial.
+    inflight: BTreeMap<u64, Inflight>,
+    next_report_serial: u64,
+    /// Upper bound of the last primary report; the next primary report starts there.
+    last_primary_upper: u64,
+    delivered: Option<Vec<u8>>,
+    status: Status,
+}
+
+impl Receiver {
+    /// A receiver for one session.
+    pub fn new(session: SessionId, config: Config) -> Result<Self, Error> {
+        config.check()?;
+        Ok(Receiver {
+            session,
+            config,
+            queue: VecDeque::new(),
+            chunks: BTreeMap::new(),
+            received: RangeSet::new(),
+            block_len: None,
+            client_service: None,
+            answered: BTreeMap::new(),
+            inflight: BTreeMap::new(),
+            next_report_serial: config.first_serial,
+            last_primary_upper: 0,
+            delivered: None,
+            status: Status::Active,
+        })
+    }
+
+    /// The next segment to transmit at virtual time `now`, if any. Expired report timers are
+    /// handled first.
+    pub fn poll(&mut self, now: u64) -> Option<Segment> {
+        self.expire(now);
+        let seg = self.queue.pop_front()?;
+        if let Body::Report(rs) = &seg.body {
+            let serial = rs.report_serial;
+            let entry = self.inflight.entry(serial).or_insert_with(|| Inflight {
+                segment: seg.clone(),
+                deadline: NOT_TIMED,
+                transmissions: 0,
+            });
+            entry.transmissions += 1;
+            entry.deadline = now.saturating_add(self.config.timeout_ms);
+        }
+        Some(seg)
+    }
+
+    fn expire(&mut self, now: u64) {
+        if self.status != Status::Active {
+            return;
+        }
+        let due: Vec<u64> = self
+            .inflight
+            .iter()
+            .filter(|(_, f)| f.deadline <= now)
+            .map(|(serial, _)| *serial)
+            .collect();
+        for serial in due {
+            let Some(entry) = self.inflight.get_mut(&serial) else {
+                continue;
+            };
+            if entry.transmissions >= self.config.max_transmissions {
+                self.status = Status::Cancelled {
+                    reason: REASON_RLEXC,
+                };
+                self.inflight.clear();
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::Cancel {
+                        from: Party::Receiver,
+                        reason: REASON_RLEXC,
+                    },
+                ));
+                return;
+            }
+            entry.deadline = NOT_TIMED;
+            self.queue.push_back(entry.segment.clone());
+        }
+    }
+
+    /// Processes a segment from the sender. Segments for other sessions are ignored.
+    pub fn on_segment(&mut self, seg: &Segment) {
+        if seg.session != self.session || matches!(self.status, Status::Cancelled { .. }) {
+            return;
+        }
+        match (self.status, &seg.body) {
+            (Status::Active, Body::Data(d)) => self.on_data(d),
+            // Acknowledgments are processed even after the block is delivered, so the session
+            // can finish once every report is acknowledged.
+            (_, Body::ReportAck { report_serial }) => {
+                self.inflight.remove(report_serial);
+                if self.delivered.is_some() && self.inflight.is_empty() {
+                    self.status = Status::Completed;
+                }
+            }
+            (
+                Status::Active,
+                Body::Cancel {
+                    from: Party::Sender,
+                    reason,
+                },
+            ) => {
+                self.status = Status::Cancelled { reason: *reason };
+                self.inflight.clear();
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::CancelAck { to: Party::Sender },
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    fn on_data(&mut self, d: &DataSegment) {
+        if d.color != Color::Red {
+            return; // green-part data is not modelled
+        }
+        let end = d.offset + d.data.len() as u64;
+        self.chunks
+            .entry(d.offset)
+            .or_insert_with(|| d.data.clone());
+        self.received.insert(d.offset, end);
+        self.client_service.get_or_insert(d.client_service);
+        if d.eorp && self.block_len.is_none() {
+            self.block_len = Some(end);
+        }
+        if let Some(cp) = d.checkpoint {
+            self.on_checkpoint(cp, end);
+        }
+        let complete = self.block_len.filter(|&len| self.received.covers(0, len));
+        if let (None, Some(len)) = (&self.delivered, complete) {
+            self.delivered = Some(self.assemble(len));
+        }
+    }
+
+    fn on_checkpoint(&mut self, cp: Checkpoint, upper: u64) {
+        if let Some(&report_serial) = self.answered.get(&cp.serial) {
+            // A repeated checkpoint means its report may have been lost. If that report is still
+            // waiting for acknowledgment, send it again now (RFC 5326 §6.8, redundant checkpoint).
+            let waiting = self
+                .inflight
+                .get_mut(&report_serial)
+                .filter(|entry| entry.deadline != NOT_TIMED);
+            if let Some(entry) = waiting {
+                entry.deadline = NOT_TIMED;
+                self.queue.push_back(entry.segment.clone());
+            }
+            return;
+        }
+        // A checkpoint that answers a report gets a secondary report, whose lower bound may be
+        // zero (RFC 5326 §6.11 allows this). A primary report starts where the last one ended.
+        let primary = cp.report_serial == 0;
+        let lower = if primary { self.last_primary_upper } else { 0 };
+        if lower >= upper {
+            return; // an out-of-order checkpoint with nothing new to report (RFC 5326 §6.11)
+        }
+        let claims: Vec<Claim> = self
+            .received
+            .intersect(lower, upper)
+            .into_iter()
+            .map(|(s, e)| Claim {
+                offset: s - lower,
+                length: e - s,
+            })
+            .collect();
+        let report_serial = self.next_report_serial;
+        self.next_report_serial += 1;
+        self.queue.push_back(Segment::new(
+            self.session,
+            Body::Report(ReportSegment {
+                report_serial,
+                checkpoint_serial: cp.serial,
+                upper,
+                lower,
+                claims,
+            }),
+        ));
+        self.answered.insert(cp.serial, report_serial);
+        if primary {
+            self.last_primary_upper = upper;
+        }
+    }
+
+    fn assemble(&self, len: u64) -> Vec<u8> {
+        let mut out = alloc::vec![0u8; len as usize];
+        for (&offset, data) in &self.chunks {
+            let start = offset as usize;
+            let end = (start + data.len()).min(out.len());
+            if start < end {
+                out[start..end].copy_from_slice(&data[..end - start]);
+            }
+        }
+        out
+    }
+
+    /// When the next report timer expires, if any.
+    pub fn next_timeout(&self) -> Option<u64> {
+        if self.status != Status::Active {
+            return None;
+        }
+        self.inflight
+            .values()
+            .map(|f| f.deadline)
+            .filter(|&d| d != NOT_TIMED)
+            .min()
+    }
+
+    /// Where the session stands.
+    pub fn status(&self) -> Status {
+        self.status
+    }
+
+    /// The client service the block is for, once a data segment has arrived.
+    pub fn client_service(&self) -> Option<u64> {
+        self.client_service
+    }
+
+    /// The reassembled block, once every red-part byte has arrived.
+    pub fn delivered(&self) -> Option<&[u8]> {
+        self.delivered.as_deref()
+    }
+}

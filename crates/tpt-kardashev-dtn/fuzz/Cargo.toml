@@ -31,3 +31,17 @@ bench = false
 
 # Separate workspace: the fuzzer is not part of the main workspace or its licence graph.
 [workspace]
+
+[[bin]]
+name = "ltp_segment"
+path = "fuzz_targets/ltp_segment.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sdnv_decode"
+path = "fuzz_targets/sdnv_decode.rs"
+test = false
+doc = false
+bench = false

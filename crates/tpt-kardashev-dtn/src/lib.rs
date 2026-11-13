@@ -5,11 +5,11 @@
 //! This crate provides the bundle codec (a strict CBOR reader and writer, endpoint IDs for the
 //! `dtn` and `ipn` schemes, the two block CRCs, and bundle encoding and decoding with the
 //! validation rules this crate implements), bundle stores (in memory and in files), contact plans,
-//! and earliest-arrival routing over a contact plan. The LTP layer and the simulator are not
-//! written yet.
+//! earliest-arrival routing over a contact plan, and the LTP segment codec and red-part sessions.
+//! The convergence layer and the simulator are not written yet.
 //!
-//! The bundle types need the `alloc` feature (enabled by `std`). The CBOR reader and the CRCs do
-//! not allocate.
+//! The bundle types need the `alloc` feature (enabled by `std`). The CBOR reader, the SDNV decoder
+//! and the CRCs do not allocate.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -23,6 +23,7 @@ extern crate alloc;
 pub mod cbor;
 pub mod crc;
 pub mod error;
+pub mod sdnv;
 
 #[cfg(feature = "alloc")]
 pub mod bundle;
@@ -30,6 +31,8 @@ pub mod bundle;
 pub mod contact;
 #[cfg(feature = "alloc")]
 pub mod eid;
+#[cfg(feature = "alloc")]
+pub mod ltp;
 #[cfg(feature = "alloc")]
 pub mod route;
 #[cfg(feature = "alloc")]

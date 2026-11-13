@@ -74,6 +74,11 @@ pub enum Error {
     },
     /// A file-backed store could not read or write its directory.
     Io,
+    /// An LTP segment or SDNV is malformed or breaks a rule of RFC 5326.
+    Ltp {
+        /// What was wrong.
+        what: &'static str,
+    },
 }
 
 impl fmt::Display for Error {
@@ -98,6 +103,7 @@ impl fmt::Display for Error {
             Error::NotFound => write!(f, "no bundle with this identity"),
             Error::InvalidContact { rule } => write!(f, "invalid contact: {rule}"),
             Error::Io => write!(f, "file store I/O failed"),
+            Error::Ltp { what } => write!(f, "LTP: {what}"),
         }
     }
 }
