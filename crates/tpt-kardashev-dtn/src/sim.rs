@@ -20,7 +20,7 @@ use crate::eid::Eid;
 use crate::error::Error;
 use crate::ltp::session::Config;
 use crate::route::EarliestArrival;
-use alloc::collections::{BTreeMap, BTreeSet, VecDeque};
+use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
 
 /// Default limit on how many times a bundle is handled at relays before it is discarded.
@@ -132,12 +132,20 @@ pub struct Network {
     held: Vec<Held>,
     /// Scheduled contact-plan replacements, in time order.
     plan_changes: Vec<(u64, ContactPlan)>,
-    /// Links that have failed to carry a session, as learned from cancelled sessions.
-    suspect: BTreeSet<(u64, u64)>,
-    /// Scheduled link failures: `(from, to, at)`. A datagram that starts on the link at or after `at`
-    /// is lost. The contact plan is not changed, so nodes learn of the failure only from the protocol.
-    failures: Vec<(u64, u64, u64)>,
+    /// Links that a node has learned to have failed, as `(from, to)` with the time until which the
+    /// link is avoided. The suspicion lapses at that time, so the link is tried again, and it is
+    /// cleared at once when a transfer over it completes.
+    suspect: BTreeMap<(u64, u64), u64>,
+    /// How long a suspicion lasts, in milliseconds.
+    suspect_hold: u64,
+    /// Scheduled link failures: `(from, to, start, end)`. A datagram that starts on the link in
+    /// `[start, end)` is lost. The contact plan is not changed, so nodes learn of the failure only
+    /// from the protocol.
+    failures: Vec<(u64, u64, u64, u64)>,
 }
+
+/// Default time a suspicion of a failed link lasts, in milliseconds.
+pub const DEFAULT_SUSPECT_HOLD_MS: u64 = 60_000;
 
 impl Network {
     /// An empty network over `plan`, with the given impairments and seed.
@@ -160,7 +168,8 @@ impl Network {
             discarded: 0,
             held: Vec::new(),
             plan_changes: Vec::new(),
-            suspect: BTreeSet::new(),
+            suspect: BTreeMap::new(),
+            suspect_hold: DEFAULT_SUSPECT_HOLD_MS,
             failures: Vec::new(),
         }
     }
@@ -283,7 +292,11 @@ impl Network {
                 len,
                 // A suspect link is never free, so the router routes around it.
                 &|c: &Contact| {
-                    if self.suspect.contains(&(c.from, c.to)) {
+                    if self
+                        .suspect
+                        .get(&(c.from, c.to))
+                        .is_some_and(|&until| until > now)
+                    {
                         u64::MAX
                     } else {
                         self.link_free_at(c)
@@ -320,37 +333,63 @@ impl Network {
     /// after then are lost. The contact plan still lists the link, so nothing is announced; nodes
     /// find out when their sessions on it are cancelled.
     pub fn fail_link(&mut self, from: u64, to: u64, at: u64) {
-        self.failures.push((from, to, at));
+        self.failures.push((from, to, at, u64::MAX));
+    }
+
+    /// Makes the link `from -> to` fail during `[start, end)` and work again afterwards.
+    pub fn fail_link_between(&mut self, from: u64, to: u64, start: u64, end: u64) {
+        self.failures.push((from, to, start, end));
+    }
+
+    /// Sets how long a suspicion of a failed link lasts, in milliseconds.
+    pub fn set_suspect_hold(&mut self, ms: u64) {
+        self.suspect_hold = ms;
     }
 
     fn link_failed(&self, from: u64, to: u64, start: u64) -> bool {
         self.failures
             .iter()
-            .any(|&(f, t, at)| f == from && t == to && start >= at)
+            .any(|&(f, t, s, e)| f == from && t == to && start >= s && start < e)
     }
 
-    /// Links that some node has learned to be failed, as `(from, to)`.
+    /// Links that some node currently avoids as failed, as `(from, to)`.
     pub fn suspect_links(&self) -> Vec<(u64, u64)> {
-        self.suspect.iter().copied().collect()
+        let now = self.now;
+        self.suspect
+            .iter()
+            .filter(|(_, until)| **until > now)
+            .map(|(&link, _)| link)
+            .collect()
     }
 
-    /// Takes in the payloads whose sessions were cancelled. Each marks its link as suspect, and the
-    /// bundle is held again at the node that sent it, so that it is re-routed around the link.
+    /// Takes in the outcomes of sessions. A cancelled session marks its link as suspect, and the
+    /// bundle is held again at the node that sent it, so that it is re-routed around the link. A
+    /// completed one clears the suspicion of its link.
     fn harvest_failures(&mut self) -> bool {
         let mut failed: Vec<(u64, u64, Vec<u8>)> = Vec::new();
+        let mut completed: Vec<(u64, u64)> = Vec::new();
         for (&id, node) in self.nodes.iter_mut() {
             for (to, payload) in node.take_failed() {
                 failed.push((id, to, payload));
             }
+            for to in node.take_completed() {
+                completed.push((id, to));
+            }
+        }
+        let mut progressed = !completed.is_empty();
+        for link in completed {
+            self.suspect.remove(&link);
         }
         if failed.is_empty() {
-            return false;
+            return progressed;
         }
+        progressed = true;
+        let until = self.now.saturating_add(self.suspect_hold);
         for (at, to, payload) in failed {
-            self.suspect.insert((at, to));
+            self.suspect.insert((at, to), until);
             self.handle_bundle(at, at, payload);
         }
-        true
+        progressed
     }
 
     /// Replaces the contact plan at virtual time `at`. Held bundles are re-routed against the new

@@ -35,6 +35,10 @@ pub trait ConvergenceLayer {
     /// cancelled, typically at a retransmission limit. Each is returned once.
     fn take_failed(&mut self) -> Vec<(u64, Vec<u8>)>;
 
+    /// Neighbours to which a payload has been delivered since the last call, one entry per
+    /// payload. A completed transfer shows that the link to that neighbour works.
+    fn take_completed(&mut self) -> Vec<u64>;
+
     /// When the next timer of this layer expires, if any.
     fn next_timeout(&self) -> Option<u64>;
 }
@@ -56,6 +60,8 @@ pub struct LtpConvergence {
     /// failed payload can be handed back.
     outgoing: BTreeMap<(u64, u64), Vec<u8>>,
     failed: Vec<(u64, Vec<u8>)>,
+    /// Neighbours whose payload delivery completed, one entry per payload.
+    completed: Vec<u64>,
     /// Round-trip estimate per neighbour, from the checkpoints this node has sent to it.
     rtt: BTreeMap<u64, RttEstimate>,
 }
@@ -114,6 +120,7 @@ impl LtpConvergence {
             received: Vec::new(),
             outgoing: BTreeMap::new(),
             failed: Vec::new(),
+            completed: Vec::new(),
             rtt: BTreeMap::new(),
         })
     }
@@ -141,7 +148,9 @@ impl LtpConvergence {
             .map(|(key, _)| *key)
             .collect();
         for key in completed {
-            self.outgoing.remove(&key);
+            if self.outgoing.remove(&key).is_some() {
+                self.completed.push(key.0);
+            }
         }
     }
 
@@ -220,6 +229,11 @@ impl ConvergenceLayer for LtpConvergence {
     fn take_failed(&mut self) -> Vec<(u64, Vec<u8>)> {
         self.harvest();
         core::mem::take(&mut self.failed)
+    }
+
+    fn take_completed(&mut self) -> Vec<u64> {
+        self.harvest();
+        core::mem::take(&mut self.completed)
     }
 
     fn next_timeout(&self) -> Option<u64> {
