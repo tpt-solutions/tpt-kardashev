@@ -195,7 +195,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171, RFC 8949 and RFC 5326 read; CCSDS 734.1-B and SABR not yet
 - [x] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
 - [x] Endpoint ids: `dtn:` and `ipn:`
-- [ ] Primary block, canonical blocks (payload, previous node, bundle age, hop count) — partial: primary block and payload block; previous-node, bundle-age and hop-count blocks have no typed interface yet
+- [x] Primary block, canonical blocks (payload, previous node, bundle age, hop count) — typed previous-node, bundle-age and hop-count blocks (`extension`), validated on encode and decode; the simulator enforces the hop limit from the Hop Count block
 - [x] Bundle CRCs (CRC-16 X.25, CRC-32C)
 - [x] `Bundle` encode/decode with strict validation
 - [x] `BundleStore` trait; in-memory store

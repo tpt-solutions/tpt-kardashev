@@ -11,6 +11,7 @@
 - `Contact` and `ContactPlan` with validation on construction.
 - Optional `serde` feature: impls for `Eid`, `CrcType`, `CreationTimestamp`, `Fragment`, `Claim` and `Checkpoint` (both directions) and `Contact`, `BundleId`, `Hop` and `Route` (serialise only). Hand-written, with no derive macro.
 - `Router` trait and `EarliestArrival`: earliest-arrival routing with store-and-forward and waiting at relays. Hand-computed routing scenarios. Not full contact-graph routing (see README).
+- `extension`: typed Previous Node, Bundle Age and Hop Count blocks (RFC 9171 §4.4), with byte-exact data, parsing rules and occurrence checks on encode and decode. The simulator enforces the hop limit from the Hop Count block.
 - `sdnv`: self-delimiting numeric values, shortest form enforced.
 - `ltp::segment`: LTP segment codec (RFC 5326 §3) with header and trailer extensions. Byte-exact layouts and rejection tests.
 - `ltp::session`: `Sender` and `Receiver` for reliable red-part transfer of one block, with checkpoint and report timers on a virtual clock, retransmission with new checkpoints, transmission limits, and RLEXC cancellation. Transfer tests over a seeded lossy link.

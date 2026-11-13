@@ -38,7 +38,7 @@ RFC 9171 contains no byte-level bundle examples; its appendix B is a CDDL schema
 ## What it does not model
 
 - No compliance claim against RFC 9171 or RFC 5326. The rules that are enforced are listed on `Bundle::validate` and in `ltp::segment`.
-- Canonical block types beyond the payload block are carried as opaque data. Previous-node, bundle-age and hop-count blocks have no typed interface yet.
+- Canonical block types other than the payload, previous-node, bundle-age and hop-count blocks are carried as opaque data. The three typed blocks follow RFC 9171 §4.4: the occurrence rules are checked, and the simulator increments the hop count on each forward and deletes a bundle whose count exceeds its limit. Their routing decisions are not based on the age block; the simulator uses the simulated clock.
 - Bundle Protocol Security (BPSec), including Block Integrity and Confidentiality blocks.
 - Fragmentation and reassembly. The fragment fields are encoded and checked, but no fragmenter exists.
 - Contact-graph routing in its full form. `EarliestArrival` gives the earliest-delivering route only. It does not model contact volume or queues, several bundles competing for a contact, multiple copies or multipath routing, or the SABR rules.
