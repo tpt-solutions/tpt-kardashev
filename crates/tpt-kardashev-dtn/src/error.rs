@@ -74,6 +74,8 @@ pub enum Error {
     },
     /// A file-backed store could not read or write its directory.
     Io,
+    /// A simulator operation named a node that was never added.
+    UnknownNode,
     /// An LTP segment or SDNV is malformed or breaks a rule of RFC 5326.
     Ltp {
         /// What was wrong.
@@ -103,6 +105,7 @@ impl fmt::Display for Error {
             Error::NotFound => write!(f, "no bundle with this identity"),
             Error::InvalidContact { rule } => write!(f, "invalid contact: {rule}"),
             Error::Io => write!(f, "file store I/O failed"),
+            Error::UnknownNode => write!(f, "no such node in the network"),
             Error::Ltp { what } => write!(f, "LTP: {what}"),
         }
     }
