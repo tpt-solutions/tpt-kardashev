@@ -37,6 +37,8 @@ pub mod convergence;
 #[cfg(feature = "alloc")]
 pub mod eid;
 #[cfg(feature = "alloc")]
+pub mod extension;
+#[cfg(feature = "alloc")]
 pub mod ltp;
 #[cfg(feature = "alloc")]
 pub mod route;

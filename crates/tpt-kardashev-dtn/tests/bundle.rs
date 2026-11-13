@@ -139,6 +139,10 @@ fn bundle_matches_the_hand_derived_cddl_encoding() {
                 node: 1,
                 service: 1,
             },
+            created: CreationTimestamp {
+                time: 1,
+                sequence: 0,
+            },
             ..primary(Eid::Null, Eid::Null, CrcType::None, 0)
         },
         blocks: vec![payload(b"Hello", CrcType::None)],
@@ -149,7 +153,7 @@ fn bundle_matches_the_hand_derived_cddl_encoding() {
         "8202820201",   // destination ipn:2.1
         "8202820101",   // source ipn:1.1
         "820100",       // report-to dtn:none
-        "820000",       // creation time 0, sequence 0
+        "820100",       // creation time 1, sequence 0
         "1903e8",       // lifetime 1000
         "8501010000",   // payload block: array(5), type 1, number 1, flags 0, crc 0
         "4548656c6c6f", // payload h'48656c6c6f' ("Hello")
@@ -181,7 +185,7 @@ fn sample(crc: CrcType, fragment: Option<Fragment>) -> Bundle {
         primary: p,
         blocks: vec![
             CanonicalBlock {
-                block_type: 6,
+                block_type: 200,
                 number: 2,
                 flags: block_flags::DISCARD_IF_UNPROCESSABLE,
                 crc,

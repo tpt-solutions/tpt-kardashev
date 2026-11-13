@@ -4,6 +4,7 @@
 
 use tpt_kardashev_dtn::bundle::bundle_flags;
 use tpt_kardashev_dtn::bundle::{CanonicalBlock, CrcType, CreationTimestamp, PrimaryBlock};
+use tpt_kardashev_dtn::extension::{BUNDLE_AGE, bundle_age_data};
 use tpt_kardashev_dtn::store::FileStore;
 use tpt_kardashev_dtn::{Bundle, BundleStore, Eid, Error, MemoryStore};
 
@@ -28,13 +29,28 @@ fn bundle(source: u64, time: u64, seq: u64, lifetime: u64) -> Bundle {
             lifetime,
             fragment: None,
         },
-        blocks: vec![CanonicalBlock {
-            block_type: 1,
-            number: 1,
-            flags: 0,
-            crc: CrcType::Crc32C,
-            data: vec![seq as u8; 4],
-        }],
+        blocks: {
+            let payload = CanonicalBlock {
+                block_type: 1,
+                number: 1,
+                flags: 0,
+                crc: CrcType::Crc32C,
+                data: vec![seq as u8; 4],
+            };
+            // A bundle created at time zero must carry a Bundle Age block (RFC 9171 §4.4.2).
+            if time == 0 {
+                let age = CanonicalBlock {
+                    block_type: BUNDLE_AGE,
+                    number: 2,
+                    flags: 0,
+                    crc: CrcType::Crc32C,
+                    data: bundle_age_data(0),
+                };
+                vec![age, payload]
+            } else {
+                vec![payload]
+            }
+        },
     }
 }
 

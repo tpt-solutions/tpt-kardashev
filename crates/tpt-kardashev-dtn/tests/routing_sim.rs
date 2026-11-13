@@ -4,6 +4,7 @@
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_dtn::bundle::{CanonicalBlock, CrcType, CreationTimestamp, PrimaryBlock};
+use tpt_kardashev_dtn::extension::{BUNDLE_AGE, bundle_age_data};
 use tpt_kardashev_dtn::ltp::session::Config;
 use tpt_kardashev_dtn::sim::{Impairments, Network};
 use tpt_kardashev_dtn::{Bundle, Contact, ContactPlan, Eid};
@@ -40,13 +41,28 @@ fn bundle_bytes(src: u64, dst: u64, created: u64, lifetime: u64, text: &str) -> 
             lifetime,
             fragment: None,
         },
-        blocks: vec![CanonicalBlock {
-            block_type: 1,
-            number: 1,
-            flags: 0,
-            crc: CrcType::Crc32C,
-            data: text.as_bytes().to_vec(),
-        }],
+        blocks: {
+            let payload = CanonicalBlock {
+                block_type: 1,
+                number: 1,
+                flags: 0,
+                crc: CrcType::Crc32C,
+                data: text.as_bytes().to_vec(),
+            };
+            // A bundle created at time zero must carry a Bundle Age block (RFC 9171 §4.4.2).
+            if created == 0 {
+                let age = CanonicalBlock {
+                    block_type: BUNDLE_AGE,
+                    number: 2,
+                    flags: 0,
+                    crc: CrcType::Crc32C,
+                    data: bundle_age_data(0),
+                };
+                vec![age, payload]
+            } else {
+                vec![payload]
+            }
+        },
     }
     .encode()
     .expect("encode")

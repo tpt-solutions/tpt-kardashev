@@ -283,6 +283,7 @@ impl Bundle {
                 });
             }
         }
+        crate::extension::validate_blocks(self)?;
         Ok(())
     }
 
