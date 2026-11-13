@@ -21,6 +21,9 @@ pub mod oracle;
 pub mod physics;
 pub mod units;
 
+#[cfg(feature = "serde")]
+mod serde_impls;
+
 pub use error::Error;
 pub use ledger::{AccountId, AccountKind, Ledger};
 pub use oracle::{EnergyOracle, Erase, ErasureOracle, HeatBudget};

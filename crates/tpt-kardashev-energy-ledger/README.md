@@ -22,7 +22,8 @@ Double-entry energy accounting with explicit waste heat, Landauer bounds, Stefan
 - Supply systems, power electronics, batteries or conversion losses. Those stay in `tpt-equinox-power` and `tpt-energy`.
 - Thermal transients, radiator view factors, or temperature-dependent emissivity.
 - Device-level energy cost of computation. Landauer is a lower bound, not a model of any device.
-- The optional `units` and `serde` features from the todo. They are not implemented.
+- The optional `units` feature (mapping to `tpt-math-units`). It is not implemented.
+- Serialised forms are not a stable wire format. The `serde` feature (hand-written impls, no derive macro) covers the newtypes and `AccountKind`. `HeatBudget` and `Ledger` have no `serde` impls, because deserialising them would skip their checks. `Error` is serialise-only.
 
 ## Examples
 
