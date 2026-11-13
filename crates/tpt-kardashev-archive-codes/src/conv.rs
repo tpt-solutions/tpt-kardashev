@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Rate-1/2, constraint-length-7 convolutional code with polynomials 171 and 133 (octal), as in
-//! CCSDS 131.0-B-3 (draft), with hard- and soft-decision Viterbi decoders. Known-answer vectors
-//! from the standard are not yet checked.
+//! CCSDS 131.0-B-5 §3.3, with hard- and soft-decision Viterbi decoders.
+//!
+//! As the standard requires (§3.3.1 item 5 and §3.3.2), the G2 output is inverted and the output
+//! sequence is `C1(1), not(C2(1)), C1(2), not(C2(2)), ...`. The decoders expect that sequence.
+//! The generator polynomials and the inversion are checked against the standard's text; no
+//! codeword vectors from the standard are included.
 //!
 //! Bits are stored one per byte, with values 0 or 1. The encoder starts in the all-zero state
 //! and does not terminate the trellis; the decoder chooses the best final state.
@@ -35,6 +39,8 @@ fn check_bit(b: u8) -> Result<u8, CodeError> {
 }
 
 /// Encodes `bits` into `out`, two output bits per input bit: `out.len()` must be `2 * bits.len()`.
+///
+/// Output pairs are `(C1, not C2)`, the CCSDS convention with the G2 inverter.
 pub fn encode(bits: &[u8], out: &mut [u8]) -> Result<(), CodeError> {
     if out.len() != 2 * bits.len() {
         return Err(CodeError::LengthMismatch {
@@ -48,7 +54,7 @@ pub fn encode(bits: &[u8], out: &mut [u8]) -> Result<(), CodeError> {
         let r = (u << 6) | state;
         let (c1, c2) = outputs(r);
         out[2 * t] = c1;
-        out[2 * t + 1] = c2;
+        out[2 * t + 1] = c2 ^ 1; // G2 output is inverted (CCSDS 131.0-B-5 §3.3.1)
         state = r >> 1;
     }
     Ok(())
@@ -95,10 +101,28 @@ pub fn viterbi_decode(
     for &r in received {
         check_bit(r)?;
     }
+    // The received G2 bit is inverted relative to the register output.
     let branch = |t: usize, c1: u8, c2: u8| -> u32 {
-        u32::from(c1 != received[2 * t]) + u32::from(c2 != received[2 * t + 1])
+        u32::from(c1 != received[2 * t]) + u32::from((c2 ^ 1) != received[2 * t + 1])
     };
     run(steps, branch, out, decisions)
+}
+
+/// The rate-1/2, K=7 code as a [`SoftDecoder`](crate::codec::SoftDecoder).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ConvolutionalK7;
+
+impl crate::codec::SoftDecoder for ConvolutionalK7 {
+    /// `scratch` must hold at least `soft.len() / 2` entries; otherwise this is
+    /// [`viterbi_decode_soft`].
+    fn decode_soft(
+        &self,
+        soft: &[u8],
+        out: &mut [u8],
+        scratch: &mut [u64],
+    ) -> Result<u32, CodeError> {
+        viterbi_decode_soft(soft, out, scratch)
+    }
 }
 
 /// Soft-decision Viterbi decoder. Each input byte is a confidence, 0 (certain 0) to 255 (certain 1).
@@ -115,8 +139,9 @@ pub fn viterbi_decode_soft(
         let s = u32::from(s);
         if expected == 0 { s } else { 255 - s }
     };
+    // The received G2 symbol is inverted relative to the register output.
     let branch =
-        |t: usize, c1: u8, c2: u8| -> u32 { cost(soft[2 * t], c1) + cost(soft[2 * t + 1], c2) };
+        |t: usize, c1: u8, c2: u8| -> u32 { cost(soft[2 * t], c1) + cost(soft[2 * t + 1], c2 ^ 1) };
     run(steps, branch, out, decisions)
 }
 
@@ -206,12 +231,12 @@ mod tests {
         bits[0] = 1;
         let mut out = [0u8; 14];
         encode(&bits, &mut out).expect("ok");
-        // G1 = 171 octal = 1111001, G2 = 133 octal = 1011011.
+        // G1 = 171 octal = 1111001, G2 = 133 octal = 1011011, then G2 is inverted (§3.3.1).
         let g1_taps: [u8; 7] = [1, 1, 1, 1, 0, 0, 1];
         let g2_taps: [u8; 7] = [1, 0, 1, 1, 0, 1, 1];
         for t in 0..7 {
             assert_eq!(out[2 * t], g1_taps[t], "g1 step {t}");
-            assert_eq!(out[2 * t + 1], g2_taps[t], "g2 step {t}");
+            assert_eq!(out[2 * t + 1], 1 - g2_taps[t], "inverted g2 step {t}");
         }
     }
 
@@ -300,6 +325,48 @@ mod tests {
         let mut decisions = std::vec![0u64; 200];
         viterbi_decode_soft(&soft, &mut decoded, &mut decisions).expect("ok");
         assert_eq!(decoded, bits);
+    }
+
+    /// Over many noisy frames, soft decisions leave no more residual bit errors than hard
+    /// decisions sliced from the same noisy values. An aggregate check, not a per-frame guarantee.
+    #[test]
+    fn soft_decoding_beats_hard_decisions_in_aggregate() {
+        let mut x: u64 = 0x5EED;
+        let mut noise = move || {
+            x = x
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            // Uniform in [-120, 120].
+            ((x >> 33) % 241) as i32 - 120
+        };
+        let mut soft_errors = 0usize;
+        let mut hard_errors = 0usize;
+        for frame in 0..200u64 {
+            let bits = pseudo_bits(frame + 1, 64);
+            let mut coded = [0u8; 128];
+            encode(&bits, &mut coded).expect("encode");
+            let soft: std::vec::Vec<u8> = coded
+                .iter()
+                .map(|&c| {
+                    let base = if c == 1 { 255i32 } else { 0 };
+                    (base + noise()).clamp(0, 255) as u8
+                })
+                .collect();
+            let hard: std::vec::Vec<u8> = soft.iter().map(|&s| u8::from(s >= 128)).collect();
+
+            let mut out_s = [0u8; 64];
+            let mut scratch = [0u64; 64];
+            viterbi_decode_soft(&soft, &mut out_s, &mut scratch).expect("soft");
+            let mut out_h = [0u8; 64];
+            viterbi_decode(&hard, &mut out_h, &mut scratch).expect("hard");
+
+            soft_errors += out_s.iter().zip(&bits).filter(|(a, b)| a != b).count();
+            hard_errors += out_h.iter().zip(&bits).filter(|(a, b)| a != b).count();
+        }
+        assert!(
+            soft_errors <= hard_errors,
+            "soft {soft_errors} vs hard {hard_errors}"
+        );
     }
 
     #[test]

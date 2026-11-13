@@ -9,10 +9,10 @@
 //! shortened code is any length `n` with `nroots < n <= 255`.
 //!
 //! [`ReedSolomon::ccsds_255_223`] uses the parameters of the CCSDS TM synchronous and channel
-//! coding Reed-Solomon code: `nroots = 32`, `fcr = 112`, `prim = 11` in the conventional basis,
-//! with field polynomial 0x187. These were confirmed against the ECSS-adopted draft of
-//! CCSDS 131.0-B-3. They have not yet been checked against the current revision (B-5) or against
-//! published known-answer vectors. Both checks are open todo items.
+//! coding Reed-Solomon code: `nroots = 32`, `fcr = 112`, `prim = 11`, with field polynomial 0x187.
+//! This type works in the conventional basis. The generator and field match CCSDS 131.0-B-5
+//! §4.3.3–4.3.4 and Annex G. The transmitted symbols are dual-basis: use
+//! [`crate::DualBasisRs`] for CCSDS symbols.
 
 use crate::codec::{BlockDecoder, BlockEncoder};
 use crate::error::{CodeError, DecodeReport};
@@ -177,6 +177,17 @@ impl BlockEncoder for ReedSolomon {
             *slot = par[self.nroots - 1 - i];
         }
         Ok(())
+    }
+}
+
+impl crate::codec::ErasureCoder for ReedSolomon {
+    /// Corrects errors and erasures in place; see [`ReedSolomon::decode_with_erasures`].
+    fn decode_erasures(
+        &self,
+        word: &mut [u8],
+        erasures: &[usize],
+    ) -> Result<DecodeReport, CodeError> {
+        self.decode_with_erasures(word, erasures)
     }
 }
 

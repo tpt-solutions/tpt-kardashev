@@ -97,3 +97,45 @@ mod tests {
         assert_eq!(mul(alpha_pow(7), alpha_pow(-7)), 1);
     }
 }
+
+/// Kani proofs of the field operations, over all symbolic inputs.
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn mul_is_commutative() {
+        let a: u8 = kani::any();
+        let b: u8 = kani::any();
+        assert_eq!(mul(a, b), mul(b, a));
+    }
+
+    #[kani::proof]
+    fn mul_is_associative() {
+        let a: u8 = kani::any();
+        let b: u8 = kani::any();
+        let c: u8 = kani::any();
+        assert_eq!(mul(a, mul(b, c)), mul(mul(a, b), c));
+    }
+
+    #[kani::proof]
+    fn one_is_identity_and_zero_annihilates() {
+        let a: u8 = kani::any();
+        assert_eq!(mul(a, 1), a);
+        assert_eq!(mul(a, 0), 0);
+    }
+
+    #[kani::proof]
+    fn nonzero_elements_have_inverses() {
+        let a: u8 = kani::any();
+        kani::assume(a != 0);
+        assert_eq!(mul(a, inv(a)), 1);
+    }
+
+    #[kani::proof]
+    fn alpha_power_is_periodic_mod_255() {
+        let e: i64 = kani::any();
+        kani::assume((-100_000..=100_000).contains(&e));
+        assert_eq!(alpha_pow(e), alpha_pow(e + 255));
+    }
+}
