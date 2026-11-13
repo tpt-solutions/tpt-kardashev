@@ -20,7 +20,7 @@ use crate::eid::Eid;
 use crate::error::Error;
 use crate::extension::{HOP_COUNT, hop_count_data, parse_hop_count};
 use crate::ltp::session::Config;
-use crate::route::EarliestArrival;
+use crate::route::{EarliestArrival, Hop, RouteConstraints};
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
 
@@ -68,6 +68,8 @@ struct Held {
     payload: Vec<u8>,
     /// When its current route's first hop starts, if known.
     wake: Option<u64>,
+    /// Contacts whose volume this bundle has claimed while it waits.
+    claims: Vec<(u64, u64, u64)>,
 }
 
 #[derive(Clone, Debug)]
@@ -143,6 +145,10 @@ pub struct Network {
     /// `[start, end)` is lost. The contact plan is not changed, so nodes learn of the failure only
     /// from the protocol.
     failures: Vec<(u64, u64, u64, u64)>,
+    /// OWLT margin added to each contact's light time when routing (ms).
+    owlt_margin: u64,
+    /// Volume (bytes) reserved on each contact, keyed by `contact_key`.
+    reserved: BTreeMap<(u64, u64, u64), u64>,
 }
 
 /// Default time a suspicion of a failed link lasts, in milliseconds.
@@ -172,6 +178,8 @@ impl Network {
             suspect: BTreeMap::new(),
             suspect_hold: DEFAULT_SUSPECT_HOLD_MS,
             failures: Vec::new(),
+            owlt_margin: 0,
+            reserved: BTreeMap::new(),
         }
     }
 
@@ -298,6 +306,7 @@ impl Network {
             expires: bundle.expires_at(),
             payload,
             wake: None,
+            claims: Vec::new(),
         });
         true
     }
@@ -312,35 +321,55 @@ impl Network {
         let held = core::mem::take(&mut self.held);
         let mut still_held = Vec::with_capacity(held.len());
         for mut h in held {
+            let len = h.payload.len() as u64;
+            let evc = evc_of(len);
+            // The volume this bundle claimed on an earlier pass is claimed afresh below, so that
+            // a bundle does not count against the contacts it is itself about to use.
+            release(&mut self.reserved, &h.claims, evc);
+            h.claims.clear();
             if now > h.expires {
                 self.discarded += 1;
                 progressed = true;
                 continue;
             }
-            let len = h.payload.len() as u64;
-            let route = EarliestArrival.route_with_free_at(
+            // A suspect link is never free, so the router routes around it.
+            let free_at = |c: &Contact| {
+                if self
+                    .suspect
+                    .get(&(c.from, c.to))
+                    .is_some_and(|&until| until > now)
+                {
+                    u64::MAX
+                } else {
+                    self.link_free_at(c)
+                }
+            };
+            let available = |c: &Contact| self.available(c);
+            let constraints = RouteConstraints {
+                expires: h.expires,
+                owlt_margin: self.owlt_margin,
+                evc,
+                available: &available,
+            };
+            let route = EarliestArrival.route_constrained(
                 &self.plan,
                 h.at,
                 h.dest,
                 now,
                 len,
-                // A suspect link is never free, so the router routes around it.
-                &|c: &Contact| {
-                    if self
-                        .suspect
-                        .get(&(c.from, c.to))
-                        .is_some_and(|&until| until > now)
-                    {
-                        u64::MAX
-                    } else {
-                        self.link_free_at(c)
-                    }
-                },
+                &free_at,
+                &constraints,
             );
-            let first =
-                route.and_then(|r| r.hops.first().map(|hop| (hop.contact.to, hop.departure)));
+            let first = route
+                .as_ref()
+                .and_then(|r| r.hops.first().map(|hop| (hop.contact.to, hop.departure)));
             match first {
                 Some((next, departure)) if departure <= now => {
+                    // The route's volume stays reserved once the bundle is handed on. It is not
+                    // released again, since the bundle is no longer held (SABR §3.2.8.1.2).
+                    if let Some(route) = route.as_ref() {
+                        claim(&mut self.reserved, &route.hops, evc);
+                    }
                     if let Some(node) = self.nodes.get_mut(&h.at) {
                         // Handing the payload to the layer cannot fail for a known destination.
                         let _ = node.send(next, core::mem::take(&mut h.payload));
@@ -350,6 +379,10 @@ impl Network {
                     progressed = true;
                 }
                 Some((_, departure)) => {
+                    // Held bundles keep their claim, so the next bundle routed sees it.
+                    if let Some(route) = route.as_ref() {
+                        h.claims = claim(&mut self.reserved, &route.hops, evc);
+                    }
                     h.wake = Some(departure);
                     still_held.push(h);
                 }
@@ -361,6 +394,23 @@ impl Network {
         }
         self.held = still_held;
         progressed
+    }
+
+    /// Sets the OWLT margin (ms) that routes add to each contact's light time, as SABR does for
+    /// the worst-case change in light time during transit.
+    pub fn set_owlt_margin(&mut self, ms: u64) {
+        self.owlt_margin = ms;
+    }
+
+    /// Volume (bytes) of a contact: its rate times its length.
+    fn volume_of(c: &Contact) -> u64 {
+        c.rate.saturating_mul(c.end - c.start) / 1000
+    }
+
+    /// Volume of `c` not yet reserved for bundles routed through it.
+    fn available(&self, c: &Contact) -> u64 {
+        let reserved = self.reserved.get(&contact_key(c)).copied().unwrap_or(0);
+        Self::volume_of(c).saturating_sub(reserved)
     }
 
     /// Makes the link `from -> to` fail from virtual time `at`: datagrams that start on it at or
@@ -655,4 +705,41 @@ impl Network {
             .filter(|&t| t > now)
             .min()
     }
+}
+
+/// Adds `evc` bytes to the reservation of every contact on `hops`, returning their keys.
+fn claim(
+    reserved: &mut BTreeMap<(u64, u64, u64), u64>,
+    hops: &[Hop],
+    evc: u64,
+) -> Vec<(u64, u64, u64)> {
+    let keys: Vec<_> = hops.iter().map(|hop| contact_key(&hop.contact)).collect();
+    for key in &keys {
+        *reserved.entry(*key).or_insert(0) += evc;
+    }
+    keys
+}
+
+/// Removes `evc` bytes from the reservation of each contact in `keys`.
+fn release(reserved: &mut BTreeMap<(u64, u64, u64), u64>, keys: &[(u64, u64, u64)], evc: u64) {
+    for key in keys {
+        if let Some(total) = reserved.get_mut(key) {
+            *total = total.saturating_sub(evc);
+            if *total == 0 {
+                reserved.remove(key);
+            }
+        }
+    }
+}
+
+/// Identity of a contact for volume reservations: sender, receiver and start time.
+fn contact_key(c: &Contact) -> (u64, u64, u64) {
+    (c.from, c.to, c.start)
+}
+
+/// Estimated volume consumption of a bundle of `len` bytes: the bytes themselves, plus the
+/// convergence-layer overhead, which is 3% of the bundle or 100 bytes, whichever is larger
+/// (CCSDS 734.3-B-1 §2.4.3).
+fn evc_of(len: u64) -> u64 {
+    len + (3 * len).div_ceil(100).max(100)
 }
