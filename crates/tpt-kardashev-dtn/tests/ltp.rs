@@ -323,7 +323,7 @@ fn transfer(block: &[u8], loss_percent: u64, seed: u64, config: Config) -> Outco
                 receiver.on_segment(&Segment::decode(bytes).expect("decode"));
             });
             deliver(&mut to_sender, now, |bytes| {
-                sender.on_segment(&Segment::decode(bytes).expect("decode"));
+                sender.on_segment(&Segment::decode(bytes).expect("decode"), now);
             });
         }
         let next = to_receiver
@@ -491,7 +491,7 @@ fn checkpoint_serials_increase_by_one_across_retransmissions() {
             receiver.on_segment(&Segment::decode(&seg.encode().expect("e")).expect("d"));
         }
         while let Some(seg) = receiver.poll(now) {
-            sender.on_segment(&Segment::decode(&seg.encode().expect("e")).expect("d"));
+            sender.on_segment(&Segment::decode(&seg.encode().expect("e")).expect("d"), now);
         }
         match sender
             .next_timeout()

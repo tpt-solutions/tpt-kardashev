@@ -322,3 +322,56 @@ fn a_link_that_fails_unannounced_is_learned_from_the_cancelled_session_and_route
     assert_eq!(net.inbox(4), &[(3, payload)], "delivered once, via node 3");
     assert_eq!(net.discarded(), 0);
 }
+
+#[test]
+fn a_link_that_worked_before_is_declared_failed_sooner_than_the_configured_timeout() {
+    // The configured timeout is 300 ms with 60 transmissions, so a link that never worked is only
+    // declared failed after about 18 s. Here link 1 -> 2 first carries a bundle, which gives node 1
+    // a round-trip estimate for node 2. When the link then fails, that estimate shortens the
+    // retransmission timer, and the failure is declared well before 18 s.
+    let mut contacts = duplex(&[(1, 2), (2, 4)], 0, 1_000_000);
+    contacts.extend(
+        [(1, 3), (3, 4)]
+            .iter()
+            .flat_map(|&(a, b)| [c(a, b, 0, 1_000_000, 300), c(b, a, 0, 1_000_000, 300)]),
+    );
+    let mut net = network(contacts, &[1, 2, 3, 4]);
+    let first = bundle_bytes(1, 4, 0, 10_000_000, "first, before the failure");
+    assert!(net.send_routed(1, first.clone()).expect("send"));
+    net.run_until(2_000);
+    assert_eq!(
+        net.inbox(4).len(),
+        1,
+        "the first bundle was delivered while the link worked"
+    );
+
+    net.fail_link(1, 2, 2_000);
+    net.run_until(3_000);
+    let second = bundle_bytes(1, 4, 0, 10_000_000, "second, after the failure");
+    assert!(net.send_routed(1, second.clone()).expect("send"));
+
+    let sent_at = 3_000u64;
+    let mut t = sent_at;
+    while net.suspect_links().is_empty() && t < sent_at + 30_000 {
+        t += 50;
+        net.run_until(t);
+    }
+    let detected_after = t - sent_at;
+    assert_eq!(
+        net.suspect_links(),
+        vec![(1, 2)],
+        "the failed link was learned"
+    );
+    assert!(
+        detected_after < 10_000,
+        "failure declared after {detected_after} ms; the fixed timeout alone allows 18000 ms"
+    );
+
+    net.run_until(60_000);
+    assert!(
+        net.inbox(4)
+            .iter()
+            .any(|(from, p)| *from == 3 && *p == second),
+        "the second bundle is delivered around the failed link"
+    );
+}

@@ -94,6 +94,11 @@ struct Inflight {
     deadline: u64,
     /// Transmissions so far.
     transmissions: u32,
+    /// When the checkpoint was first sent.
+    first_sent: u64,
+    /// Whether the checkpoint has been sent again. Its answer then cannot be matched to one send,
+    /// so it gives no round-trip sample (Karn's rule).
+    retransmitted: bool,
 }
 
 /// The checkpoint carried by a segment, if it is a checkpoint data segment.
@@ -151,6 +156,11 @@ pub struct Sender {
     /// Serial number the next checkpoint will use.
     next_serial: u64,
     status: Status,
+    /// Retransmission timeout for new checkpoints. Starts at the configured timeout, and the
+    /// convergence layer may lower it to follow the measured round trip of the peer.
+    rto_ms: u64,
+    /// Round-trip samples taken since the last call to [`Sender::take_rtt_samples`].
+    rtt_samples: Vec<u64>,
 }
 
 impl Sender {
@@ -182,6 +192,8 @@ impl Sender {
             reports_seen: BTreeSet::new(),
             next_serial: config.first_serial,
             status: Status::Active,
+            rto_ms: config.timeout_ms,
+            rtt_samples: Vec::new(),
         };
         let mut segments = data_segments(
             block_len,
@@ -226,10 +238,15 @@ impl Sender {
                 segment: seg.clone(),
                 deadline: NOT_TIMED,
                 transmissions: 0,
+                first_sent: now,
+                retransmitted: false,
             });
+            if entry.transmissions > 0 {
+                entry.retransmitted = true;
+            }
             entry.segment = seg.clone();
             entry.transmissions += 1;
-            entry.deadline = now.saturating_add(self.config.timeout_ms);
+            entry.deadline = now.saturating_add(self.rto_ms);
         }
         Some(seg)
     }
@@ -271,7 +288,7 @@ impl Sender {
 
     /// Processes a segment from the receiver. Segments for other sessions, and segments that
     /// arrive after the session has ended, are ignored.
-    pub fn on_segment(&mut self, seg: &Segment) {
+    pub fn on_segment(&mut self, seg: &Segment, now: u64) {
         if seg.session != self.session {
             return;
         }
@@ -286,7 +303,7 @@ impl Sender {
                     },
                 ));
             }
-            (Status::Active, Body::Report(rs)) => self.on_report(rs),
+            (Status::Active, Body::Report(rs)) => self.on_report(rs, now),
             (
                 Status::Active,
                 Body::Cancel {
@@ -307,7 +324,7 @@ impl Sender {
         }
     }
 
-    fn on_report(&mut self, rs: &ReportSegment) {
+    fn on_report(&mut self, rs: &ReportSegment, now: u64) {
         // Acknowledge every report, including duplicates, so the receiver can stop its timer.
         self.queue.push_back(Segment::new(
             self.session,
@@ -315,8 +332,15 @@ impl Sender {
                 report_serial: rs.report_serial,
             },
         ));
-        if rs.checkpoint_serial != 0 {
-            self.inflight.remove(&rs.checkpoint_serial);
+        let answered = if rs.checkpoint_serial != 0 {
+            self.inflight.remove(&rs.checkpoint_serial)
+        } else {
+            None
+        };
+        // A checkpoint that was never retransmitted gives a round-trip sample (Karn's rule).
+        if let Some(answered) = answered.filter(|a| !a.retransmitted) {
+            self.rtt_samples
+                .push(now.saturating_sub(answered.first_sent));
         }
         if !self.reports_seen.insert(rs.report_serial) {
             return;
@@ -372,6 +396,18 @@ impl Sender {
     /// Where the session stands.
     pub fn status(&self) -> Status {
         self.status
+    }
+
+    /// Sets the retransmission timeout for checkpoints sent from now on. The value is kept between 1
+    /// ms and the configured timeout, which is also the initial value.
+    pub fn set_timeout(&mut self, ms: u64) {
+        self.rto_ms = ms.clamp(1, self.config.timeout_ms.max(1));
+    }
+
+    /// Round-trip samples (checkpoint sent to report received) taken since the last call. Only
+    /// checkpoints that were never retransmitted give a sample.
+    pub fn take_rtt_samples(&mut self) -> Vec<u64> {
+        core::mem::take(&mut self.rtt_samples)
     }
 
     /// Block bytes confirmed received so far, as merged `[start, end)` ranges.
@@ -435,6 +471,9 @@ impl Receiver {
                 segment: seg.clone(),
                 deadline: NOT_TIMED,
                 transmissions: 0,
+                // Reports are not timed for round trips, so these fields are not used.
+                first_sent: now,
+                retransmitted: false,
             });
             entry.transmissions += 1;
             entry.deadline = now.saturating_add(self.config.timeout_ms);

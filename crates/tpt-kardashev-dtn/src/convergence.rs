@@ -25,7 +25,7 @@ pub trait ConvergenceLayer {
     fn poll_outbound(&mut self, now: u64) -> Option<(u64, Vec<u8>)>;
 
     /// Takes in a datagram that arrived from node `from`.
-    fn on_inbound(&mut self, from: u64, datagram: &[u8]) -> Result<(), Error>;
+    fn on_inbound(&mut self, from: u64, datagram: &[u8], now: u64) -> Result<(), Error>;
 
     /// Payloads that have been fully received, as `(from, payload)`, in the order completed.
     /// Each payload is returned once.
@@ -56,6 +56,41 @@ pub struct LtpConvergence {
     /// failed payload can be handed back.
     outgoing: BTreeMap<(u64, u64), Vec<u8>>,
     failed: Vec<(u64, Vec<u8>)>,
+    /// Round-trip estimate per neighbour, from the checkpoints this node has sent to it.
+    rtt: BTreeMap<u64, RttEstimate>,
+}
+
+/// Smoothed round-trip time and its variance for one neighbour (Jacobson and Karels, as used by
+/// TCP retransmission timers).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct RttEstimate {
+    srtt: u64,
+    rttvar: u64,
+    measured: bool,
+}
+
+impl RttEstimate {
+    fn observe(&mut self, sample: u64) {
+        if self.measured {
+            let err = sample.abs_diff(self.srtt);
+            self.rttvar = (3 * self.rttvar + err) / 4;
+            self.srtt = (7 * self.srtt + sample) / 8;
+        } else {
+            self.srtt = sample;
+            self.rttvar = sample / 2;
+            self.measured = true;
+        }
+    }
+}
+
+/// The retransmission timeout for a neighbour: the smoothed round trip plus four times its
+/// variance, kept at most `ceiling` (the configured timeout). Until a neighbour has been measured,
+/// the ceiling is used.
+fn rto(rtt: &BTreeMap<u64, RttEstimate>, peer: u64, ceiling: u64) -> u64 {
+    match rtt.get(&peer) {
+        Some(e) if e.measured => e.srtt.saturating_add(4 * e.rttvar).clamp(1, ceiling.max(1)),
+        _ => ceiling,
+    }
 }
 
 impl LtpConvergence {
@@ -79,6 +114,7 @@ impl LtpConvergence {
             received: Vec::new(),
             outgoing: BTreeMap::new(),
             failed: Vec::new(),
+            rtt: BTreeMap::new(),
         })
     }
 
@@ -131,6 +167,7 @@ impl ConvergenceLayer for LtpConvergence {
 
     fn poll_outbound(&mut self, now: u64) -> Option<(u64, Vec<u8>)> {
         for (&(to, _), sender) in self.senders.iter_mut() {
+            sender.set_timeout(rto(&self.rtt, to, self.config.timeout_ms));
             if let Some(bytes) = sender.poll(now).and_then(|seg| seg.encode().ok()) {
                 return Some((to, bytes));
             }
@@ -143,12 +180,20 @@ impl ConvergenceLayer for LtpConvergence {
         None
     }
 
-    fn on_inbound(&mut self, from: u64, datagram: &[u8]) -> Result<(), Error> {
+    fn on_inbound(&mut self, from: u64, datagram: &[u8], now: u64) -> Result<(), Error> {
         let seg = Segment::decode(datagram)?;
         if seg.session.originator == self.local {
-            // Reports, acknowledgments and cancels for a payload we sent.
-            if let Some(sender) = self.senders.get_mut(&(from, seg.session.number)) {
-                sender.on_segment(&seg);
+            // Reports, acknowledgments and cancels for a payload we sent. A report may give a
+            // round-trip sample for the neighbour.
+            let samples = match self.senders.get_mut(&(from, seg.session.number)) {
+                Some(sender) => {
+                    sender.on_segment(&seg, now);
+                    sender.take_rtt_samples()
+                }
+                None => Vec::new(),
+            };
+            for sample in samples {
+                self.rtt.entry(from).or_default().observe(sample);
             }
             return Ok(());
         }

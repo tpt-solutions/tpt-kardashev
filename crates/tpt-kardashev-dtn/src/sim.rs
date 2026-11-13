@@ -533,7 +533,7 @@ impl Network {
             let received: Vec<(u64, Vec<u8>)> = match self.nodes.get_mut(&msg.to) {
                 Some(node) => {
                     // A datagram the engine cannot parse is dropped, as a real receiver would.
-                    let _ = node.on_inbound(msg.from, &msg.bytes);
+                    let _ = node.on_inbound(msg.from, &msg.bytes, now);
                     node.take_received()
                 }
                 None => Vec::new(),
