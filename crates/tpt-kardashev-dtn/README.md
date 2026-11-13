@@ -21,6 +21,8 @@ Delay-tolerant networking: BPv7 bundles, bundle stores, contact-graph routing an
 
 The bundle, store, contact, routing and LTP types need the `alloc` feature, which `std` enables. The CBOR reader, the SDNV decoder and the CRCs do not allocate.
 
+With the optional `serde` feature (hand-written impls, no derive macro), `Eid` and `CrcType` round-trip as URI text and as their code; `CreationTimestamp`, `Fragment`, `Claim` and `Checkpoint` round-trip as maps; `Contact`, `BundleId`, `Hop` and `Route` serialise only, because their constructors check invariants. Bundles, segments and sessions have no serde impls: their decoders are the way in.
+
 ## Checks
 
 - CBOR: the byte-exact integer, string and array examples of RFC 8949 Appendix A, in both directions, plus rejection tests for non-canonical forms.

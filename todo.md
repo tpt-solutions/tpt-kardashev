@@ -212,7 +212,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Round-trip tests and fuzzing of CBOR/bundle parser — partial: round-trip and bit-flip tests written; fuzz targets ran 60 s each on nightly, no crash; longer campaigns to do
 - [x] Routing tests against hand-computed contact-plan scenarios
 - [x] Simulator tests for delivery under disruption — bundles delivered across a relay whose second link opens late (store-and-forward, transmissions checked against windows), under 25% loss with duplication and jitter (exactly one copy), and determinism for a fixed seed
-- [ ] Optional `serde` feature
+- [x] Optional `serde` feature (`serde` feature: URI text for Eid, codes for CrcType, maps for the integer records; Contact, BundleId, Hop and Route serialise only; bundles, segments and sessions not covered)
 - [x] `no_std` + `alloc` build (thumbv7em, with and without `alloc`)
 - [x] README states what is not modelled (no compliance claim; no BPSec, no TCPCL in v0.1)
 - [ ] **v0.1 exit:** BPv7 codec with vectors, stores, CGR router, LTP layer, simulator

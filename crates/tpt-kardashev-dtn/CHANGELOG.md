@@ -9,6 +9,7 @@
 - Hand-derived byte-exact bundle vector from the RFC 9171 CDDL; round trips for all CRC types and fragment shapes; bit-flip sweep.
 - `BundleStore` trait, with `MemoryStore` (optionally bounded) and `store::FileStore` (feature `std`). Identity-keyed; duplicates rejected; expiry at DTN time.
 - `Contact` and `ContactPlan` with validation on construction.
+- Optional `serde` feature: impls for `Eid`, `CrcType`, `CreationTimestamp`, `Fragment`, `Claim` and `Checkpoint` (both directions) and `Contact`, `BundleId`, `Hop` and `Route` (serialise only). Hand-written, with no derive macro.
 - `Router` trait and `EarliestArrival`: earliest-arrival routing with store-and-forward and waiting at relays. Hand-computed routing scenarios. Not full contact-graph routing (see README).
 - `sdnv`: self-delimiting numeric values, shortest form enforced.
 - `ltp::segment`: LTP segment codec (RFC 5326 §3) with header and trailer extensions. Byte-exact layouts and rejection tests.
