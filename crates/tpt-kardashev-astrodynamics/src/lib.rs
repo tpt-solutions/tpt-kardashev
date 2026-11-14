@@ -36,7 +36,7 @@ pub mod vector;
 pub use elements::{Keplerian, StateVector};
 pub use error::Error;
 #[cfg(feature = "std")]
-pub use force::{CentralBody, ForceModel};
+pub use force::{CentralBody, ForceModel, J2Zonal};
 #[cfg(feature = "std")]
 pub use integrate::Cowell;
 pub use matrix::Mat3;
