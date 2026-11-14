@@ -227,7 +227,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Element sets (Keplerian, equinoctial) and state-vector conversions — partial: Keplerian ↔ state for elliptic orbits, with fixed conventions for circular and equatorial cases, tested by round trips and known values; equinoctial elements not written
 - [x] Two-body propagation (universal variables) — `propagate::propagate`, tested for periods, conservation, composition, reversal, agreement with an independent Kepler-equation solve, and hyperbolic states
 - [x] `ForceModel` trait — `force::ForceModel` (acceleration at a time and state); a pair of models is a model (their sum)
-- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust — partial: central body (`force::CentralBody`) only
+- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust — partial: central body (`force::CentralBody`) and J2 (`force::J2Zonal`, WGS 84 constants) written; higher zonal harmonics, third bodies, SRP, drag and thrust not yet
 - [x] Cowell combined numerical propagator — `integrate::Cowell` integrates any `ForceModel`, including summed models; tested against the analytic two-body solution
 - [x] Integrator: fixed-step RK4 — `integrate::rk4_step`; error falls as the fourth power of the step (measured 16.4× per halving)
 - [ ] Integrator: adaptive high-order Runge-Kutta
@@ -243,7 +243,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Textbook Lambert and Kepler cases
 - [ ] Energy and angular-momentum drift checks (symplectic, adaptive) over long arcs
 - [ ] Frame round-trip tests
-- [ ] Cross-check new force model against old secular formulas (J2, drag, etc.)
+- [ ] Cross-check new force model against old secular formulas (J2, drag, etc.) — partial: J2 nodal regression of an integrated orbit matches the secular rate to 0.2% (`tests/j2.rs`); drag not written
 - [ ] Fuzz: TLE and SPK parsers
 - [ ] `no_std` + `alloc` build
 - [ ] README states force-model limits and what is not modelled
