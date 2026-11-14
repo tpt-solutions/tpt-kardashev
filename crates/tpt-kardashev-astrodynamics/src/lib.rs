@@ -19,11 +19,13 @@ extern crate alloc;
 #[cfg(feature = "std")]
 pub mod elements;
 pub mod error;
+pub mod time;
 pub mod units;
 pub mod vector;
 
 #[cfg(feature = "std")]
 pub use elements::{Keplerian, StateVector};
 pub use error::Error;
+pub use time::{Epoch, LeapEntry, LeapSeconds, UtcTime};
 pub use units::{Kilometres, Radians, Seconds};
 pub use vector::Vec3;

@@ -20,6 +20,13 @@ pub enum Error {
     /// The state has zero angular momentum (zero radius, or position and velocity parallel), so no
     /// orbital plane is defined.
     Degenerate,
+    /// A calendar date or time of day is out of range, or a UTC second is 60 or more (leap-second
+    /// insertion is not modelled).
+    InvalidCalendar,
+    /// The instant is before the first entry of the leap-second table.
+    NoLeapSecondEntry,
+    /// The leap-second table is empty, or its dates or offsets are not in increasing order.
+    InvalidLeapSeconds,
 }
 
 impl fmt::Display for Error {
@@ -31,6 +38,13 @@ impl fmt::Display for Error {
             }
             Error::NotElliptic => f.write_str("the orbit is not elliptic"),
             Error::Degenerate => f.write_str("the state has zero angular momentum"),
+            Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
+            Error::NoLeapSecondEntry => {
+                f.write_str("the instant is before the first leap-second table entry")
+            }
+            Error::InvalidLeapSeconds => {
+                f.write_str("the leap-second table is empty or not in increasing order")
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 Time scales, reference frames, orbital elements, propagation, Lambert solving and impulsive manoeuvres.
 
-**Status:** early slice. Implemented: unit newtypes (`Kilometres`, `Seconds`, `Radians`), a small `Vec3`, and Keplerian elements for elliptic two-body orbits with conversions to and from state vectors. Everything else in the v0.1 scope is not written yet (see the workspace `todo.md` §2.2).
+**Status:** early slice. Implemented: unit newtypes (`Kilometres`, `Seconds`, `Radians`), a small `Vec3`, Keplerian elements for elliptic two-body orbits with conversions to and from state vectors, and epochs on the TT scale with TAI, UTC (through a caller-supplied leap-second table) and Julian dates. Everything else in the v0.1 scope is not written yet (see the workspace `todo.md` §2.2).
 
 ## Features
 
@@ -24,7 +24,8 @@ Time scales, reference frames, orbital elements, propagation, Lambert solving an
 
 - Parabolic and hyperbolic orbits. Their states are rejected with `Error::NotElliptic`.
 - Equinoctial elements. The singular cases above use the fixed conventions instead.
-- Time scales, reference frames, propagation, force models, Lambert solving, manoeuvres and ephemerides. Force-model limits are stated in full at v0.1 (todo §2.2).
+- TDB, UT1 and Earth orientation. Leap seconds come from the caller's table, which the crate does not bundle; a UTC second of 60 (leap-second insertion) is rejected. Epochs are `f64` seconds past J2000, resolving about 0.5 µs.
+- Reference frames, propagation, force models, Lambert solving, manoeuvres and ephemerides. Force-model limits are stated in full at v0.1 (todo §2.2).
 - No ephemeris data is bundled. Low-thrust approximations are post-v0.1. SGP4 stays behind the `sgp4` feature (spec §12.4).
 
 ## Checks
@@ -33,6 +34,7 @@ Time scales, reference frames, orbital elements, propagation, Lambert solving an
 - Invariants: for an elliptic state, |h| = √(μ·a(1 − e²)) and the energy is −μ/(2a).
 - Round trips: state → elements → state over a grid of 2160 element sets, including circular, equatorial, polar and retrograde cases; and elements → state → elements away from the singular cases, with the elements recovered.
 - Rejection: hyperbolic and radial states, non-finite values, and non-positive μ.
+- Time: J2000 is Julian date 2451545.0 TT; TAI is TT − 32.184 s; 2000-01-01 12:00 UTC is 64.184 s before the J2000 instant in TT; the TAI difference across the 2017 leap second is 2 s; UTC round trips through TT; and invalid calendar values are rejected. The leap-second fixture is a test table, not crate data.
 
 ## Licence
 
