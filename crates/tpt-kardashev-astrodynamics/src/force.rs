@@ -6,6 +6,7 @@
 //! body gravity and the J2 zonal harmonic. Not yet: higher zonal harmonics, third bodies,
 //! radiation pressure, drag and thrust.
 
+use crate::atmosphere::density;
 use crate::ephemeris::{AU_KM, Body, Ephemeris};
 use crate::frames::ecliptic_to_equatorial;
 use crate::{Epoch, Error, Seconds, StateVector, Vec3};
@@ -268,5 +269,64 @@ impl<E: Ephemeris> ForceModel for SolarRadiationPressure<E> {
             * au_over_d
             * 1e-3;
         Ok(from_sun * (magnitude / d))
+    }
+}
+
+/// Rotation rate of the Earth, in rad/s (WGS 84).
+pub const EARTH_ROTATION_RATE_RAD_S: f64 = 7.292_115e-5;
+
+/// Atmospheric drag on a spacecraft, with the atmosphere co-rotating with the Earth:
+///
+/// `a = −½·C_D·(A/m)·ρ·|v_rel|·v_rel`, with `v_rel = v − ω × r`.
+///
+/// The density `ρ` comes from [`crate::atmosphere::density`] at the altitude above the WGS 84
+/// equatorial radius. The state is inertial, with the spin axis as z, so `ω × r` is the atmosphere's
+/// velocity exactly, whatever the Earth's orientation.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AtmosphericDrag {
+    drag_coefficient: f64,
+    area_to_mass: f64,
+}
+
+impl AtmosphericDrag {
+    /// Drag with coefficient `drag_coefficient` (C_D) and area-to-mass ratio `area_to_mass` (m²/kg).
+    /// Fails with [`Error::Negative`] for a negative value and [`Error::NonFinite`] for a
+    /// non-finite one.
+    pub fn new(drag_coefficient: f64, area_to_mass: f64) -> Result<Self, Error> {
+        for (value, what) in [
+            (drag_coefficient, "drag coefficient"),
+            (area_to_mass, "area-to-mass ratio"),
+        ] {
+            if !value.is_finite() {
+                return Err(Error::NonFinite { what });
+            }
+            if value < 0.0 {
+                return Err(Error::Negative { what });
+            }
+        }
+        Ok(Self {
+            drag_coefficient,
+            area_to_mass,
+        })
+    }
+}
+
+impl ForceModel for AtmosphericDrag {
+    fn acceleration(&self, _t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
+        let r = state.position;
+        let r_norm = r.norm();
+        if r_norm.is_nan() || r_norm <= 0.0 {
+            return Err(Error::Degenerate);
+        }
+        let altitude = r_norm - WGS84_EQUATORIAL_RADIUS_KM;
+        let rho = density(altitude);
+        // The atmosphere's velocity: ω × r, with ω along +z.
+        let omega = EARTH_ROTATION_RATE_RAD_S;
+        let atmosphere = Vec3::new(-omega * r.y, omega * r.x, 0.0);
+        let v_rel = state.velocity - atmosphere;
+        let speed = v_rel.norm();
+        // Density in kg/m³ and velocities in km/s: the factor 1e3 converts m/s² to km/s².
+        let coefficient = -0.5 * self.drag_coefficient * self.area_to_mass * rho * speed * 1e3;
+        Ok(v_rel * coefficient)
     }
 }
