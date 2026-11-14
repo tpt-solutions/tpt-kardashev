@@ -72,6 +72,8 @@ struct Held {
     claims: Vec<(u64, u64, u64)>,
     /// The node the bundle was received from, or `None` if this node originated it.
     received_from: Option<u64>,
+    /// For one copy of a critical bundle, the only neighbour its first hop may enter.
+    only_via: Option<u64>,
 }
 
 #[derive(Clone, Debug)]
@@ -214,6 +216,39 @@ impl Network {
         Ok(self.handle_bundle(from, from, payload))
     }
 
+    /// Accepts a critical bundle that originates at node `from`: one copy is sent through each
+    /// neighbour of `from` in the contact plan, so the bundle travels over the best route and over
+    /// every other plausible one (CCSDS 734.3-B-1 §2.4.5). Copies may all arrive, so the
+    /// destination can receive the bundle more than once. Returns as [`Network::send_routed`].
+    /// The critical flag is an argument of this call, not a field of the bundle.
+    pub fn send_critical(&mut self, from: u64, payload: Vec<u8>) -> Result<bool, Error> {
+        if !self.nodes.contains_key(&from) {
+            return Err(Error::UnknownNode);
+        }
+        let mut neighbours: Vec<u64> = self.plan.outgoing(from).map(|c| c.to).collect();
+        neighbours.sort_unstable();
+        neighbours.dedup();
+        let before = self.held.len();
+        if !self.handle_bundle(from, from, payload) {
+            return Ok(false);
+        }
+        // handle_bundle holds the bundle once, unless it was delivered locally (then nothing is
+        // held). That one entry becomes one copy per neighbour. With no neighbours it is kept as is.
+        let held_once = self.held.len() == before + 1;
+        if held_once && !neighbours.is_empty() {
+            let Some(template) = self.held.pop() else {
+                return Ok(true);
+            };
+            for n in neighbours {
+                self.held.push(Held {
+                    only_via: Some(n),
+                    ..template.clone()
+                });
+            }
+        }
+        Ok(true)
+    }
+
     /// When the transmitter of `c`'s link can start carrying new data: after its last transmission,
     /// and after every datagram already queued for the same link has been sent.
     fn link_free_at(&self, c: &Contact) -> u64 {
@@ -310,6 +345,7 @@ impl Network {
             wake: None,
             claims: Vec::new(),
             received_from: (from != at).then_some(from),
+            only_via: None,
         });
         true
     }
@@ -348,8 +384,17 @@ impl Network {
                 }
             };
             let available = |c: &Contact| self.available(c);
-            // A bundle is not sent back to the node it came from (SABR §3.2.5.2).
-            let excluded: Vec<u64> = h.received_from.into_iter().collect();
+            // A bundle is not sent back to the node it came from (SABR §3.2.5.2). A copy of a
+            // critical bundle may take only its own first hop (SABR §2.4.5).
+            let mut excluded: Vec<u64> = h.received_from.into_iter().collect();
+            if let Some(only) = h.only_via {
+                excluded.extend(
+                    self.plan
+                        .outgoing(h.at)
+                        .map(|c| c.to)
+                        .filter(|&n| n != only),
+                );
+            }
             let constraints = RouteConstraints {
                 expires: h.expires,
                 owlt_margin: self.owlt_margin,
