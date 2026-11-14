@@ -35,3 +35,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Consistency levels
 
 - `ConsistencyLevel` (`Commutative`, `Causal`, `DomainLinearizable`, `GlobalAgreed`) and `latency_lower_bound_ms(Delays)`. A lower bound is what the physics of the links allows, not a protocol's latency: zero for the two levels without agreement, two intra-domain one-way delays for `DomainLinearizable`, and two cross-domain one-way delays for `GlobalAgreed`. A round trip is counted as two one-way delays; the spec's wording gives one, which is a weaker valid bound.
+
+## Transport and simulation
+
+- `transport::Transport<M>` is the pluggable trait. `transport::SimNetwork<M>` is a deterministic simulated network on caller-supplied virtual time: seeded delay and jitter (which reorders), loss, duplication, and partitions of a pair of nodes. A run is reproducible from its seed. Partitions of node sets, node crashes, and the invariant checks are not written yet.
