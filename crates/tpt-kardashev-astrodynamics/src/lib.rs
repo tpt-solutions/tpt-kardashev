@@ -24,6 +24,8 @@ pub mod atmosphere;
 pub mod elements;
 #[cfg(feature = "std")]
 pub mod ephemeris;
+#[cfg(feature = "std")]
+pub mod equinoctial;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod force;
