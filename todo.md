@@ -276,7 +276,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] **v0.1 exit:** fixed-boundary G-S with Solov'ev, fixed-source MC with slab validation, tallies, one documented cross-section format
 
 ### Phase 2 close
-- [ ] Example: astrodynamics visibility windows → `ContactPlan` → dtn routing (uses feature flags)
+- [x] Example: astrodynamics visibility windows → `ContactPlan` → dtn routing — `examples/contact-plan-flow`, a standalone package. It uses no feature flags: a library crate may not depend on another crate in this repo, but an example may, so the example depends on both crates directly. The astrodynamics `dtn` feature was removed for the same reason. The run computes four passes per station in six hours and delivers a routed bundle to station B
 - [ ] All three crates at v0.1 exit
 - [ ] Tag `<crate>-v0.1.0` for each
 - [ ] CI green, including cargo-deny with all features
