@@ -104,6 +104,8 @@ pub struct SimNetwork<M> {
     config: SimConfig,
     rng: u64,
     cuts: Vec<Cut>,
+    /// Nodes that are down during a window: no message to or from them gets through.
+    crashes: Vec<(NodeId, u64, u64)>,
     /// Pending deliveries, keyed by (delivery time, sequence number): deterministic order.
     queue: BTreeMap<(u64, u64), Delivery<M>>,
     seq: u64,
@@ -121,6 +123,7 @@ impl<M: Clone> SimNetwork<M> {
             config,
             rng: config.seed.wrapping_mul(2).wrapping_add(1),
             cuts: Vec::new(),
+            crashes: Vec::new(),
             queue: BTreeMap::new(),
             seq: 0,
             stats: SimStats::default(),
@@ -148,6 +151,39 @@ impl<M: Clone> SimNetwork<M> {
         Ok(())
     }
 
+    /// Cuts every link between the nodes of `group_a` and those of `group_b` during
+    /// `[start_ms, end_ms)`. Links inside a group are unaffected. Fails as [`SimNetwork::partition`].
+    pub fn partition_sets(
+        &mut self,
+        group_a: &[NodeId],
+        group_b: &[NodeId],
+        start_ms: u64,
+        end_ms: u64,
+    ) -> Result<(), TransportError> {
+        for &a in group_a {
+            for &b in group_b {
+                self.partition(a, b, start_ms, end_ms)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Takes `node` down during `[start_ms, end_ms)`: messages to or from it are lost. The caller
+    /// decides what the node does while down (it simply is not ticked); the network only drops
+    /// its traffic. Fails as [`SimNetwork::partition`].
+    pub fn crash(
+        &mut self,
+        node: NodeId,
+        start_ms: u64,
+        end_ms: u64,
+    ) -> Result<(), TransportError> {
+        if end_ms <= start_ms {
+            return Err(TransportError::InvalidConfig);
+        }
+        self.crashes.push((node, start_ms, end_ms));
+        Ok(())
+    }
+
     /// The counts so far.
     pub fn stats(&self) -> SimStats {
         self.stats
@@ -172,11 +208,15 @@ impl<M: Clone> SimNetwork<M> {
     }
 
     fn cut(&self, now_ms: u64, from: NodeId, to: NodeId) -> bool {
-        self.cuts.iter().any(|c| {
+        let link = self.cuts.iter().any(|c| {
             ((c.a == from && c.b == to) || (c.a == to && c.b == from))
                 && now_ms >= c.start_ms
                 && now_ms < c.end_ms
-        })
+        });
+        let down = self.crashes.iter().any(|&(node, start, end)| {
+            (node == from || node == to) && now_ms >= start && now_ms < end
+        });
+        link || down
     }
 
     fn schedule(&mut self, at_ms: u64, delivery: Delivery<M>) {

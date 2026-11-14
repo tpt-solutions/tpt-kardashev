@@ -139,3 +139,45 @@ fn invalid_configuration_is_rejected() {
         Err(TransportError::InvalidConfig)
     );
 }
+
+#[test]
+fn a_partition_between_two_groups_cuts_only_the_crossing_links() {
+    let mut net = SimNetwork::new(config(1)).expect("config");
+    net.partition_sets(&[1, 2], &[3, 4], 0, 1_000)
+        .expect("window");
+    net.send(10, 1, 3, "across").expect("send");
+    net.send(10, 1, 2, "inside").expect("send");
+    net.send(10, 3, 4, "other side").expect("send");
+    let got: Vec<&str> = net
+        .deliver(u64::MAX)
+        .into_iter()
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(got.len(), 2);
+    assert!(got.contains(&"inside") && got.contains(&"other side"));
+    assert!(!got.contains(&"across"));
+}
+
+#[test]
+fn a_crashed_node_neither_sends_nor_receives_until_it_restarts() {
+    let mut net = SimNetwork::new(config(1)).expect("config");
+    net.crash(2, 1_000, 2_000).expect("window");
+    net.send(500, 1, 2, "before the crash").expect("send");
+    net.send(1_500, 1, 2, "to the crashed node").expect("send");
+    net.send(1_500, 2, 1, "from the crashed node")
+        .expect("send");
+    net.send(2_500, 1, 2, "after the restart").expect("send");
+    let got: Vec<&str> = net
+        .deliver(u64::MAX)
+        .into_iter()
+        .map(|d| d.message)
+        .collect();
+    assert_eq!(got, vec!["before the crash", "after the restart"]);
+    assert_eq!(net.stats().partitioned, 2);
+}
+
+#[test]
+fn an_empty_crash_window_is_rejected() {
+    let mut net = SimNetwork::<u32>::new(config(1)).expect("config");
+    assert_eq!(net.crash(1, 5, 5), Err(TransportError::InvalidConfig));
+}

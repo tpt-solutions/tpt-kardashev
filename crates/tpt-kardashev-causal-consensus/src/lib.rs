@@ -28,6 +28,8 @@ pub mod error;
 pub mod federation;
 pub mod hash;
 #[cfg(feature = "alloc")]
+pub mod linearizable;
+#[cfg(feature = "alloc")]
 pub mod transport;
 pub mod vector;
 
