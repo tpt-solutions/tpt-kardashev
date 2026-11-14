@@ -232,7 +232,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Integrator: fixed-step RK4 — `integrate::rk4_step`; error falls as the fourth power of the step (measured 16.4× per halving)
 - [ ] Integrator: adaptive high-order Runge-Kutta
 - [ ] Integrator: symplectic for N-body
-- [ ] Lambert solver
+- [x] Lambert solver — `lambert::lambert` (zero-revolution, universal variables, bisection on z); tested on exact circular arcs and by round trip through the propagator for prograde and retrograde orbits; multi-revolution transfers not written
 - [x] Impulsive manoeuvres: Hohmann, bi-elliptic, plane change — `manoeuvre::hohmann`, `manoeuvre::bi_elliptic`, `manoeuvre::plane_change`; tested by propagating the transfer orbits to the next apsis, not by re-using the formulas
 - [ ] `Ephemeris` trait with low-precision analytic provider
 - [ ] SPK (Chebyshev) reader behind a feature (no ephemeris data bundled)
