@@ -2,12 +2,18 @@
 
 Time scales, reference frames, orbital elements, propagation, Lambert solving and impulsive manoeuvres.
 
-**Status:** Phase 0 scaffold. No public API yet.
+**Status:** early slice. Implemented: unit newtypes (`Kilometres`, `Seconds`, `Radians`), a small `Vec3`, and Keplerian elements for elliptic two-body orbits with conversions to and from state vectors. Everything else in the v0.1 scope is not written yet (see the workspace `todo.md` §2.2).
 
 ## Features
 
-- `std` (default): links the standard library.
+- `std` (default): links the standard library. The element conversions need it, because `core` has no trigonometry.
 - `alloc`: enables heap-allocating APIs. Core is `no_std`.
+
+## Conventions
+
+- Positions are in km, velocities in km/s, and the gravitational parameter μ in km³/s². Each function takes μ explicitly; the crate bundles no body constants.
+- Angles are in radians, returned in `[0, 2π)`. The reference plane is the x–y plane, and `h = r × v` is the orbit normal.
+- Circular and equatorial orbits use fixed conventions, so each state has one element set: circular orbits take ω = 0 and ν as the argument of latitude; equatorial orbits take Ω = 0 and ω as the longitude of periapsis; circular equatorial orbits take ν as the true longitude. Retrograde orbits measure angles in the sense of the orbit.
 
 ## Optional features
 
@@ -16,7 +22,17 @@ Time scales, reference frames, orbital elements, propagation, Lambert solving an
 
 ## What it does not model
 
-Force-model limits are stated in full at v0.1 (todo §2.2). No ephemeris data is bundled. Low-thrust approximations are post-v0.1. SGP4 stays behind the `sgp4` feature (spec §12.4).
+- Parabolic and hyperbolic orbits. Their states are rejected with `Error::NotElliptic`.
+- Equinoctial elements. The singular cases above use the fixed conventions instead.
+- Time scales, reference frames, propagation, force models, Lambert solving, manoeuvres and ephemerides. Force-model limits are stated in full at v0.1 (todo §2.2).
+- No ephemeris data is bundled. Low-thrust approximations are post-v0.1. SGP4 stays behind the `sgp4` feature (spec §12.4).
+
+## Checks
+
+- Known values: a geostationary-radius circular equatorial orbit (a = r, e = 0, i = 0), and an inclined circular orbit (i = 0.5 rad, Ω = 0).
+- Invariants: for an elliptic state, |h| = √(μ·a(1 − e²)) and the energy is −μ/(2a).
+- Round trips: state → elements → state over a grid of 2160 element sets, including circular, equatorial, polar and retrograde cases; and elements → state → elements away from the singular cases, with the elements recovered.
+- Rejection: hyperbolic and radial states, non-finite values, and non-positive μ.
 
 ## Licence
 
