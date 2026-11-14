@@ -43,3 +43,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Domain consensus
 
 - `domain::RaftNode` is a Raft-style leader-based node for one domain, from Ongaro and Ousterhout (2014). At most one leader per term; a command commits once a majority holds it in the leader's term. It is tested on a simulated cluster under loss, duplication and partitions. Membership change, log compaction, and any Byzantine tolerance are not written.
+
+## Federation
+
+- `federation`: hash-chained epoch summaries. Each domain seals each epoch of committed commands into a summary that names the previous summary's hash and a SHA-256 digest of the epoch's commands (`hash::sha256`, written in-crate). A chain detects a changed, reordered, dropped or misattributed summary. It is integrity against a copy of the head, not authenticity: signatures are not written, and need a licence-checked dependency decision (`tpt-crypto`).
