@@ -149,9 +149,21 @@ pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
             what: "line 1 has too few fields",
         });
     }
-    // Line 1: token 3 is the epoch and token 6 the drag term B*.
-    let epoch_days = epoch_days(first[3])?;
-    let bstar = assumed_decimal(first[6])?;
+    // Line 1: the epoch follows the satellite number, after the international designator when there
+    // is one. The original Report #3 sets omit the designator, which moves the fields one token left.
+    let base = if first.get(2).is_some_and(|t| t.contains('.')) {
+        2
+    } else {
+        3
+    };
+    let epoch_token = first.get(base).ok_or(Error::BadTle {
+        what: "line 1 has too few fields",
+    })?;
+    let bstar_token = first.get(base + 3).ok_or(Error::BadTle {
+        what: "line 1 has too few fields",
+    })?;
+    let epoch_days = epoch_days(epoch_token)?;
+    let bstar = assumed_decimal(bstar_token)?;
     // Line 2: 2, catalogue number, inclination, node, eccentricity, perigee, anomaly, mean motion.
     if second.len() < 8 {
         return Err(Error::BadTle {
