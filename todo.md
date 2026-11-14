@@ -304,7 +304,7 @@ Exit: each crate at v0.1 exit.
 - [x] Linearizability checker for small domain-layer histories — `linearizable::is_linearizable`, a depth-first search with memoised failures over a single register (at most 16 operations; tests in `tests/linearizable.rs`: sequential, stale, concurrent, order-disagreeing and never-written histories, and limits)
 - [ ] Randomised partition/delay simulation tests — partial: the domain layer has seeded loss, duplication and partitions with per-step invariant checks (`tests/domain.rs`); federation and GlobalAgreed runs are still to do
 - [ ] Fuzz: message decoders
-- [ ] `no_std` + `alloc` build
+- [x] `no_std` + `alloc` build — builds with no features on thumbv7em (the clock, vector, consistency and error modules), and with `alloc` on the host; the `alloc` modules are not built for thumbv7em
 - [ ] README states honest limits (CAP under partition); Byzantine tolerance deferred
 - [ ] Later: Byzantine tolerance behind a feature
 - [ ] **v0.1 exit:** causal layer, domain consensus, federation epochs, consistency API with bounds, simulator
