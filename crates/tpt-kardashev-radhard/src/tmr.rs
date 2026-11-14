@@ -165,3 +165,20 @@ mod tests {
         assert_eq!(t.replica(3), Err(Error::IndexOutOfRange { index: 3 }));
     }
 }
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    /// Any single corrupted replica of a consistent triple leaves the voted value unchanged.
+    #[kani::proof]
+    fn no_single_corrupted_replica_changes_the_voter_result() {
+        let value: u64 = kani::any();
+        let corrupt: u64 = kani::any();
+        let index: usize = kani::any();
+        kani::assume(index < 3);
+        let mut tmr = Tmr::new(value);
+        assert!(tmr.set_replica(index, corrupt).is_ok());
+        assert_eq!(tmr.majority(), Some(value));
+    }
+}

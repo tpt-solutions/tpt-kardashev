@@ -24,6 +24,7 @@ volatile = []
 # The rest of the crate still contains no unsafe code; see src/lib.rs.
 [lints.rust]
 unsafe_code = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
