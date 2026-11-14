@@ -26,6 +26,8 @@ pub mod domain;
 pub mod error;
 #[cfg(feature = "alloc")]
 pub mod federation;
+#[cfg(feature = "alloc")]
+pub mod global;
 pub mod hash;
 #[cfg(feature = "alloc")]
 pub mod linearizable;
