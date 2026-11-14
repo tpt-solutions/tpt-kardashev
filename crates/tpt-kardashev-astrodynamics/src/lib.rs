@@ -44,6 +44,8 @@ pub mod sdp4;
 pub mod sgp4;
 #[cfg(feature = "std")]
 pub mod spk;
+#[cfg(feature = "std")]
+pub mod symplectic;
 pub mod time;
 pub mod units;
 pub mod vector;
