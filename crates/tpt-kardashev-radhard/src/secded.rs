@@ -203,3 +203,42 @@ mod tests {
         assert_eq!(cw.flip(72), Err(Error::BitOutOfRange { position: 72 }));
     }
 }
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    /// Bounded: the data is 8 bits, not 64, so that the solver can finish. Every single-bit error
+    /// over all 72 codeword positions is corrected back to the original data and position.
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn secded_corrects_every_single_bit_error_for_8_bit_data() {
+        let data = u64::from(kani::any::<u8>());
+        let position: u32 = kani::any();
+        kani::assume(position < CODE_BITS);
+        let mut cw = encode(data);
+        assert!(cw.flip(position).is_ok());
+        match decode(cw) {
+            Ok((out, Outcome::Corrected { position: found })) => {
+                assert_eq!(out, data);
+                assert_eq!(found, position);
+            }
+            _ => assert!(false, "a single-bit error must be corrected"),
+        }
+    }
+
+    /// Bounded: 8-bit data. Every double-bit error over all position pairs is reported as a
+    /// double error, never corrected.
+    #[kani::proof]
+    #[kani::unwind(80)]
+    fn secded_detects_every_double_bit_error_for_8_bit_data() {
+        let data = u64::from(kani::any::<u8>());
+        let first: u32 = kani::any();
+        let second: u32 = kani::any();
+        kani::assume(first < CODE_BITS && second < CODE_BITS && first != second);
+        let mut cw = encode(data);
+        assert!(cw.flip(first).is_ok());
+        assert!(cw.flip(second).is_ok());
+        assert!(matches!(decode(cw), Err(Error::DoubleBitError)));
+    }
+}

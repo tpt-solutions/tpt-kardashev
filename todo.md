@@ -151,7 +151,7 @@ Exit: each crate at its v0.1 exit.
 - [x] `FaultInjector` (seeded bit flips, burst errors)
 - [x] Volatile access behind a feature, `unsafe` documented (the one exception to forbid-unsafe)
 - [x] Kani proof: no single corrupted replica changes the voter result — verified by Kani (`cargo kani`, WSL Ubuntu 24.04; `tmr::kani_proofs`); exhaustive voter test kept
-- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error — not verified: both harnesses were tried and removed. The double-bit harness was still in the SAT solver after six hours; the single-bit run ended without a verdict. Exhaustive SECDED tests cover the property; a bounded-data proof is still to do
+- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error — partial: verified by Kani for 8-bit data (`secded::kani_proofs`, both properties over all 72 positions); the 64-bit proof is still open (the solver did not finish on symbolic 64-bit data), and the exhaustive SECDED tests cover the full width
 - [x] Exhaustive tests over small word sizes
 - [x] Injector-driven property tests
 - [x] `no_std` build, thumbv7em build

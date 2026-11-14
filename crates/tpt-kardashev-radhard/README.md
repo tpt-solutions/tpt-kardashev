@@ -18,14 +18,14 @@ Radiation-tolerant primitives: triple and N-modular redundancy with scrubbing, S
 - Exhaustive voter test: for every `u8` value, every replica position, and every corrupted value, a single corruption does not change the vote.
 - SECDED: every single-bit error at every position is corrected, and every pair of flipped positions is detected, across several data words.
 - Injector-driven tests with recorded seeds.
-- Kani: the voter proof (`tmr::kani_proofs`) is verified under `cargo kani` in WSL. SECDED harnesses were tried and removed, since the solver did not finish on them; exhaustive tests cover SECDED.
+- Kani: the voter proof (`tmr::kani_proofs`) is verified under `cargo kani` in WSL. The SECDED proofs (`secded::kani_proofs`) are verified for 8-bit data only; the 64-bit proofs did not finish in the solver, so the full width rests on the exhaustive tests.
 
 ## What it does not model
 
 - Radiation physics: upset rates, cross-sections, latch-up, and single-event functional interrupts.
 - Multi-bit bursts in SECDED words. Bursts of two or more bits are detected only if they produce a non-zero syndrome with even overall parity.
 - Scrubbing schedules and time. Nothing here decides when to scrub.
-- A Kani proof for the SECDED corrector (todo): the symbolic 64-bit data is too large for the solver as written.
+- The SECDED proofs cover 8-bit data. A 64-bit proof is still open.
 
 ## Examples
 

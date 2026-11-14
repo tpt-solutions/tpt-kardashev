@@ -30,3 +30,4 @@ None.
 
 - `tmr::kani_proofs::no_single_corrupted_replica_changes_the_voter_result`: verified with `cargo kani` in WSL Ubuntu 24.04 (Kani does not run on Windows). It checks that for any value and any single replica overwritten with any value, the majority is unchanged.
 - SECDED proofs were tried and removed. `secded_detects_every_double_bit_error` ran for six hours without a verdict, and the single-bit run ended without one. They are not claimed. The exhaustive SECDED tests remain.
+- SECDED, bounded: `secded::kani_proofs` (8-bit data, all 72 codeword positions) verifies that every single-bit error is corrected and every double-bit error is detected, with `cargo kani` in WSL. The 64-bit data proof of the same properties did not finish; the bound is stated in the harness names and is not claimed to cover 64-bit data.
