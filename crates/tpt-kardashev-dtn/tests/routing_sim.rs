@@ -487,3 +487,38 @@ fn a_short_partition_delays_delivery_until_it_heals() {
     );
     assert_eq!(net.discarded(), 0);
 }
+
+#[test]
+fn a_partition_between_two_groups_cuts_only_the_links_that_cross_it() {
+    // Nodes {1, 2} and {3, 4} are split from 0 to 2 s. The links 1 <-> 2 and 3 <-> 4 stay up; the
+    // links 1 <-> 3 and 2 <-> 4 cross the split and are cut.
+    let mut net = network(
+        duplex(&[(1, 2), (3, 4), (1, 3), (2, 4)], 0, 100_000),
+        &[1, 2, 3, 4],
+    );
+    net.partition_sets(&[1, 2], &[3, 4], 0, 2_000);
+
+    let inside = bundle_bytes(1, 2, 0, 10_000_000, "inside the group");
+    net.send(1, 2, inside.clone()).expect("send");
+    let across = bundle_bytes(1, 3, 0, 10_000_000, "across the split");
+    net.send(1, 3, across.clone()).expect("send");
+
+    net.run_until(1_500);
+    assert_eq!(
+        net.inbox(2),
+        &[(1, inside)],
+        "the link inside one group carries traffic during the split"
+    );
+    assert!(
+        net.inbox(3).is_empty(),
+        "nothing crosses the split while it lasts"
+    );
+
+    net.run_until(30_000);
+    assert_eq!(
+        net.inbox(3),
+        &[(1, across)],
+        "delivered across the split after it heals"
+    );
+    assert_eq!(net.discarded(), 0);
+}

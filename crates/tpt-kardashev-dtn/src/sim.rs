@@ -485,6 +485,17 @@ impl Network {
         self.fail_link_between(b, a, start, end);
     }
 
+    /// Splits the nodes of `group_a` from those of `group_b` during `[start, end)`: every link
+    /// between the two groups is partitioned, in both directions, while links inside a group carry
+    /// traffic as usual. Nodes in neither group are unaffected.
+    pub fn partition_sets(&mut self, group_a: &[u64], group_b: &[u64], start: u64, end: u64) {
+        for &a in group_a {
+            for &b in group_b {
+                self.partition(a, b, start, end);
+            }
+        }
+    }
+
     /// Sets how long a suspicion of a failed link lasts, in milliseconds.
     pub fn set_suspect_hold(&mut self, ms: u64) {
         self.suspect_hold = ms;
