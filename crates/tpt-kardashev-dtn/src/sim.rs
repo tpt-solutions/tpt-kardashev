@@ -70,6 +70,8 @@ struct Held {
     wake: Option<u64>,
     /// Contacts whose volume this bundle has claimed while it waits.
     claims: Vec<(u64, u64, u64)>,
+    /// The node the bundle was received from, or `None` if this node originated it.
+    received_from: Option<u64>,
 }
 
 #[derive(Clone, Debug)]
@@ -307,6 +309,7 @@ impl Network {
             payload,
             wake: None,
             claims: Vec::new(),
+            received_from: (from != at).then_some(from),
         });
         true
     }
@@ -345,11 +348,14 @@ impl Network {
                 }
             };
             let available = |c: &Contact| self.available(c);
+            // A bundle is not sent back to the node it came from (SABR §3.2.5.2).
+            let excluded: Vec<u64> = h.received_from.into_iter().collect();
             let constraints = RouteConstraints {
                 expires: h.expires,
                 owlt_margin: self.owlt_margin,
                 evc,
                 available: &available,
+                excluded: &excluded,
             };
             let route = EarliestArrival.route_constrained(
                 &self.plan,

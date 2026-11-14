@@ -71,6 +71,10 @@ pub struct RouteConstraints<'a> {
     /// Volume (bytes) still unreserved on a contact. A contact with less than `evc` available is
     /// not used.
     pub available: &'a dyn Fn(&Contact) -> u64,
+    /// Nodes that the first hop may not enter: the node a non-critical bundle was received from,
+    /// so it is not sent straight back (CCSDS 734.3-B-1 §3.2.5.2). A route whose entry node is
+    /// listed is ignored.
+    pub excluded: &'a [u64],
 }
 
 /// Earliest-arrival routing (see the module documentation).
@@ -119,6 +123,7 @@ impl EarliestArrival {
             owlt_margin: 0,
             evc: 0,
             available: &unlimited,
+            excluded: &[],
         };
         self.route_constrained(plan, source, destination, now, size, free_at, &constraints)
     }
@@ -173,6 +178,9 @@ impl EarliestArrival {
                 }
                 if (constraints.available)(c) < constraints.evc {
                     continue; // the contact cannot carry the bundle's volume
+                }
+                if node == source && constraints.excluded.contains(&c.to) {
+                    continue; // the first hop may not enter an excluded node
                 }
                 let departure = ready.max(c.start).max(free_at(c));
                 let finish = departure.saturating_add(c.transmit_ms(size));
