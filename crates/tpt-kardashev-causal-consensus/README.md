@@ -51,3 +51,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Checking histories
 
 - `linearizable::is_linearizable` checks a single-register history of up to 16 operations for linearizability: a real-time-respecting order in which every read sees the latest write. It is exponential in the worst case, which is why the size is limited.
+
+## GlobalAgreed
+
+- `global`: operations at the `GlobalAgreed` level. A proposal commits once a majority of domains accept it, and each domain accepts one operation per key, so two conflicting values for a key cannot both commit. The protocol is one round and assumes no domain crashes and loses no state. Recovery, membership, and Byzantine faults are not covered.
