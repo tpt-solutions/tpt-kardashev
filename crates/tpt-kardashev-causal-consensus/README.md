@@ -2,7 +2,7 @@
 
 Causal ordering and hierarchical consensus (domains and federation) with consistency bounds stated per level.
 
-**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`), fixed-size vector clocks (`vector::VectorClock`), a causally ordered operation log by causal broadcast (`causal::CausalBroadcast`, feature `alloc`), and the consistency levels with latency lower bounds (`consistency`). The domain and federation layers are not written yet.
+**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`), fixed-size vector clocks (`vector::VectorClock`), a causally ordered operation log by causal broadcast (`causal::CausalBroadcast`, feature `alloc`), the consistency levels with latency lower bounds (`consistency`), the transport trait with a deterministic simulated network (`transport`), and Raft-style domain consensus (`domain::RaftNode`, feature `alloc`). The federation layer is not written yet.
 
 ## Features
 
@@ -39,3 +39,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Transport and simulation
 
 - `transport::Transport<M>` is the pluggable trait. `transport::SimNetwork<M>` is a deterministic simulated network on caller-supplied virtual time: seeded delay and jitter (which reorders), loss, duplication, and partitions of a pair of nodes. A run is reproducible from its seed. Partitions of node sets, node crashes, and the invariant checks are not written yet.
+
+## Domain consensus
+
+- `domain::RaftNode` is a Raft-style leader-based node for one domain, from Ongaro and Ousterhout (2014). At most one leader per term; a command commits once a majority holds it in the leader's term. It is tested on a simulated cluster under loss, duplication and partitions. Membership change, log compaction, and any Byzantine tolerance are not written.

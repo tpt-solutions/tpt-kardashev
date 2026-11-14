@@ -292,17 +292,17 @@ Exit: each crate at v0.1 exit.
 - [x] Hybrid logical clock and vector clock — `clock::HybridClock` (strictly increasing per node, causal across receives, drift bound) and `vector::VectorClock<N>` (fixed size, inline), tested in `tests/clocks.rs`
 - [x] Causally ordered operation log — `causal::CausalBroadcast` (feature `alloc`): causal broadcast with vector-clock dependencies; a message is delivered only after its causes, duplicates are dropped, early messages wait in a buffer. Tested with a seeded simulation (4 nodes, random sends, reordering and duplicates: every node delivers every message once, in causal order) and a reply-before-cause case
 - [ ] Optional `relativity` feature: `CausalOrder` as ordering source
-- [ ] Domain layer: Raft-style leader election and log replication within a domain
+- [x] Domain layer: Raft-style leader election and log replication within a domain — `domain::RaftNode`: leader election with seeded timeouts, heartbeats, log replication with conflict repair, and commitment by majority in the leader's term. Tested on a five-node simulated cluster (`tests/domain.rs`): one leader, commitment in order on every node, a refused command naming the leader, an isolated leader that cannot commit while the majority elects and commits, and invariants checked at every step under loss, duplication and partitions. Membership change and log compaction are not written
 - [x] `Transport` trait (pluggable) — `transport::Transport<M>` takes time from the caller, with `send` and `deliver`; `transport::SimNetwork` is the simulated implementation (tests in `tests/transport.rs`)
 - [ ] Federation layer: signed, hash-chained epoch summaries
 - [ ] Optional `tpt-crypto` feature for signatures/hashes (licence-checked)
 - [x] `ConsistencyLevel`: Commutative, Causal, DomainLinearizable, GlobalAgreed — `consistency::ConsistencyLevel`, with `needs_cross_domain_round_trip` and `needs_domain_round_trip` as the spec table states them (tests in `tests/consistency.rs`)
 - [x] API reporting latency lower bound per level — `ConsistencyLevel::latency_lower_bound_ms(Delays)`: zero for Commutative and Causal, two intra-domain one-way delays for DomainLinearizable, two cross-domain one-way delays for GlobalAgreed (a round trip is two one-way delays; the spec wording gives one, a weaker valid bound). Saturating; tested
-- [ ] `Domain`, `Federation`, `Proposal<Op>` types
+- [ ] `Domain`, `Federation`, `Proposal<Op>` types — partial: `RaftNode` and `DomainError` are written; `Domain`, `Federation` and `Proposal<Op>` are not
 - [ ] Deterministic simulator with partitions, delay, duplication, — partial: `transport::SimNetwork` gives seeded delay, jitter (which reorders), loss, duplication and timed partitions of a pair of nodes, with counters; still to do: partitions of node sets, node crashes, and the invariant checks and randomised partition runs below reordering
 - [ ] Invariant checks: no conflicting `GlobalAgreed` commits; causal order never violated
 - [ ] Linearizability checker for small domain-layer histories
-- [ ] Randomised partition/delay simulation tests
+- [ ] Randomised partition/delay simulation tests — partial: the domain layer has seeded loss, duplication and partitions with per-step invariant checks (`tests/domain.rs`); federation and GlobalAgreed runs are still to do
 - [ ] Fuzz: message decoders
 - [ ] `no_std` + `alloc` build
 - [ ] README states honest limits (CAP under partition); Byzantine tolerance deferred
