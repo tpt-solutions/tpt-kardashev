@@ -41,6 +41,8 @@ pub enum Error {
         /// The quantity that is negative.
         what: &'static str,
     },
+    /// A burn window must have a start no later than its end.
+    InvalidWindow,
 }
 
 impl fmt::Display for Error {
@@ -57,6 +59,7 @@ impl fmt::Display for Error {
             Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
             Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
             Error::Negative { what } => write!(f, "{what} must not be negative"),
+            Error::InvalidWindow => f.write_str("the burn window must not end before it starts"),
             Error::InvalidTimeOfFlight => {
                 f.write_str("the time of flight must be positive and finite")
             }

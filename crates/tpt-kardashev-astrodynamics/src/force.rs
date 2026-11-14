@@ -330,3 +330,92 @@ impl ForceModel for AtmosphericDrag {
         Ok(v_rel * coefficient)
     }
 }
+
+/// The direction of a thrust acceleration.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ThrustDirection {
+    /// A fixed direction in the inertial frame (a unit vector is not required; it is normalised).
+    Inertial(Vec3),
+    /// Along the spacecraft's velocity, which is the prograde direction on a circular orbit.
+    Prograde,
+}
+
+/// A finite burn: a constant thrust acceleration, in a fixed direction or along the velocity,
+/// active from `start` to `end` seconds past the epoch.
+///
+/// The acceleration is `magnitude` (km/s²) in the chosen direction. The spacecraft's mass is not
+/// tracked, so the acceleration stays constant through the burn: this is a model of an acceleration,
+/// not of a rocket's mass flow. Outside the window the thrust is zero.
+///
+/// The thrust is discontinuous at the window edges, and a fixed-step integrator mis-samples a step
+/// that straddles an edge. Use a step much shorter than the burn: for a 10 s burn, a 0.1 s step gives
+/// the impulse to about 3×10⁻⁵, and a 0.5 s step to about 8×10⁻³.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Thrust {
+    direction: ThrustDirection,
+    magnitude: f64,
+    start: f64,
+    end: f64,
+}
+
+impl Thrust {
+    /// A burn with `magnitude` (km/s², at least zero) in `direction`, active from `start` to `end`
+    /// seconds past the epoch. Fails with [`Error::Negative`] for a negative magnitude,
+    /// [`Error::NonFinite`] for non-finite inputs or a zero inertial direction, and
+    /// [`Error::InvalidWindow`] if `end` is before `start`.
+    pub fn new(
+        direction: ThrustDirection,
+        magnitude: f64,
+        start: Seconds,
+        end: Seconds,
+    ) -> Result<Self, Error> {
+        if !magnitude.is_finite() {
+            return Err(Error::NonFinite {
+                what: "thrust magnitude (km/s²)",
+            });
+        }
+        if magnitude < 0.0 {
+            return Err(Error::Negative {
+                what: "thrust magnitude",
+            });
+        }
+        if let ThrustDirection::Inertial(d) = direction {
+            let n = d.norm();
+            if !(d.is_finite() && n.is_finite() && n > 0.0) {
+                return Err(Error::NonFinite {
+                    what: "thrust direction",
+                });
+            }
+        }
+        if end.get() < start.get() {
+            return Err(Error::InvalidWindow);
+        }
+        Ok(Self {
+            direction,
+            magnitude,
+            start: start.get(),
+            end: end.get(),
+        })
+    }
+}
+
+impl ForceModel for Thrust {
+    fn acceleration(&self, t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
+        let time = t.get();
+        if time < self.start || time >= self.end {
+            return Ok(Vec3::new(0.0, 0.0, 0.0));
+        }
+        let unit = match self.direction {
+            ThrustDirection::Inertial(d) => d * (1.0 / d.norm()),
+            ThrustDirection::Prograde => {
+                let v = state.velocity;
+                let n = v.norm();
+                if n.is_nan() || n <= 0.0 {
+                    return Err(Error::Degenerate);
+                }
+                v * (1.0 / n)
+            }
+        };
+        Ok(unit * self.magnitude)
+    }
+}
