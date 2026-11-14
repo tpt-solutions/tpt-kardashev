@@ -2,7 +2,7 @@
 
 Time scales, reference frames, orbital elements, propagation, Lambert solving and impulsive manoeuvres.
 
-**Status:** early slice. Implemented: unit newtypes (`Kilometres`, `Seconds`, `Radians`), a small `Vec3`, Keplerian elements for elliptic two-body orbits with conversions to and from state vectors, and epochs on the TT scale with TAI, UTC (through a caller-supplied leap-second table) and Julian dates. Everything else in the v0.1 scope is not written yet (see the workspace `todo.md` §2.2).
+**Status:** early slice. Implemented: unit newtypes (`Kilometres`, `Seconds`, `Radians`), a small `Vec3`, Keplerian elements for elliptic two-body orbits with conversions to and from state vectors, epochs on the TT scale with TAI, UTC (through a caller-supplied leap-second table) and Julian dates, and the perifocal and RTN frames. Everything else in the v0.1 scope is not written yet (see the workspace `todo.md` §2.2).
 
 ## Features
 
@@ -25,7 +25,7 @@ Time scales, reference frames, orbital elements, propagation, Lambert solving an
 - Parabolic and hyperbolic orbits. Their states are rejected with `Error::NotElliptic`.
 - Equinoctial elements. The singular cases above use the fixed conventions instead.
 - TDB, UT1 and Earth orientation. Leap seconds come from the caller's table, which the crate does not bundle; a UTC second of 60 (leap-second insertion) is rejected. Epochs are `f64` seconds past J2000, resolving about 0.5 µs.
-- Reference frames, propagation, force models, Lambert solving, manoeuvres and ephemerides. Force-model limits are stated in full at v0.1 (todo §2.2).
+- Reference frames beyond perifocal and RTN. LVLH is not written, because its axis conventions differ between users and need an explicit choice. Heliocentric ecliptic (needs a heliocentric origin) and Earth-fixed (needs UT1) are not written either. Propagation, force models, Lambert solving, manoeuvres and ephemerides. Force-model limits are stated in full at v0.1 (todo §2.2).
 - No ephemeris data is bundled. Low-thrust approximations are post-v0.1. SGP4 stays behind the `sgp4` feature (spec §12.4).
 
 ## Checks

@@ -14,7 +14,7 @@
 //!
 //! Not modelled: parabolic and hyperbolic orbits, and equinoctial elements.
 
-use crate::{Error, Kilometres, Radians, Vec3};
+use crate::{Error, Kilometres, Mat3, Radians, Vec3};
 use core::f64::consts::TAU;
 
 /// Below this, an eccentricity, or the sine of an inclination relative to the angular-momentum
@@ -211,13 +211,20 @@ impl Keplerian {
         })
     }
 
-    /// Rotates a perifocal vector into the reference frame: Rz(Ω) Rx(i) Rz(ω).
-    fn rotate(&self, v: Vec3) -> Vec3 {
-        let (sw, cw) = self.argp.get().sin_cos();
+    /// The rotation from the perifocal frame (x towards periapsis, z along the orbit normal) to
+    /// the reference frame: Rz(Ω) · Rx(i) · Rz(ω).
+    pub fn perifocal_to_inertial(&self) -> Mat3 {
+        let rotation_z = |theta: f64| {
+            let (s, c) = theta.sin_cos();
+            Mat3::from_rows([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        };
         let (si, ci) = self.i.get().sin_cos();
-        let (so, co) = self.raan.get().sin_cos();
-        let v1 = Vec3::new(cw * v.x - sw * v.y, sw * v.x + cw * v.y, v.z);
-        let v2 = Vec3::new(v1.x, ci * v1.y - si * v1.z, si * v1.y + ci * v1.z);
-        Vec3::new(co * v2.x - so * v2.y, so * v2.x + co * v2.y, v2.z)
+        let rotation_x = Mat3::from_rows([[1.0, 0.0, 0.0], [0.0, ci, -si], [0.0, si, ci]]);
+        rotation_z(self.raan.get()) * rotation_x * rotation_z(self.argp.get())
+    }
+
+    /// Rotates a perifocal vector into the reference frame.
+    fn rotate(&self, v: Vec3) -> Vec3 {
+        self.perifocal_to_inertial().mul_vec(v)
     }
 }
