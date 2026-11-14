@@ -120,7 +120,7 @@ Exit: each crate at its v0.1 exit.
 
 ### 1.2 `tpt-kardashev-relativity`
 - [x] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance — done: the bound is a configured limit (`DEFAULT_MAX_DRIFT_MS`), recorded in provenance
-- [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes — partial: `f64` only; generic `Scalar` trait not defined
+- [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes — partial: `f64` only; generic `Scalar` trait deferred past v0.1 (decided: no consumer needs a scalar other than `f64`, and a generic scalar would touch every type in the crate)
 - [x] `Event`, `FourVector`, `Interval` (timelike/spacelike/lightlike)
 - [x] `Lorentz` boost with `|v| < c` enforced; composition via rapidity
 - [x] Time dilation, length contraction, relativistic Doppler
@@ -150,8 +150,8 @@ Exit: each crate at its v0.1 exit.
 - [x] `Checkpoint<T>` with rollback and watchdog-friendly progress marker
 - [x] `FaultInjector` (seeded bit flips, burst errors)
 - [x] Volatile access behind a feature, `unsafe` documented (the one exception to forbid-unsafe)
-- [ ] Kani proof: no single corrupted replica changes the voter result — not run: Kani not installed; exhaustive voter test instead
-- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error — not run: Kani not installed; exhaustive SECDED test instead
+- [x] Kani proof: no single corrupted replica changes the voter result — verified by Kani (`cargo kani`, WSL Ubuntu 24.04; `tmr::kani_proofs`); exhaustive voter test kept
+- [ ] Kani proof: SECDED corrects every single-bit error and detects every double-bit error — not verified: both harnesses were tried and removed. The double-bit harness was still in the SAT solver after six hours; the single-bit run ended without a verdict. Exhaustive SECDED tests cover the property; a bounded-data proof is still to do
 - [x] Exhaustive tests over small word sizes
 - [x] Injector-driven property tests
 - [x] `no_std` build, thumbv7em build

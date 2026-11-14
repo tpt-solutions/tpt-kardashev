@@ -25,3 +25,8 @@ None.
 
 - `tpt-solutions/tpt-equinox`, crate `tpt-equinox-tmr`, read, not copied. Its `vote3` returns a value in every case. When all three copies differ, it returns copy `a` and sets `double_mismatch`. This crate's `Nmr::vote` returns `Err(NoMajority)` in that case, so no caller can take a guess for a voted value. This crate keeps its behaviour. The sibling's flag is a sound design too; the difference is which one a caller sees by default.
 - `tpt-for-redundancy`: not found on GitHub under `tpt-solutions` (404). It stays unreviewed.
+
+## Kani verification (todo §1.3)
+
+- `tmr::kani_proofs::no_single_corrupted_replica_changes_the_voter_result`: verified with `cargo kani` in WSL Ubuntu 24.04 (Kani does not run on Windows). It checks that for any value and any single replica overwritten with any value, the majority is unchanged.
+- SECDED proofs were tried and removed. `secded_detects_every_double_bit_error` ran for six hours without a verdict, and the single-bit run ended without one. They are not claimed. The exhaustive SECDED tests remain.
