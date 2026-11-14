@@ -17,6 +17,8 @@ extern crate std;
 extern crate alloc;
 
 #[cfg(feature = "std")]
+pub mod adaptive;
+#[cfg(feature = "std")]
 pub mod atmosphere;
 #[cfg(feature = "std")]
 pub mod elements;

@@ -29,6 +29,8 @@ pub enum Error {
     InvalidLeapSeconds,
     /// The Newton iteration for the universal Kepler equation did not converge.
     NoConvergence,
+    /// A tolerance must be positive and finite.
+    InvalidTolerance,
     /// An integration step must be positive and finite.
     InvalidStep,
     /// A radius must be positive and finite, and for a bi-elliptic transfer the intermediate
@@ -88,6 +90,7 @@ impl fmt::Display for Error {
             Error::Degenerate => f.write_str("the state has zero angular momentum"),
             Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
+            Error::InvalidTolerance => f.write_str("a tolerance must be positive and finite"),
             Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
             Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
             Error::Negative { what } => write!(f, "{what} must not be negative"),

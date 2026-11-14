@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `adaptive::AdaptiveCowell`: adaptive propagation with the Dormand–Prince 5(4) embedded Runge–Kutta pair. Steps are accepted when the scaled RMS error over position and velocity is at most one; the next step follows the fifth-root rule, growing by at most five and shrinking by at least ten. Tests in `tests/adaptive.rs`: three orbits of an eccentric orbit against the analytic solution (5e-7 km with 1e-12 tolerances, bound 1e-6 km), tighter tolerances giving smaller errors, energy drift 4e-12 over five orbits, backward propagation, zero duration, and rejection of invalid tolerances. New error `InvalidTolerance`.
+
+## Unreleased
+
 - `Error` (`#[non_exhaustive]`): non-finite input, invalid μ, non-elliptic orbit, degenerate state.
 - `Kilometres`, `Seconds`, `Radians`: finite-checked unit newtypes; `Vec3` with dot, cross, add, subtract and scale.
 - `Keplerian` elements and `StateVector`: `from_state` and `to_state` for elliptic two-body orbits, with the singular-case conventions in the README. Tests in `tests/elements.rs`: known values, the angular-momentum and energy identities, round trips over a grid of 2160 element sets, and rejection of invalid input.
