@@ -17,8 +17,10 @@ No CBOR or BPv7 code was taken from any source. The codec was written from the R
 
 ## Reviewed for reference (not copied)
 
-- substrate-dtn and tpt-zenith/routing (todo §2.1): **not reviewed.** Neither repo is in the local workspace (`C:\Programming` holds tpt-math, tpt-rustvac and others, but not these). The review stays open until they are available.
-- tpt-rfc and tpt-aion for existing CBOR (todo §2.1, spec §12.6): **not reviewed.** Same reason. The codec is written from RFC 8949, so no prior-art conflict is known.
+- `tpt-solutions/tpt-zenith`, `routing/cgr` (Go, MIT OR Apache-2.0), read from a shallow clone, not copied: a contact-plan type with `FindRoute(source, dest, size, readyAt)` that takes earliest arrival, with contact duration and volume checks (`ArrivalTime`). It is a simpler search than this crate's, and it does not do the SABR rules (expiry, owlt margin, volume reservation). It is a sanity reference for earliest-arrival behaviour, not a design source.
+- `tpt-solutions/tpt-rfc`, `tpt-cbor` (Rust, MIT OR Apache-2.0, "clean-room" per its own description), read, not copied: an RFC 8949 codec with a decoder that takes options. This crate's codec was written from RFC 8949 and was not compared line by line. Its existence means the spec §12.6 check (use existing CBOR?) is answered: there is a sibling codec, and this crate keeps its own in-crate codec, because a dependency on another repo's crate would break the no-inter-crate rule in CLAUDE.md.
+- `tpt-solutions/tpt-aion`: no CBOR code (no matches in the clone).
+- `substrate-dtn`: not found on GitHub under `tpt-solutions` or `PhillipC05` (404). It stays unreviewed.
 - Routing (`route.rs`): earliest-arrival search is Dijkstra over arrival times, with waiting and store-and-forward. It is written from the general technique, not from any source. The contact-graph routing design in CCSDS 734.2-B and the SABR specification were **not** consulted; the router does not claim to implement them.
 
 ## Third-party licences

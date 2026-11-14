@@ -190,8 +190,8 @@ Exit: each crate at its v0.1 exit.
 Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demonstrated in an example.
 
 ### 2.1 `tpt-kardashev-dtn`
-- [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance — blocked: neither repo is in the local workspace; provenance records this
-- [ ] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6) — blocked: not in the local workspace; provenance records this
+- [ ] Review `substrate-dtn` and `tpt-zenith/routing`; record in provenance — partial: `tpt-zenith/routing/cgr` read (earliest arrival, no SABR rules); `substrate-dtn` is not on GitHub under `tpt-solutions` or `PhillipC05` and stays open
+- [x] Check `tpt-rfc` / `tpt-aion` for existing CBOR before writing one (§12.6) — done: `tpt-rfc` has a sibling CBOR codec (`tpt-cbor`) and `tpt-aion` has none; this crate keeps its own codec, since a dependency on another repo would break the no-inter-crate rule (provenance records this)
 - [ ] Confirm current RFC 9171 (BPv7), RFC 5326 (LTP), CCSDS 734.1-B and SABR documents — partial: RFC 9171, RFC 8949 and RFC 5326 read; CCSDS 734.1-B not yet; SABR (CCSDS 734.3-B-1) read
 - [x] Minimal in-crate CBOR codec (definite and indefinite lengths as required by BPv7)
 - [x] Endpoint ids: `dtn:` and `ipn:`
