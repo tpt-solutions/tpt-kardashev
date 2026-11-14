@@ -52,7 +52,6 @@ RFC 9171 contains no byte-level bundle examples; its appendix B is a CDDL schema
 - Administrative records and status reports. The flags are encoded and checked; the records are not built or parsed.
 - Only the `dtn` and `ipn` URI schemes. Other scheme codes decode to `Error::UnknownScheme`.
 - Routing works on node numbers. Mapping an endpoint to a node is the caller's job; a `dtn` endpoint has no node number here.
-- The `fec` feature is declared per spec §4.2 and has no code behind it yet.
 
 ## Licence
 

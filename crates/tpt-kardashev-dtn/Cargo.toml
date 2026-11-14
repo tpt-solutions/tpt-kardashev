@@ -16,7 +16,6 @@ default = ["std"]
 std = ["alloc"]
 alloc = []
 serde = ["dep:serde"]
-fec = []
 
 [dependencies]
 # No `derive` feature: serde_derive pulls in a Unicode-3.0 dependency, which the licence policy denies.

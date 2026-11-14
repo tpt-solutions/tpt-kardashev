@@ -55,7 +55,7 @@ Exit: CI green on empty crates.
 - [x] Each crate: `README.md` (one-line description, what it does not model), `CHANGELOG.md`, `examples/`
 - [x] Each crate: `docs/provenance/<crate>.md` stub (origin of ported code, licence of any third-party source)
 - [x] Add placeholder `examples/` directory at repo root for cross-crate examples
-- [x] Optional feature flags declared per §4.2 (relativity, dtn, fec, energy) with no mandatory internal deps
+- [x] Optional feature flags declared per §4.2 (relativity, dtn, energy) with no mandatory internal deps
 - [x] Verify no sibling `path = "../tpt-xyz"` dependencies outside this workspace
 
 ### Repo docs
@@ -205,7 +205,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] `ConvergenceLayer` trait (`convergence`)
 - [ ] LTP convergence layer (segments, sessions, reliability via report/ack, timers on virtual clock) — partial: segment codec (`ltp::segment`), red-part sessions with report/ack and countdown timers on a virtual clock (`ltp::session`), and `convergence::LtpConvergence` carrying one encoded bundle per LTP block; green part, cancellation procedures and link-state scheduling not modelled
 - [x] Reliability note: bundle-level custody/reliability extension deferred, documented as such (README)
-- [ ] Optional `fec` feature — blocked by the no-inter-crate-dependency rule (CLAUDE.md): spec §4 wires `tpt-kardashev-dtn` to `tpt-kardashev-archive-codes`, which cannot be a dependency. `crates/tpt-kardashev-dtn/Cargo.toml` declares `fec = []` as an empty placeholder. Decide: either drop the spec row and the placeholder, or define a dtn-local FEC trait that the application connects to archive-codes
+- [x] Optional `fec` feature — dropped: the no-inter-crate-dependency rule (CLAUDE.md) forbids `tpt-kardashev-dtn` depending on `tpt-kardashev-archive-codes`, so the spec §4.2 row and the empty `fec` feature were removed. Link-layer FEC, if wanted later, needs a dtn-local trait and a decision recorded then
 - [x] Deterministic simulator with virtual clock and contact-plan-driven links (`sim::Network`: a datagram moves only inside a contact window, at the contact's rate, plus one-way light time)
 - [ ] Seeded fault injection (loss, delay, partition, duplication, reordering) — partial: seeded loss, duplication, and delay jitter (which reorders); link failures (`fail_link`) learned from cancelled sessions; `Network::partition` cuts both directions of a link for a time window (tested: a short partition delays delivery and does not mark the link failed); still no partitions that split a set of nodes, and no reordering except through jitter
 - [ ] RFC 9171 appendix examples as byte-exact vectors — partial: RFC 9171 has no byte-level examples (its appendix B is CDDL). Used a bundle derived by hand from the CDDL, and the RFC 8949 Appendix A CBOR examples
