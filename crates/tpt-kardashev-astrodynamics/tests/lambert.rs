@@ -106,6 +106,41 @@ fn retrograde_transfer_round_trips_through_the_propagator() {
     assert_vec_close(v2, end.velocity, REL);
 }
 
+/// Time from periapsis to true anomaly `nu` on an ellipse, by Kepler's equation: the eccentric
+/// anomaly from tan(E/2) = √((1−e)/(1+e))·tan(ν/2), then M = E − e·sin E, and t = M/n.
+fn time_from_periapsis(a: f64, e: f64, nu: f64) -> f64 {
+    let n = (MU / (a * a * a)).sqrt();
+    let big_e = 2.0 * (((1.0 - e) / (1.0 + e)).sqrt() * (nu / 2.0).tan()).atan();
+    let big_e = if big_e < 0.0 { big_e + 2.0 * PI } else { big_e };
+    (big_e - e * big_e.sin()) / n
+}
+
+#[test]
+fn quarter_turn_of_an_ellipse_matches_kepler_time_of_flight() {
+    // The time from ν = 0 to ν = π/2 comes from Kepler's equation alone. Lambert, given the two
+    // positions and that time, must return the velocities of the element set at both ends.
+    let (a, e, i, raan, argp) = (7_000.0, 0.3, 0.6, 1.0, 2.0);
+    let element_set = |nu: f64| {
+        Keplerian::new(
+            Kilometres::new(a).expect("finite"),
+            e,
+            Radians::new(i).expect("finite"),
+            Radians::new(raan).expect("finite"),
+            Radians::new(argp).expect("finite"),
+            Radians::new(nu).expect("finite"),
+        )
+        .expect("elliptic")
+        .to_state(MU)
+        .expect("state")
+    };
+    let start = element_set(0.0);
+    let end = element_set(PI / 2.0);
+    let tof = time_from_periapsis(a, e, PI / 2.0);
+    let (v1, v2) = lambert(MU, start.position, end.position, secs(tof), true).expect("solves");
+    assert_vec_close(v1, start.velocity, REL);
+    assert_vec_close(v2, end.velocity, REL);
+}
+
 #[test]
 fn degenerate_geometry_is_rejected() {
     let r1 = Vec3::new(7_000.0, 0.0, 0.0);
