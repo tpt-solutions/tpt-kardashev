@@ -47,3 +47,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Federation
 
 - `federation`: hash-chained epoch summaries. Each domain seals each epoch of committed commands into a summary that names the previous summary's hash and a SHA-256 digest of the epoch's commands (`hash::sha256`, written in-crate). A chain detects a changed, reordered, dropped or misattributed summary. It is integrity against a copy of the head, not authenticity: signatures are not written, and need a licence-checked dependency decision (`tpt-crypto`).
+
+## Checking histories
+
+- `linearizable::is_linearizable` checks a single-register history of up to 16 operations for linearizability: a real-time-respecting order in which every read sees the latest write. It is exponential in the worst case, which is why the size is limited.

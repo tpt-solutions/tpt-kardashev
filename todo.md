@@ -299,9 +299,9 @@ Exit: each crate at v0.1 exit.
 - [x] `ConsistencyLevel`: Commutative, Causal, DomainLinearizable, GlobalAgreed — `consistency::ConsistencyLevel`, with `needs_cross_domain_round_trip` and `needs_domain_round_trip` as the spec table states them (tests in `tests/consistency.rs`)
 - [x] API reporting latency lower bound per level — `ConsistencyLevel::latency_lower_bound_ms(Delays)`: zero for Commutative and Causal, two intra-domain one-way delays for DomainLinearizable, two cross-domain one-way delays for GlobalAgreed (a round trip is two one-way delays; the spec wording gives one, a weaker valid bound). Saturating; tested
 - [ ] `Domain`, `Federation`, `Proposal<Op>` types — partial: `RaftNode` and `DomainError` are written; `Domain`, `Federation` and `Proposal<Op>` are not
-- [ ] Deterministic simulator with partitions, delay, duplication, — partial: `transport::SimNetwork` gives seeded delay, jitter (which reorders), loss, duplication and timed partitions of a pair of nodes, with counters; still to do: partitions of node sets, node crashes, and the invariant checks and randomised partition runs below reordering
+- [ ] Deterministic simulator with partitions, delay, duplication, — partial: `transport::SimNetwork` gives seeded delay, jitter (which reorders), loss, duplication, timed partitions of a pair and of two node sets (`partition_sets`), and timed crashes (`crash`, which drops a node's traffic); still to do: node crashes that also stop the node's timers in the harness, and the invariant checks below
 - [ ] Invariant checks: no conflicting `GlobalAgreed` commits; causal order never violated
-- [ ] Linearizability checker for small domain-layer histories
+- [x] Linearizability checker for small domain-layer histories — `linearizable::is_linearizable`, a depth-first search with memoised failures over a single register (at most 16 operations; tests in `tests/linearizable.rs`: sequential, stale, concurrent, order-disagreeing and never-written histories, and limits)
 - [ ] Randomised partition/delay simulation tests — partial: the domain layer has seeded loss, duplication and partitions with per-step invariant checks (`tests/domain.rs`); federation and GlobalAgreed runs are still to do
 - [ ] Fuzz: message decoders
 - [ ] `no_std` + `alloc` build
