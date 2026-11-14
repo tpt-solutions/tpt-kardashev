@@ -196,6 +196,13 @@ fn malformed_and_big_endian_files_are_rejected() {
         read_segments(&truncated),
         Err(Error::Malformed { .. })
     ));
+    // A summary count that runs past its 1024-byte record is malformed, not read further.
+    let mut overfull = good();
+    put_f64(&mut overfull, 1024 + 16, 100.0);
+    assert!(matches!(
+        read_segments(&overfull),
+        Err(Error::Malformed { .. })
+    ));
 }
 
 #[test]

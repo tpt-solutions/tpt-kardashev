@@ -135,6 +135,13 @@ pub fn read_segments(bytes: &[u8]) -> Result<Vec<Segment>, Error> {
                 what: "a summary count is not a count",
             });
         }
+        // Summaries lie within their own record, so the count is bounded by the record's size. This
+        // also bounds the work per record on a malformed file.
+        if 24.0 + count * SUMMARY_BYTES as f64 > RECORD_BYTES as f64 {
+            return Err(Error::Malformed {
+                what: "the summaries run past their record",
+            });
+        }
         for k in 0..count as usize {
             let s = base + 24 + k * SUMMARY_BYTES;
             segments.push(Segment {
