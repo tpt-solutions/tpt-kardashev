@@ -121,6 +121,84 @@ impl ForceModel for J2Zonal {
     }
 }
 
+/// The perturbing acceleration of the zonal harmonics of degrees 2 to 4 of an oblate central body,
+/// in the same inertial frame as [`J2Zonal`]. With the geopotential written as
+/// `U = (μ/r)·(1 − Σₙ Jₙ (R/r)ⁿ Pₙ(z/r))`, and `s = z/r`, `q = R/r`, the perturbation is
+///
+/// `a = (μ/r³)·S₁·(x, y, z) + (μ/r⁴)·S₂·(z·x, z·y, −(x² + y²))`, where
+/// `S₁ = Σₙ (n+1)·Jₙ·qⁿ·Pₙ(s)` and `S₂ = Σₙ Jₙ·qⁿ·Pₙ′(s)`.
+///
+/// The coefficients are supplied by the caller. The crate does not bundle J3 or J4: the values
+/// recalled for EGM96 have not been checked against a primary source (see the provenance file).
+/// With `j3 = j4 = 0` this reduces to [`J2Zonal`] exactly.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ZonalHarmonics {
+    mu: f64,
+    radius: f64,
+    j2: f64,
+    j3: f64,
+    j4: f64,
+}
+
+impl ZonalHarmonics {
+    /// Zonal harmonics for a body with parameter `mu` (km³/s²), reference radius `radius` (km), and
+    /// coefficients `j2`, `j3`, `j4`. Validation is as for [`J2Zonal::new`].
+    pub fn new(mu: f64, radius: f64, j2: f64, j3: f64, j4: f64) -> Result<Self, Error> {
+        if !(mu.is_finite() && mu > 0.0) {
+            return Err(Error::InvalidMu);
+        }
+        if !radius.is_finite() || radius <= 0.0 {
+            return Err(Error::NonFinite {
+                what: "reference radius (km)",
+            });
+        }
+        for (what, value) in [("J2", j2), ("J3", j3), ("J4", j4)] {
+            if !value.is_finite() {
+                return Err(Error::NonFinite { what });
+            }
+        }
+        Ok(Self {
+            mu,
+            radius,
+            j2,
+            j3,
+            j4,
+        })
+    }
+}
+
+impl ForceModel for ZonalHarmonics {
+    fn acceleration(&self, _t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
+        let p = state.position;
+        let r = p.norm();
+        if r.is_nan() || r <= 0.0 {
+            return Err(Error::Degenerate);
+        }
+        let s = p.z / r;
+        let q = self.radius / r;
+        // Legendre polynomials of degrees 2 to 4 and their derivatives with respect to s.
+        let p2 = 0.5 * (3.0 * s * s - 1.0);
+        let dp2 = 3.0 * s;
+        let p3 = 0.5 * (5.0 * s * s * s - 3.0 * s);
+        let dp3 = 0.5 * (15.0 * s * s - 3.0);
+        let p4 = (35.0 * s.powi(4) - 30.0 * s * s + 3.0) / 8.0;
+        let dp4 = 0.5 * (35.0 * s * s * s - 15.0 * s);
+        let s1 = 3.0 * self.j2 * q * q * p2
+            + 4.0 * self.j3 * q.powi(3) * p3
+            + 5.0 * self.j4 * q.powi(4) * p4;
+        let s2 = self.j2 * q * q * dp2 + self.j3 * q.powi(3) * dp3 + self.j4 * q.powi(4) * dp4;
+        let r3 = r * r * r;
+        let a = self.mu / r3 * s1;
+        let b = self.mu / (r3 * r) * s2;
+        let rho2 = p.x * p.x + p.y * p.y;
+        Ok(Vec3::new(
+            a * p.x + b * p.z * p.x,
+            a * p.y + b * p.z * p.y,
+            a * p.z - b * rho2,
+        ))
+    }
+}
+
 /// Gravitational parameter of the Sun, in km³/s² (DE430 value, as recalled; see the provenance
 /// file).
 pub const SUN_MU_KM3_S2: f64 = 1.327_124_400_41e11;
