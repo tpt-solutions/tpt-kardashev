@@ -203,7 +203,7 @@ impl<C: Clone> RaftNode<C> {
     }
 
     fn majority(&self) -> usize {
-        (self.peers.len() + 1) / 2 + 1
+        self.peers.len().div_ceil(2) + 1
     }
 
     fn next_random(&mut self) -> u64 {

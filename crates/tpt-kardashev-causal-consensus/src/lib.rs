@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Causal ordering and hierarchical consensus (domains and federation) with consistency bounds stated per level.
 //!
-//! Implemented so far: the hybrid logical clock ([`clock`]) and fixed-size vector clocks
-//! ([`vector`]). The operation log, the domain and federation layers, and the consistency levels
-//! are not written yet. See the workspace `todo.md` for this crate's v0.1 scope.
+//! Implemented: hybrid logical and fixed-size vector clocks ([`clock`], [`vector`]); a causally
+//! ordered log by causal broadcast (`causal`, feature `alloc`); consistency levels with latency bounds
+//! ([`consistency`]); a message transport and a deterministic simulated network (`transport`, feature `alloc`);
+//! Raft-style domain consensus (`domain`, feature `alloc`); hash-chained epoch summaries (`federation`, feature `alloc`, with
+//! [`hash`]). Not yet: signatures, the Domain/Federation/Proposal types, and the consistency checks
+//! across domains. See the workspace `todo.md` for this crate's v0.1 scope.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -21,6 +24,9 @@ pub mod consistency;
 #[cfg(feature = "alloc")]
 pub mod domain;
 pub mod error;
+#[cfg(feature = "alloc")]
+pub mod federation;
+pub mod hash;
 #[cfg(feature = "alloc")]
 pub mod transport;
 pub mod vector;
