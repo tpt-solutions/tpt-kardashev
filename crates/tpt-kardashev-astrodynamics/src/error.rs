@@ -48,6 +48,22 @@ pub enum Error {
         /// The quantity that is out of range.
         what: &'static str,
     },
+    /// A file is not a well-formed binary SPK (DAF) kernel, or is truncated. `what` says what is
+    /// wrong.
+    Malformed {
+        /// What is wrong with the file.
+        what: &'static str,
+    },
+    /// A file uses a feature this reader does not support (for example a segment type other than
+    /// 2, or a frame other than J2000). `what` names it.
+    Unsupported {
+        /// The unsupported feature.
+        what: &'static str,
+    },
+    /// No segment of the file covers the requested body pair.
+    NotFound,
+    /// A segment covers the body pair, but not the requested epoch.
+    OutOfCoverage,
 }
 
 impl fmt::Display for Error {
@@ -66,6 +82,10 @@ impl fmt::Display for Error {
             Error::Negative { what } => write!(f, "{what} must not be negative"),
             Error::InvalidWindow => f.write_str("the burn window must not end before it starts"),
             Error::OutOfRange { what } => write!(f, "{what} is out of range"),
+            Error::Malformed { what } => write!(f, "malformed SPK file: {what}"),
+            Error::Unsupported { what } => write!(f, "unsupported in this reader: {what}"),
+            Error::NotFound => f.write_str("no segment covers this body pair"),
+            Error::OutOfCoverage => f.write_str("the epoch is outside the segment's coverage"),
             Error::InvalidTimeOfFlight => {
                 f.write_str("the time of flight must be positive and finite")
             }

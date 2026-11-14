@@ -36,6 +36,8 @@ pub mod manoeuvre;
 pub mod matrix;
 #[cfg(feature = "std")]
 pub mod propagate;
+#[cfg(feature = "std")]
+pub mod spk;
 pub mod time;
 pub mod units;
 pub mod vector;
