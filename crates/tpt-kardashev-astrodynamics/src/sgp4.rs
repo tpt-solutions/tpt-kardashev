@@ -137,6 +137,13 @@ fn epoch_days(text: &str) -> Result<f64, Error> {
 /// first eleven characters of its token (the revolution count and checksum follow it). The satellite
 /// number is not kept.
 pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
+    // The format is ASCII. Rejecting other text here also keeps the fixed-column slices below on
+    // character boundaries, which a multi-byte character would otherwise break (found by fuzzing).
+    if !line1.is_ascii() || !line2.is_ascii() {
+        return Err(Error::BadTle {
+            what: "the lines contain non-ASCII text",
+        });
+    }
     if !line1.starts_with('1') || !line2.starts_with('2') {
         return Err(Error::BadTle {
             what: "the lines are not numbered 1 and 2",

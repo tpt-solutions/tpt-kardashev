@@ -99,3 +99,17 @@ fn truncations_of_a_valid_element_set_never_panic() {
         let _ = parse_tle(&LINE1[..cut], LINE2);
     }
 }
+
+/// Regression: a two-byte character inside a line used to make a fixed-column slice fall inside it
+/// and panic (found by `cargo fuzz run tle_parse`). Every such insertion must now be an error.
+#[test]
+fn multibyte_characters_in_a_line_are_rejected_not_sliced() {
+    for pos in 0..LINE1.len() {
+        let line = format!("{}ϸ{}", &LINE1[..pos], &LINE1[pos..]);
+        assert!(parse_tle(&line, LINE2).is_err(), "insertion at {pos}");
+    }
+    for pos in 0..LINE2.len() {
+        let line = format!("{}ϸ{}", &LINE2[..pos], &LINE2[pos..]);
+        assert!(parse_tle(LINE1, &line).is_err(), "insertion at {pos}");
+    }
+}
