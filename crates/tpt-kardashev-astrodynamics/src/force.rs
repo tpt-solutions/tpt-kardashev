@@ -10,6 +10,7 @@ use crate::atmosphere::density;
 use crate::ephemeris::{AU_KM, Body, Ephemeris};
 use crate::frames::ecliptic_to_equatorial;
 use crate::{Epoch, Error, Seconds, StateVector, Vec3};
+use std::vec::Vec;
 
 /// An acceleration (km/s²) on a spacecraft at `t` seconds past the epoch, for a state in km and
 /// km/s.
@@ -121,29 +122,32 @@ impl ForceModel for J2Zonal {
     }
 }
 
-/// The perturbing acceleration of the zonal harmonics of degrees 2 to 4 of an oblate central body,
-/// in the same inertial frame as [`J2Zonal`]. With the geopotential written as
+/// The perturbing acceleration of the zonal harmonics of an oblate central body, of any degree, in
+/// the same inertial frame as [`J2Zonal`]. With the geopotential written as
 /// `U = (μ/r)·(1 − Σₙ Jₙ (R/r)ⁿ Pₙ(z/r))`, and `s = z/r`, `q = R/r`, the perturbation is
 ///
 /// `a = (μ/r³)·S₁·(x, y, z) + (μ/r⁴)·S₂·(z·x, z·y, −(x² + y²))`, where
-/// `S₁ = Σₙ (n+1)·Jₙ·qⁿ·Pₙ(s)` and `S₂ = Σₙ Jₙ·qⁿ·Pₙ′(s)`.
+/// `S₁ = Σₙ (n+1)·Jₙ·qⁿ·Pₙ(s)` and `S₂ = Σₙ Jₙ·qⁿ·Pₙ′(s)`, summed over the degrees `n ≥ 2`.
 ///
-/// The coefficients are supplied by the caller. The crate does not bundle J3 or J4: the values
-/// recalled for EGM96 have not been checked against a primary source (see the provenance file).
-/// With `j3 = j4 = 0` this reduces to [`J2Zonal`] exactly.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// The Legendre polynomials and their derivatives come from the standard recurrences, so the
+/// degree is limited only by the coefficients the caller supplies. The crate does not bundle any
+/// coefficient beyond WGS 84 J2: the values for J3 and beyond have not been checked against a
+/// primary source (see the provenance file). With every coefficient zero this gives no
+/// perturbation, and with only `J2` it is [`J2Zonal`].
+#[derive(Clone, Debug, PartialEq)]
 pub struct ZonalHarmonics {
     mu: f64,
     radius: f64,
-    j2: f64,
-    j3: f64,
-    j4: f64,
+    /// `coefficients[k]` is `J_{k+2}`.
+    coefficients: Vec<f64>,
 }
 
 impl ZonalHarmonics {
     /// Zonal harmonics for a body with parameter `mu` (km³/s²), reference radius `radius` (km), and
-    /// coefficients `j2`, `j3`, `j4`. Validation is as for [`J2Zonal::new`].
-    pub fn new(mu: f64, radius: f64, j2: f64, j3: f64, j4: f64) -> Result<Self, Error> {
+    /// coefficients `J2, J3, …` in that order (`coefficients[0]` is `J2`). An empty slice gives no
+    /// perturbation. Fails with [`Error::InvalidMu`] or [`Error::NonFinite`] as for [`J2Zonal::new`],
+    /// and with [`Error::NonFinite`] for any non-finite coefficient.
+    pub fn new(mu: f64, radius: f64, coefficients: &[f64]) -> Result<Self, Error> {
         if !(mu.is_finite() && mu > 0.0) {
             return Err(Error::InvalidMu);
         }
@@ -152,17 +156,15 @@ impl ZonalHarmonics {
                 what: "reference radius (km)",
             });
         }
-        for (what, value) in [("J2", j2), ("J3", j3), ("J4", j4)] {
-            if !value.is_finite() {
-                return Err(Error::NonFinite { what });
-            }
+        if coefficients.iter().any(|j| !j.is_finite()) {
+            return Err(Error::NonFinite {
+                what: "zonal coefficient",
+            });
         }
         Ok(Self {
             mu,
             radius,
-            j2,
-            j3,
-            j4,
+            coefficients: coefficients.to_vec(),
         })
     }
 }
@@ -176,17 +178,24 @@ impl ForceModel for ZonalHarmonics {
         }
         let s = p.z / r;
         let q = self.radius / r;
-        // Legendre polynomials of degrees 2 to 4 and their derivatives with respect to s.
-        let p2 = 0.5 * (3.0 * s * s - 1.0);
-        let dp2 = 3.0 * s;
-        let p3 = 0.5 * (5.0 * s * s * s - 3.0 * s);
-        let dp3 = 0.5 * (15.0 * s * s - 3.0);
-        let p4 = (35.0 * s.powi(4) - 30.0 * s * s + 3.0) / 8.0;
-        let dp4 = 0.5 * (35.0 * s * s * s - 15.0 * s);
-        let s1 = 3.0 * self.j2 * q * q * p2
-            + 4.0 * self.j3 * q.powi(3) * p3
-            + 5.0 * self.j4 * q.powi(4) * p4;
-        let s2 = self.j2 * q * q * dp2 + self.j3 * q.powi(3) * dp3 + self.j4 * q.powi(4) * dp4;
+        // Legendre polynomials P_n(s) and their derivatives, by the recurrences
+        // P_n = ((2n−1)·s·P_{n−1} − (n−1)·P_{n−2}) / n and P_n′ = P_{n−2}′ + (2n−1)·P_{n−1}.
+        let (mut pm2, mut pm1) = (1.0_f64, s);
+        let (mut dpm2, mut dpm1) = (0.0_f64, 1.0_f64);
+        let mut qn = q;
+        let (mut s1, mut s2) = (0.0_f64, 0.0_f64);
+        for (k, &j) in self.coefficients.iter().enumerate() {
+            let n = (k + 2) as f64;
+            let pn = ((2.0 * n - 1.0) * s * pm1 - (n - 1.0) * pm2) / n;
+            let dpn = dpm2 + (2.0 * n - 1.0) * pm1;
+            qn *= q;
+            s1 += (n + 1.0) * j * qn * pn;
+            s2 += j * qn * dpn;
+            pm2 = pm1;
+            pm1 = pn;
+            dpm2 = dpm1;
+            dpm1 = dpn;
+        }
         let r3 = r * r * r;
         let a = self.mu / r3 * s1;
         let b = self.mu / (r3 * r) * s2;
