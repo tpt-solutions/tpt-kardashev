@@ -2,7 +2,7 @@
 
 Causal ordering and hierarchical consensus (domains and federation) with consistency bounds stated per level.
 
-**Status:** Phase 0 scaffold. No public API yet.
+**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`) and fixed-size vector clocks (`vector::VectorClock`). The operation log, the domain and federation layers and the consistency levels are not written yet.
 
 ## Features
 
@@ -20,3 +20,10 @@ Honest limits under partition (CAP). Byzantine tolerance is deferred behind a la
 ## Licence
 
 MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
+
+## Clocks
+
+- `HybridClock`: a hybrid logical clock. Timestamps order by `(wall_ms, counter, node)`, agree with causality, and never repeat or go backwards on one node, even when the physical time it is given stands still or goes back. A remote timestamp more than `max_drift_ms` ahead of the local physical time is rejected without changing the clock. The bound is a configured limit, not derived from a clock model.
+- `VectorClock<N>`: a vector clock over a fixed set of `N` nodes, stored inline, so it needs no heap. It decides `Before`, `After`, `Equal` and `Concurrent`.
+
+Not modelled yet: the causally ordered log, the domain consensus, the federation layer, and the consistency levels. Nothing here is Byzantine-tolerant.

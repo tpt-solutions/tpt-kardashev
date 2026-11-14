@@ -13,3 +13,15 @@ None yet.
 ## Third-party licences
 
 None.
+
+## Written from standard relations
+
+- `clock.rs` (hybrid logical clock): the update rules of Kulkarni, Demirbas, Madappa, Avva and Leone (2014), written from that description: the wall part is the maximum of the local wall part, the remote wall part and the physical time; the counter is advanced or reset by which of those is the maximum. No reference code consulted for this crate. The drift bound is this crate's configured parameter.
+- `vector.rs` (vector clock): the standard entry-wise maximum merge and the componentwise relation, with a fixed number of nodes so the clock is inline and needs no heap.
+
+## Reviewed for reference (not copied)
+
+- `tpt-solutions/tpt-replicate`, `src/clock.rs` (read): its hybrid logical clock also rejects remote timestamps more than a configured bound ahead of local time (default 60 000 ms, `DEFAULT_MAX_DRIFT_MS`), and it uses a map for the vector clock. This crate uses a fixed number of nodes instead, which is inline and heap-free but needs the node count at compile time.
+- `tpt-solutions/tpt-fabric`, `crates/tpt-fabric-core/src/clock.rs` (read): a Lamport clock and a map-based vector clock with `happens_before` and `concurrent_with`. Its module doc says it never orders by wall-clock time across nodes. Its distributed lease is described as not real consensus. This crate's HLC does use the wall clock, bounded by the drift rule, so the two designs differ on purpose.
+- `tpt-solutions/tpt-scheduler`: its ID and core types only; no clock or consensus code.
+- `hiveforge-consensus`: not on GitHub under `tpt-solutions` (404). Stays unreviewed.

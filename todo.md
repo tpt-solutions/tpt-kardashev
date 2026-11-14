@@ -288,8 +288,8 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 Exit: each crate at v0.1 exit.
 
 ### 3.1 `tpt-kardashev-causal-consensus`
-- [ ] Review `tpt-replicate`, `hiveforge-consensus`, `tpt-scheduler`, `tpt-fabric`; record in provenance
-- [ ] Hybrid logical clock and vector clock
+- [ ] Review `tpt-replicate`, `hiveforge-consensus`, `tpt-scheduler`, `tpt-fabric`; record in provenance — partial: read tpt-replicate clock, tpt-fabric clock, tpt-scheduler; hiveforge-consensus is not on GitHub under tpt-solutions (404), so it stays open
+- [x] Hybrid logical clock and vector clock — `clock::HybridClock` (strictly increasing per node, causal across receives, drift bound) and `vector::VectorClock<N>` (fixed size, inline), tested in `tests/clocks.rs`
 - [ ] Causally ordered operation log
 - [ ] Optional `relativity` feature: `CausalOrder` as ordering source
 - [ ] Domain layer: Raft-style leader election and log replication within a domain
