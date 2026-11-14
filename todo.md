@@ -236,10 +236,10 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Impulsive manoeuvres: Hohmann, bi-elliptic, plane change — `manoeuvre::hohmann`, `manoeuvre::bi_elliptic`, `manoeuvre::plane_change`; tested by propagating the transfer orbits to the next apsis, not by re-using the formulas
 - [x] `Ephemeris` trait with low-precision analytic provider — `ephemeris::Ephemeris` and `ephemeris::LowPrecision`, which gives the Sun (longitude to about 0.01°, distance to about 10⁻⁴ AU) and the Moon (a few tenths of a degree in longitude); the planets are not written
 - [x] SPK (Chebyshev) reader behind a feature (no ephemeris data bundled) — `spk`: DAF/SPK type 2, little-endian, J2000 frame, gated by `std` rather than a separate feature. Tested on kernels built in the NAIF layout; not checked against a real kernel, since none is bundled
-- [ ] `sgp4` feature: SGP4/SDP4 and TLE parsing (port from zenith)
+- [ ] `sgp4` feature: SGP4/SDP4 and TLE parsing — partial: near-earth SGP4 (period under 225 min) and two-line element parsing are written in `sgp4` (behind `std`, not a separate feature), from the equations of AIAA 2006-6753 rather than ported from zenith (zenith is not in the workspace); deep-space SDP4 not written and reported as `Unsupported`
 - [x] Visibility and contact-window computation — `visibility`: WGS 84 ground stations, Earth rotation from a caller-supplied start angle (no UT1), elevation, and `contact_windows` with edges bisected to a millisecond; tested on exact station geometry and on a 500 km equatorial orbit (15 passes a day, 237–474 s each, edges on the 10° limit)
 - [x] Optional `dtn` feature: emit `ContactPlan` from visibility windows — dropped as a feature: it would be a dependency on another crate. `visibility::contact_windows` gives the windows, and the caller builds the `ContactPlan` with `dtn`'s `Contact::new`
-- [ ] SGP4 reference vector tests
+- [ ] SGP4 reference vector tests — partial: satellite 00005 of the published verification case (WGS-72) matches the paper's printed states at seven epochs to 1 mm and 10⁻⁸ km/s; the other verification satellites, and deep-space cases, are not yet tested
 - [ ] Textbook Lambert and Kepler cases
 - [ ] Energy and angular-momentum drift checks (symplectic, adaptive) over long arcs
 - [ ] Frame round-trip tests
