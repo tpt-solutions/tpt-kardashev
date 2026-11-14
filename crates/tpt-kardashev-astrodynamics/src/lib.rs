@@ -39,6 +39,8 @@ pub mod propagate;
 pub mod time;
 pub mod units;
 pub mod vector;
+#[cfg(feature = "std")]
+pub mod visibility;
 
 #[cfg(feature = "std")]
 pub use elements::{Keplerian, StateVector};

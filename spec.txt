@@ -88,7 +88,6 @@ No crate has a mandatory dependency on another crate in the repo. Optional edges
 | From | To | Feature | Purpose |
 |---|---|---|---|
 | `tpt-kardashev-astrodynamics` | `tpt-kardashev-relativity` | `relativity` | Relativistic time-scale relations (TT, TCG, TCB, TDB) |
-| `tpt-kardashev-astrodynamics` | `tpt-kardashev-dtn` | `dtn` | Emit a `ContactPlan` from visibility windows |
 | `tpt-kardashev-causal-consensus` | `tpt-kardashev-relativity` | `relativity` | Causal ordering across frames |
 | `tpt-kardashev-isru` | `tpt-kardashev-energy-ledger` | `energy` | Energy accounts for processes |
 | `tpt-kardashev-reflect` | none | | Independent |

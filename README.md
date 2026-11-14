@@ -23,7 +23,7 @@ Status: Phase 0 scaffold. The crates are empty skeletons. Scope and order are in
 
 Crates have no mandatory dependencies on each other. Optional edges are feature flags only:
 
-- `astrodynamics` → `relativity` (feature `relativity`), `dtn` (feature `dtn`)
+- `astrodynamics` → `relativity` (feature `relativity`)
 - `causal-consensus` → `relativity` (feature `relativity`)
 - `isru` → `energy-ledger` (feature `energy`)
 - `reflect`, `nuclear-plasma`: independent

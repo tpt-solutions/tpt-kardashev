@@ -16,7 +16,6 @@ default = ["std"]
 std = []
 alloc = []
 relativity = []
-dtn = []
 
 [dependencies]
 

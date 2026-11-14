@@ -43,6 +43,11 @@ pub enum Error {
     },
     /// A burn window must have a start no later than its end.
     InvalidWindow,
+    /// A value is outside its allowed range (for example a latitude beyond ±90°). `what` names it.
+    OutOfRange {
+        /// The quantity that is out of range.
+        what: &'static str,
+    },
 }
 
 impl fmt::Display for Error {
@@ -60,6 +65,7 @@ impl fmt::Display for Error {
             Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
             Error::Negative { what } => write!(f, "{what} must not be negative"),
             Error::InvalidWindow => f.write_str("the burn window must not end before it starts"),
+            Error::OutOfRange { what } => write!(f, "{what} is out of range"),
             Error::InvalidTimeOfFlight => {
                 f.write_str("the time of flight must be positive and finite")
             }
