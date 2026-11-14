@@ -5,10 +5,9 @@
 //! the orbit normal `h = r × v`, and T completes the right-handed triad, `T = N × R`. For a
 //! circular orbit the velocity is purely along T.
 //!
-//! Not written: LVLH. Its axis conventions differ between users (some take the along-track axis
-//! as x, others the velocity direction), so it needs a choice made explicitly. Not written
-//! either: heliocentric ecliptic and Earth-fixed frames. The first needs a heliocentric origin,
-//! and the second needs UT1.
+//! LVLH is written with the axis convention documented on [`lvlh_matrix`]. Not written: the
+//! heliocentric ecliptic and Earth-fixed frames. The first needs a heliocentric origin, and the
+//! second needs UT1.
 
 use crate::elements::StateVector;
 use crate::{Error, Mat3, Vec3};
@@ -55,4 +54,22 @@ pub fn rtn_matrix(state: &StateVector) -> Result<Mat3, Error> {
         [transverse.x, transverse.y, transverse.z],
         [normal.x, normal.y, normal.z],
     ]))
+}
+
+/// The matrix whose rows are the local-vertical, local-horizontal axes of a state, as unit vectors
+/// in the state's own frame. The convention, chosen for this crate:
+///
+/// - `x`: along-track, `T = N × R` (for a circular orbit, along the velocity);
+/// - `y`: cross-track, the negative orbit normal, `−N`;
+/// - `z`: nadir, toward the centre of the body, `−R`.
+///
+/// The triad is right-handed: `x × y = z`. It is the RTN triad reordered and signed, so the
+/// components of a vector in LVLH are `(T, −N, −R)` of its RTN components. Other sources use other
+/// axis orders and signs; this one is fixed here so that each state has one LVLH matrix.
+///
+/// Fails as [`rtn_matrix`] does.
+pub fn lvlh_matrix(state: &StateVector) -> Result<Mat3, Error> {
+    let rtn = rtn_matrix(state)?.rows;
+    let neg = |v: [f64; 3]| [-v[0], -v[1], -v[2]];
+    Ok(Mat3::from_rows([rtn[1], neg(rtn[2]), neg(rtn[0])]))
 }

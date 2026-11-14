@@ -246,3 +246,52 @@ fn rtn_rejects_degenerate_and_non_finite_states() {
     };
     assert!(matches!(rtn_matrix(&nan), Err(Error::NonFinite { .. })));
 }
+
+#[test]
+fn lvlh_axes_follow_the_documented_convention() {
+    use tpt_kardashev_astrodynamics::frames::lvlh_matrix;
+    let el = elements(7_000.0, 0.2, 0.9, 0.4, 0.3, 1.7);
+    let state = el.to_state(MU).expect("state");
+    let lvlh = lvlh_matrix(&state).expect("non-degenerate");
+    let rtn = rtn_matrix(&state).expect("non-degenerate");
+    // Orthonormal and right-handed.
+    assert_identity(lvlh * lvlh.transpose(), CLOSED_ABS);
+    assert_close(lvlh.determinant(), 1.0, CLOSED_REL, CLOSED_ABS);
+    // z points to nadir: the position is along −z, and the position has no x or y component.
+    let r = state.position;
+    let in_lvlh = lvlh.mul_vec(r);
+    assert_close(in_lvlh.x, 0.0, CLOSED_REL, ROUND_ABS);
+    assert_close(in_lvlh.y, 0.0, CLOSED_REL, ROUND_ABS);
+    assert_close(in_lvlh.z, -r.norm(), ROUND_REL, ROUND_ABS);
+    // The LVLH components are the RTN components of (T, −N, −R).
+    let v_rtn = rtn.mul_vec(state.velocity);
+    let v_lvlh = lvlh.mul_vec(state.velocity);
+    assert_close(v_lvlh.x, v_rtn.y, ROUND_REL, ROUND_ABS);
+    assert_close(v_lvlh.y, -v_rtn.z, ROUND_REL, ROUND_ABS);
+    assert_close(v_lvlh.z, -v_rtn.x, ROUND_REL, ROUND_ABS);
+    // y is the negative orbit normal.
+    let h = state.position.cross(state.velocity);
+    let y_axis = Vec3::new(lvlh.rows[1][0], lvlh.rows[1][1], lvlh.rows[1][2]);
+    assert_vec_close(y_axis, h * (-1.0 / h.norm()), ROUND_REL, ROUND_ABS);
+}
+
+#[test]
+fn circular_orbit_along_track_axis_is_the_velocity_direction() {
+    use tpt_kardashev_astrodynamics::frames::lvlh_matrix;
+    let el = elements(7_000.0, 0.0, 0.9, 0.4, 0.0, 2.2);
+    let state = el.to_state(MU).expect("state");
+    let lvlh = lvlh_matrix(&state).expect("non-degenerate");
+    let along = Vec3::new(lvlh.rows[0][0], lvlh.rows[0][1], lvlh.rows[0][2]);
+    let unit_velocity = state.velocity * (1.0 / state.velocity.norm());
+    assert_vec_close(along, unit_velocity, ROUND_REL, ROUND_ABS);
+}
+
+#[test]
+fn lvlh_rejects_degenerate_states() {
+    use tpt_kardashev_astrodynamics::frames::lvlh_matrix;
+    let radial = StateVector {
+        position: Vec3::new(7_000.0, 0.0, 0.0),
+        velocity: Vec3::new(1.0, 0.0, 0.0),
+    };
+    assert_eq!(lvlh_matrix(&radial), Err(Error::Degenerate));
+}
