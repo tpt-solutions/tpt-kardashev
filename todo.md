@@ -244,7 +244,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Energy and angular-momentum drift checks (symplectic, adaptive) over long arcs — adaptive: energy 4e-12 over five orbits (`tests/adaptive.rs`) and angular-momentum vector 1.7e-11 over twenty orbits (`tests/angular_momentum.rs`); symplectic: energy error bounded over a thousand orbits at two step sizes, with the peak per orbit unchanged to 2e-8 relative between the first and last hundred orbits, angular momentum 1.5e-14 over a hundred orbits (`tests/symplectic.rs`)
 - [x] Frame round-trip tests — ecliptic ↔ equatorial round trip (inverse written in the test) and length preservation; RTN components mapped back to the inertial state over a 192-case element grid; RTN normal equals the perifocal W axis (`tests/frames.rs`)
 - [ ] Cross-check new force model against old secular formulas (J2, drag, etc.) — partial: J2 nodal regression of an integrated orbit matches the secular rate to 0.2% (`tests/j2.rs`); drag not written
-- [ ] Fuzz: TLE and SPK parsers
+- [ ] Fuzz: TLE and SPK parsers — partial: deterministic robustness tests (`tests/parser_robustness.rs`) feed 20 000 mutated and 20 000 random element-set pairs, truncations of a valid set, and 5 000 random byte strings (half with the DAF magic) to `parse_tle` and `read_segments`; none panics. A coverage-guided `cargo-fuzz` target is not written
 - [ ] `no_std` + `alloc` build
 - [ ] README states force-model limits and what is not modelled
 - [ ] Low-thrust (Edelbaum-type) approximations (post-v0.1)
