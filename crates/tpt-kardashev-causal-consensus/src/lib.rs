@@ -18,6 +18,8 @@ extern crate alloc;
 pub mod causal;
 pub mod clock;
 pub mod consistency;
+#[cfg(feature = "alloc")]
+pub mod domain;
 pub mod error;
 #[cfg(feature = "alloc")]
 pub mod transport;
@@ -27,5 +29,7 @@ pub mod vector;
 pub use causal::{CausalBroadcast, Envelope};
 pub use clock::{HybridClock, Timestamp};
 pub use consistency::{ConsistencyLevel, Delays};
+#[cfg(feature = "alloc")]
+pub use domain::{DomainError, Message as DomainMessage, RaftNode, Role};
 pub use error::ClockError;
 pub use vector::{CausalRelation, VectorClock};
