@@ -2,7 +2,7 @@
 
 Causal ordering and hierarchical consensus (domains and federation) with consistency bounds stated per level.
 
-**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`), fixed-size vector clocks (`vector::VectorClock`), and a causally ordered operation log by causal broadcast (`causal::CausalBroadcast`, feature `alloc`). The domain and federation layers and the consistency levels are not written yet.
+**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`), fixed-size vector clocks (`vector::VectorClock`), a causally ordered operation log by causal broadcast (`causal::CausalBroadcast`, feature `alloc`), and the consistency levels with latency lower bounds (`consistency`). The domain and federation layers are not written yet.
 
 ## Features
 
@@ -31,3 +31,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## Causal log
 
 - `CausalBroadcast<T, N>` (feature `alloc`): each message carries the sender's vector clock. A node delivers a message only when it has delivered everything that clock says the sender had seen, so the delivered log is a causal order. Duplicates are dropped, and early messages wait in a buffer. Two concurrent messages may be delivered in different orders at different nodes; this layer does not order them.
+
+## Consistency levels
+
+- `ConsistencyLevel` (`Commutative`, `Causal`, `DomainLinearizable`, `GlobalAgreed`) and `latency_lower_bound_ms(Delays)`. A lower bound is what the physics of the links allows, not a protocol's latency: zero for the two levels without agreement, two intra-domain one-way delays for `DomainLinearizable`, and two cross-domain one-way delays for `GlobalAgreed`. A round trip is counted as two one-way delays; the spec's wording gives one, which is a weaker valid bound.

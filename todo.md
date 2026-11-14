@@ -296,8 +296,8 @@ Exit: each crate at v0.1 exit.
 - [ ] `Transport` trait (pluggable)
 - [ ] Federation layer: signed, hash-chained epoch summaries
 - [ ] Optional `tpt-crypto` feature for signatures/hashes (licence-checked)
-- [ ] `ConsistencyLevel`: Commutative, Causal, DomainLinearizable, GlobalAgreed
-- [ ] API reporting latency lower bound per level
+- [x] `ConsistencyLevel`: Commutative, Causal, DomainLinearizable, GlobalAgreed — `consistency::ConsistencyLevel`, with `needs_cross_domain_round_trip` and `needs_domain_round_trip` as the spec table states them (tests in `tests/consistency.rs`)
+- [x] API reporting latency lower bound per level — `ConsistencyLevel::latency_lower_bound_ms(Delays)`: zero for Commutative and Causal, two intra-domain one-way delays for DomainLinearizable, two cross-domain one-way delays for GlobalAgreed (a round trip is two one-way delays; the spec wording gives one, a weaker valid bound). Saturating; tested
 - [ ] `Domain`, `Federation`, `Proposal<Op>` types
 - [ ] Deterministic simulator with partitions, delay, duplication, reordering
 - [ ] Invariant checks: no conflicting `GlobalAgreed` commits; causal order never violated

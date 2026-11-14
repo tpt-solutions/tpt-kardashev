@@ -27,3 +27,4 @@ None.
 - `hiveforge-consensus`: not on GitHub under `tpt-solutions` (404). Stays unreviewed.
 
 - `causal.rs` (causal broadcast): the delivery rule of Birman, Schiper and Stephenson (1991), written from that description: deliver a message from sender s with clock V when V[s] = delivered[s] + 1 and V[k] ≤ delivered[k] for every other k. The buffer, the duplicate handling, and the pruning of buffered copies whose sequence number is already delivered are this crate's. No reference code consulted.
+- `consistency.rs`: the four levels and their round-trip classification are the spec's table. The latency bounds are this crate's derivation from one-way delays: a round trip is two one-way hops. The spec says latency is at least the slowest one-way delay times the round trips, which is weaker by a factor of two; this crate uses the stronger form, which is still a valid lower bound.
