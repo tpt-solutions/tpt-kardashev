@@ -27,7 +27,7 @@ const HALF_DAY: f64 = 43_200.0;
 
 /// Days from 1970-01-01 to the given proleptic Gregorian date (Howard Hinnant's civil-date
 /// algorithm, integer only).
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+pub(crate) fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
     let era = y.div_euclid(400);
     let yoe = y - era * 400;

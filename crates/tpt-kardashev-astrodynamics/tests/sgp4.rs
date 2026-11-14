@@ -158,14 +158,23 @@ fn the_epoch_state_is_the_papers_first_row() {
 }
 
 #[test]
-fn deep_space_orbits_are_reported_as_unsupported() {
-    // Two revolutions a day: a 720-minute period, which the deep-space model would handle.
+fn deep_space_orbits_initialize_and_propagate() {
+    // Two revolutions a day: a 720-minute period, which takes the deep-space terms. The state must
+    // be finite and at a plausible radius (above the surface, below the sphere of geostationary orbit).
     let line2 = "2 00005   34.2682 348.7242 1859667 331.7664   19.3264  2.00000000413667   0.00   4320.0   360.00";
     let elements = parse_tle(LINE1, line2).expect("parses");
-    assert!(matches!(
-        Sgp4::new(GravityConstants::WGS72, elements),
-        Err(Error::Unsupported { .. })
-    ));
+    let model = Sgp4::new(GravityConstants::WGS72, elements).expect("initializes");
+    for minutes in [0.0, 360.0, 1440.0] {
+        let r = model
+            .propagate(minutes)
+            .expect("propagates")
+            .position
+            .norm();
+        assert!(
+            (6_378.0..50_000.0).contains(&r),
+            "radius {r} km at {minutes} min"
+        );
+    }
 }
 
 #[test]

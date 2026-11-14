@@ -1,27 +1,31 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The SGP4 propagator for near-earth satellites (orbital period under 225 minutes), with two-line
-//! element sets.
+//! The SGP4 propagator, near-earth and deep-space, with two-line element sets.
 //!
 //! The model is the one in the 1980 SGP4 report as revised by Vallado, Crawford, Hujsak and Kelso
-//! (AIAA 2006-6753), and is written here from its equations: the initialization of the secular
-//! and drag terms, the secular and periodic propagation, the solution of Kepler's equation by
-//! Newton iteration, and the position and velocity in the TEME frame. The model's constants
-//! default to WGS-72, as its published test cases use; WGS-84 is available too.
+//! (AIAA 2006-6753), and is written here from its equations: the initialization of the secular and
+//! drag terms, the secular and periodic propagation, the solution of Kepler's equation by Newton
+//! iteration, and the position and velocity in the TEME frame. Orbits of 225 minutes or more use the
+//! deep-space terms of [`crate::sdp4`]: the lunar and solar long-period terms, and the resonance for
+//! the one-day and half-day orbits. The model's constants default to WGS-72, as its published test
+//! cases use; WGS-84 is available too.
 //!
-//! Not written: the deep-space branch (SDP4), which applies to orbits of 225 minutes or more and is
-//! reported as [`Error::Unsupported`]. Two-line element checksums are not verified, since some
-//! published sets have bad checksums. Times are minutes past the element epoch, and outputs are
-//! in km and km/s in the TEME frame, not J2000.
+//! Two-line element checksums are not verified, since some published sets have bad checksums. Times
+//! are minutes past the element epoch, and outputs are in km and km/s in the TEME frame, not J2000.
 
+use crate::sdp4::{DsInit, Dscom, EpochElements, dpper, dscom, dsinit, dspace, gstime};
+use crate::time::days_from_civil;
 use crate::{Error, StateVector, Vec3};
 use core::f64::consts::PI;
 use std::vec::Vec;
 
 const TWO_PI: f64 = 2.0 * PI;
-/// Orbital periods at or above this many minutes use the deep-space model, which is not written.
+/// Orbital periods at or above this many minutes use the deep-space terms.
 const DEEP_SPACE_PERIOD_MIN: f64 = 225.0;
 /// Minutes in a day.
 const MINUTES_PER_DAY: f64 = 1440.0;
+/// The report's epoch offset: days from 1949 December 31 0h to Julian date 0.
+/// The report's epoch (1949 December 31 0h) in days from J2000: 2,433,281.5 − 2,451,545.0.
+const JD_EPOCH_FROM_J2000: f64 = -18_263.5;
 
 /// Earth gravity constants: equatorial radius (km), μ (km³/s²), and the zonal coefficients J2, J3
 /// and J4.
@@ -81,6 +85,8 @@ pub struct Elements {
     pub mean_anomaly: f64,
     /// Mean motion (rad/min).
     pub mean_motion: f64,
+    /// The epoch, in days from 1949 December 31 0h (the report's convention).
+    pub epoch_days: f64,
 }
 
 fn number(text: &str, what: &'static str) -> Result<f64, Error> {
@@ -110,10 +116,26 @@ fn assumed_decimal(text: &str) -> Result<f64, Error> {
     Ok(sign * value * 10f64.powf(exponent))
 }
 
+/// The epoch field `YYDDD.DDDDDDDD` as days from 1949 December 31 0h.
+fn epoch_days(text: &str) -> Result<f64, Error> {
+    const WHAT: &str = "the epoch";
+    if text.len() < 3 || !text.is_char_boundary(2) {
+        return Err(Error::BadTle { what: WHAT });
+    }
+    let yy = number(&text[..2], WHAT)? as i64;
+    let year = if yy < 57 { 2000 + yy } else { 1900 + yy };
+    let day = number(&text[2..], WHAT)?;
+    if !(1.0..367.0).contains(&day) {
+        return Err(Error::BadTle { what: WHAT });
+    }
+    let jan1 = days_from_civil(year, 1, 1) - days_from_civil(1949, 12, 31);
+    Ok(jan1 as f64 + (day - 1.0))
+}
+
 /// Parses the two lines of a two-line element set. The fields are taken by whitespace-separated
 /// token, which is how the format is laid out in the published examples, and the mean motion is the
-/// first eleven characters of its token (the revolution count and checksum follow it). The epoch and
-/// satellite number are not kept, since propagation is relative to the epoch.
+/// first eleven characters of its token (the revolution count and checksum follow it). The satellite
+/// number is not kept.
 pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
     if !line1.starts_with('1') || !line2.starts_with('2') {
         return Err(Error::BadTle {
@@ -122,10 +144,14 @@ pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
     }
     let first: Vec<&str> = line1.split_whitespace().collect();
     let second: Vec<&str> = line2.split_whitespace().collect();
-    // Line 1: token 6 is the drag term B*.
-    let bstar = assumed_decimal(first.get(6).ok_or(Error::BadTle {
-        what: "line 1 has too few fields",
-    })?)?;
+    if first.len() < 7 {
+        return Err(Error::BadTle {
+            what: "line 1 has too few fields",
+        });
+    }
+    // Line 1: token 3 is the epoch and token 6 the drag term B*.
+    let epoch_days = epoch_days(first[3])?;
+    let bstar = assumed_decimal(first[6])?;
     // Line 2: 2, catalogue number, inclination, node, eccentricity, perigee, anomaly, mean motion.
     if second.len() < 8 {
         return Err(Error::BadTle {
@@ -144,12 +170,15 @@ pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
     let arg_perigee = number(second[5], "the perigee")?;
     let mean_anomaly = number(second[6], "the anomaly")?;
     let mean_motion_token = second[7];
-    if mean_motion_token.len() < 11 {
+    if mean_motion_token.is_empty() {
         return Err(Error::BadTle {
             what: "the mean motion",
         });
     }
-    let revs_per_day = number(&mean_motion_token[..11], "the mean motion")?;
+    let revs_per_day = number(
+        &mean_motion_token[..mean_motion_token.len().min(11)],
+        "the mean motion",
+    )?;
     if revs_per_day.is_nan() || revs_per_day <= 0.0 {
         return Err(Error::BadTle {
             what: "the mean motion must be positive",
@@ -163,7 +192,16 @@ pub fn parse_tle(line1: &str, line2: &str) -> Result<Elements, Error> {
         arg_perigee: arg_perigee.to_radians(),
         mean_anomaly: mean_anomaly.to_radians(),
         mean_motion: revs_per_day * TWO_PI / MINUTES_PER_DAY,
+        epoch_days,
     })
+}
+
+/// The deep-space state of a satellite: the lunar-solar terms and the resonance rates.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Deep {
+    dscom: Dscom,
+    init: DsInit,
+    epoch: EpochElements,
 }
 
 /// An SGP4 model: the constants and the precomputed initialization terms for one satellite.
@@ -182,7 +220,7 @@ pub struct Sgp4 {
     mo: f64,
     /// Mean motion after the un-Kozai correction (rad/min).
     no: f64,
-    /// Whether the perigee is so low that the drag terms are simplified.
+    /// Whether the simplified drag terms apply (low perigee, or any deep-space orbit).
     isimp: bool,
     aycof: f64,
     con41: f64,
@@ -208,12 +246,13 @@ pub struct Sgp4 {
     nodecf: f64,
     xlcof: f64,
     xmcof: f64,
+    deep: Option<Deep>,
 }
 
 impl Sgp4 {
-    /// Initializes the model for `elements` under `constants`. Fails with [`Error::Unsupported`] for
-    /// an orbital period of 225 minutes or more (the deep-space model is not written), and with
-    /// [`Error::Sgp4`] for an orbit that lies below the surface or has a non-positive mean motion.
+    /// Initializes the model for `elements` under `constants`. Orbits of 225 minutes or more use the
+    /// deep-space terms. Fails with [`Error::Sgp4`] for an orbit that lies below the surface or has
+    /// a non-positive mean motion.
     pub fn new(constants: GravityConstants, elements: Elements) -> Result<Self, Error> {
         let xke = constants.xke();
         let r = constants.radius_km;
@@ -230,11 +269,7 @@ impl Sgp4 {
                 what: "the mean motion must be positive",
             });
         }
-        if TWO_PI / no >= DEEP_SPACE_PERIOD_MIN {
-            return Err(Error::Unsupported {
-                what: "deep-space orbits (period of 225 minutes or more)",
-            });
-        }
+        let deep_space = TWO_PI / no >= DEEP_SPACE_PERIOD_MIN;
 
         // Un-Kozai the mean motion, to get the semi-major axis of the mean orbit.
         let eccsq = ecco * ecco;
@@ -260,7 +295,8 @@ impl Sgp4 {
                 what: "the orbit lies below the Earth's surface",
             });
         }
-        let isimp = rp < 220.0 / r + 1.0;
+        // Deep-space orbits always use the simplified drag terms.
+        let isimp = deep_space || rp < 220.0 / r + 1.0;
 
         // Drag terms, with the perigee correction for perigees below 156 km.
         let ss = 78.0 / r + 1.0;
@@ -353,6 +389,34 @@ impl Sgp4 {
                 * (3.0 * d4 + 12.0 * cc1 * d3 + 6.0 * d2 * d2 + 15.0 * cc1sq * (2.0 * d2 + cc1sq));
         }
 
+        // The deep-space terms, at the epoch.
+        let deep = if deep_space {
+            let epoch = elements.epoch_days;
+            let dscom = dscom(epoch, ecco, elements.arg_perigee, inclo, elements.raan, no);
+            let epoch_elements = EpochElements {
+                ecco,
+                inclo,
+                nodeo: elements.raan,
+                argpo: elements.arg_perigee,
+                mo,
+                no,
+                mdot,
+                argpdot,
+                nodedot,
+                xpidot: argpdot + nodedot,
+                gsto: gstime(epoch + JD_EPOCH_FROM_J2000),
+                xke,
+            };
+            let init = dsinit(&dscom, &epoch_elements);
+            Some(Deep {
+                dscom,
+                init,
+                epoch: epoch_elements,
+            })
+        } else {
+            None
+        };
+
         Ok(Self {
             c: constants,
             xke,
@@ -391,6 +455,7 @@ impl Sgp4 {
             nodecf,
             xlcof,
             xmcof,
+            deep,
         })
     }
 
@@ -434,8 +499,27 @@ impl Sgp4 {
         }
         let nm0 = self.no;
         let mut em = self.ecco;
-        let inclm = self.inclo;
-        let am = (xke / nm0).powf(x2o3) * tempa * tempa;
+        let mut inclm = self.inclo;
+        let mut nodem = nodem;
+        let mut nm = nm0;
+
+        // Deep-space: the resonance and the secular lunar-solar rates, at this time.
+        if let Some(deep) = &self.deep {
+            let (em1, argpm1, inclm1, mm1, nodem1, nm1, _dndt) = dspace(
+                &deep.init,
+                &deep.epoch,
+                t,
+                (em, argpm, inclm, mm, nodem, nm),
+            );
+            em = em1;
+            argpm = argpm1;
+            inclm = inclm1;
+            mm = mm1;
+            nodem = nodem1;
+            nm = nm1;
+        }
+
+        let am = (xke / nm).powf(x2o3) * tempa * tempa;
         let nm = xke / am.powf(1.5);
         em -= tempe;
         if !(-0.001..1.0).contains(&em) || am < 0.95 {
@@ -449,26 +533,65 @@ impl Sgp4 {
         mm += self.no * templ;
         let mut xlm = mm + argpm + nodem;
         // The reduction uses `%`, which, like C's fmod, keeps the sign of its dividend.
-        let nodem = nodem % TWO_PI;
+        nodem %= TWO_PI;
         argpm %= TWO_PI;
         xlm %= TWO_PI;
         let mm = (xlm - argpm - nodem) % TWO_PI;
 
         let sinim = inclm.sin();
         let cosim = inclm.cos();
-        let ep = em;
-        let xincp = inclm;
-        let argpp = argpm;
-        let nodep = nodem;
-        let mp = mm;
-        let sinip = sinim;
-        let cosip = cosim;
+        let mut ep = em;
+        let mut xincp = inclm;
+        let mut argpp = argpm;
+        let mut nodep = nodem;
+        let mut mp = mm;
+        let mut sinip = sinim;
+        let mut cosip = cosim;
+
+        // Deep-space: the lunar and solar long-period periodics, and the inclination they leave.
+        let mut aycof = self.aycof;
+        let mut xlcof = self.xlcof;
+        let mut con41 = self.con41;
+        let mut x1mth2 = self.x1mth2;
+        let mut x7thm1 = self.x7thm1;
+        if let Some(deep) = &self.deep {
+            let (ep1, xincp1, nodep1, argpp1, mp1) =
+                dpper(&deep.dscom, t, ep, xincp, nodep, argpp, mp);
+            ep = ep1;
+            xincp = xincp1;
+            nodep = nodep1;
+            argpp = argpp1;
+            mp = mp1;
+            if xincp < 0.0 {
+                xincp = -xincp;
+                nodep += PI;
+                argpp -= PI;
+            }
+            if !(0.0..=1.0).contains(&ep) {
+                return Err(Error::Sgp4 {
+                    what: "the lunar-solar corrected eccentricity is out of range",
+                });
+            }
+            sinip = xincp.sin();
+            cosip = xincp.cos();
+            aycof = -0.5 * self.j3oj2 * sinip;
+            let temp4 = 1.0 + (PI - 1.0e-9).cos();
+            xlcof = if (cosip + 1.0).abs() > 1.5e-12 {
+                -0.25 * self.j3oj2 * sinip * (3.0 + 5.0 * cosip) / (1.0 + cosip)
+            } else {
+                -0.25 * self.j3oj2 * sinip * (3.0 + 5.0 * cosip) / temp4
+            };
+            let cosisq = cosip * cosip;
+            con41 = 3.0 * cosisq - 1.0;
+            x1mth2 = 1.0 - cosisq;
+            x7thm1 = 7.0 * cosisq - 1.0;
+        }
 
         // Long-period periodic terms.
         let axnl = ep * argpp.cos();
         let temp = 1.0 / (am * (1.0 - ep * ep));
-        let aynl = ep * argpp.sin() + temp * self.aycof;
-        let xl = mp + argpp + nodep + temp * self.xlcof * axnl;
+        let aynl = ep * argpp.sin() + temp * aycof;
+        let xl = mp + argpp + nodep + temp * xlcof * axnl;
 
         // Kepler's equation by Newton iteration, at most ten steps.
         let u = (xl - nodep) % TWO_PI;
@@ -514,12 +637,12 @@ impl Sgp4 {
         let temp2 = temp1 * temp;
 
         // Short-period corrections to the radius, argument of latitude, node, inclination and rates.
-        let mrt = rl * (1.0 - 1.5 * temp2 * betal * self.con41) + 0.5 * temp1 * self.x1mth2 * cos2u;
-        su -= 0.25 * temp2 * self.x7thm1 * sin2u;
+        let mrt = rl * (1.0 - 1.5 * temp2 * betal * con41) + 0.5 * temp1 * x1mth2 * cos2u;
+        su -= 0.25 * temp2 * x7thm1 * sin2u;
         let xnode = nodep + 1.5 * temp2 * cosip * sin2u;
         let xinc = xincp + 1.5 * temp2 * cosip * sinip * cos2u;
-        let mvt = rdotl - nm * temp1 * self.x1mth2 * sin2u / xke;
-        let rvdot = rvdotl + nm * temp1 * (self.x1mth2 * cos2u + 1.5 * self.con41) / xke;
+        let mvt = rdotl - nm * temp1 * x1mth2 * sin2u / xke;
+        let rvdot = rvdotl + nm * temp1 * (x1mth2 * cos2u + 1.5 * con41) / xke;
         if mrt < 1.0 {
             return Err(Error::Sgp4 {
                 what: "the satellite has decayed",

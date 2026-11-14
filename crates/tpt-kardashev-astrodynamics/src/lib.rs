@@ -37,6 +37,8 @@ pub mod matrix;
 #[cfg(feature = "std")]
 pub mod propagate;
 #[cfg(feature = "std")]
+pub mod sdp4;
+#[cfg(feature = "std")]
 pub mod sgp4;
 #[cfg(feature = "std")]
 pub mod spk;
