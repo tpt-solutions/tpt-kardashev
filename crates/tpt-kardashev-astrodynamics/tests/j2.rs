@@ -172,3 +172,50 @@ fn invalid_inputs_are_rejected() {
         Err(Error::Degenerate)
     );
 }
+
+#[test]
+fn perigee_rotation_matches_the_secular_rate() {
+    // ω̇ = (3/4)·n·J2·(R/p)²·(5 cos²i − 1) (Vallado; Montenbruck & Gill). Checked over ten orbits of
+    // an orbit with e = 0.1, where the perigee direction is well defined. The perigee drift is
+    // compared with the rate. The integrated drift is 0.995 of the rate (0.5 % off), within the 1 % bound.
+    let (a, e, inc): (f64, f64, f64) = (7_000.0, 0.1, 0.9);
+    let n = (MU / a.powi(3)).sqrt();
+    let p = a * (1.0 - e * e);
+    let c = inc.cos();
+    let secular_rate = 0.75 * n * WGS84_J2 * (R / p).powi(2) * (5.0 * c * c - 1.0);
+    let period = TAU / n;
+    let duration = 10.0 * period;
+
+    let start = Keplerian::new(
+        Kilometres::new(a).expect("finite"),
+        e,
+        Radians::new(inc).expect("finite"),
+        Radians::new(1.0).expect("finite"),
+        Radians::new(0.5).expect("finite"),
+        Radians::new(0.3).expect("finite"),
+    )
+    .expect("elliptic")
+    .to_state(MU)
+    .expect("state");
+    let start_argp = Keplerian::from_state(&start, MU)
+        .expect("elliptic")
+        .arg_periapsis()
+        .get();
+    let model = (
+        CentralBody::new(MU).expect("mu"),
+        J2Zonal::earth(MU).expect("j2"),
+    );
+    let end = Cowell::new(model, seconds(10.0))
+        .expect("step")
+        .propagate(&start, seconds(duration))
+        .expect("integrates");
+    let end_argp = Keplerian::from_state(&end, MU)
+        .expect("elliptic")
+        .arg_periapsis()
+        .get();
+    let d = end_argp - start_argp;
+    let integrated = d.sin().atan2(d.cos());
+    let expected = secular_rate * duration;
+    assert!(expected.abs() > 0.02, "drift {expected} too small to test");
+    assert_close(integrated, expected, REGRESSION_REL);
+}

@@ -10,6 +10,8 @@ None.
 
 - `elements.rs` (Keplerian ↔ state vector): written from the standard two-body relations (the perifocal position and velocity, the rotation Rz(Ω)·Rx(i)·Rz(ω), and the usual state-to-element formulas for h, the node vector, the eccentricity vector and the energy). The singular-case conventions are this crate's own, chosen so that each state has one element set. No reference implementation was consulted for this code; the tests check it against identities and round trips, not against another implementation.
 
+- `tests/j2.rs` (perigee rotation): the rate (3/4)·n·J2·(R/p)²·(5cos²i − 1) is the standard secular result, and the same formula appears in `tpt-solutions/tpt-science`'s `tpt-sci-astro` (read, not copied, as a reference). Its `EARTH_J2` = 1.08262668×10⁻³ agrees with this crate's `WGS84_J2` to 3×10⁻⁷ relative, which is its truncation.
+
 - `equinoctial.rs` (equinoctial elements): p = a(1−e²), f = e cos(ω+Ω), g = e sin(ω+Ω), h = tan(i/2) cos Ω, k = tan(i/2) sin Ω, L = Ω+ω+ν, and the inverse, written from the Walker, Ocampo and Russell (1996) definitions. No reference code consulted. The conversions go through `Keplerian`, so the circular and equatorial conventions are the same ones the crate uses elsewhere.
 
 - `frames.rs` (`lvlh_matrix`): the LVLH triad as the RTN triad reordered and signed, x = T, y = −N, z = −R. The axis convention is this crate's choice, recorded in the doc comment; other references use other orders and signs. Written from those definitions; no reference code consulted.
