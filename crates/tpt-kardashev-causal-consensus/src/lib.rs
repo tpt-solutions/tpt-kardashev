@@ -17,11 +17,13 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 pub mod causal;
 pub mod clock;
+pub mod consistency;
 pub mod error;
 pub mod vector;
 
 #[cfg(feature = "alloc")]
 pub use causal::{CausalBroadcast, Envelope};
 pub use clock::{HybridClock, Timestamp};
+pub use consistency::{ConsistencyLevel, Delays};
 pub use error::ClockError;
 pub use vector::{CausalRelation, VectorClock};
