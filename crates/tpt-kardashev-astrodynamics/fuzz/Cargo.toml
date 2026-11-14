@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-astrodynamics-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tpt-kardashev-astrodynamics]
+path = ".."
+
+[[bin]]
+name = "tle_parse"
+path = "fuzz_targets/tle_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "spk_read"
+path = "fuzz_targets/spk_read.rs"
+test = false
+doc = false
+bench = false
+
+# Separate workspace: the fuzzer is not part of the main workspace or its licence graph.
+[workspace]
