@@ -218,7 +218,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] **v0.1 exit:** BPv7 codec with vectors, stores, CGR router, LTP layer, simulator
 
 ### 2.2 `tpt-kardashev-astrodynamics`
-- [ ] Check `tpt-sci-astro` and `tpt-transportation` for an existing Lambert solver (§12.7); record in provenance
+- [ ] Check `tpt-sci-astro` and `tpt-transportation` for an existing Lambert solver (§12.7); record in provenance — partial: `tpt-transportation` and `tpt-zenith` are public under `tpt-solutions` and were read; neither has a Lambert solver. `tpt-sci-astro` is not accessible (404 without credentials), so it stays open
 - [ ] Review `tpt-zenith/orbital-mechanics` and `tpt-equinox-orbital`; record in provenance
 - [ ] Define `Scalar`, units newtypes (`Kilometres`, `Seconds`), error enum — partial: `Kilometres`, `Seconds`, `Radians` (finite-checked), `Error` (`#[non_exhaustive]`) and `Vec3` are written and tested; no `Scalar` type yet (plain `f64` in the API)
 - [ ] Epochs and time scales (UTC, TAI, TT, TDB), Julian dates, leap-second handling (user-supplied table, no bundled data) — partial: TT epochs, TAI, UTC through a caller-supplied table, and Julian dates are written and tested; TDB not written (its periodic difference from TT needs a series not yet verified); UT1 not written

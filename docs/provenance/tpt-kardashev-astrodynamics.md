@@ -38,7 +38,9 @@ None.
 
 ## Reviewed for reference (not copied)
 
-- Not yet. tpt-sci-astro (Lambert solver check, spec §12.7), tpt-transportation, tpt-zenith/orbital-mechanics and tpt-equinox-orbital are not in the local workspace, so they have not been reviewed (todo §2.2 remains open for them).
+- `tpt-solutions/tpt-zenith` (`orbital-mechanics`, MIT OR Apache-2.0), read from a shallow clone in the scratchpad, not copied, on the SDP4 deep-space terms, `dpper`, `dspace` and the `dsinit` resonance coefficients. Findings: the lunar-solar periodic sums, the g- and f-coefficients, the resonance integrator's grid and its endpoint correction all agree with this crate. Three points differ from this crate and from the reference as recalled: (1) the `dsinit` root constants are written as `sqrt(7.3636953e-9)` and similar, where this crate uses the reference values `ROOT44 = 7.3636953e-9` directly, so zenith's `d2201` is about 48 times this crate's; (2) zenith's low-inclination `dpper` applies the `atan2` correction unconditionally, where the reference applies it only when the difference exceeds π; (3) zenith's `argpp` in that branch omits the `dls` term. This crate follows the reference on all three. The zenith verification test was not run here: running that code was refused, so zenith's test status is unknown. Its SDP4 cases could be compared against the printed vectors by its owner.
+- `tpt-solutions/tpt-transportation` (`crates/space/src/orbital.rs`, MIT OR Apache-2.0), read in a shallow clone, not copied: Keplerian elements and the Hohmann formula, which is the same as this crate's. Its test tolerance is loose (it accepts ±7% of 4.04 km/s, and its own comment gives 3.85 km/s for the coplanar transfer). No Lambert solver.
+- `tpt-solutions/tpt-sci-astro` and `tpt-solutions/tpt-equinox-orbital`: not accessible. GitHub returns 404 for them without credentials, so they are private or under another owner; the Lambert check (spec §12.7) remains open for `tpt-sci-astro`.
 
 ## Third-party licences
 
