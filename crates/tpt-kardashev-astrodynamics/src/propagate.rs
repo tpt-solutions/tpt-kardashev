@@ -20,7 +20,7 @@ const MAX_ITERATIONS: usize = 100;
 const CHI_TOLERANCE: f64 = 1e-12;
 
 /// The Stumpff functions `(C(z), S(z))`.
-fn stumpff(z: f64) -> (f64, f64) {
+pub(crate) fn stumpff(z: f64) -> (f64, f64) {
     if z.abs() < 1.0 {
         // C(z) = Σ (−z)^k / (2k+2)!, S(z) = Σ (−z)^k / (2k+3)!, summed term by term.
         let mut c = 0.0;

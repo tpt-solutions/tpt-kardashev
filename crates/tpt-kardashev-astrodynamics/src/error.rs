@@ -34,6 +34,8 @@ pub enum Error {
     /// A radius must be positive and finite, and for a bi-elliptic transfer the intermediate
     /// radius must exceed both end radii.
     InvalidRadius,
+    /// A time of flight must be positive and finite.
+    InvalidTimeOfFlight,
 }
 
 impl fmt::Display for Error {
@@ -49,6 +51,9 @@ impl fmt::Display for Error {
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
             Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
             Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
+            Error::InvalidTimeOfFlight => {
+                f.write_str("the time of flight must be positive and finite")
+            }
             Error::NoLeapSecondEntry => {
                 f.write_str("the instant is before the first leap-second table entry")
             }
