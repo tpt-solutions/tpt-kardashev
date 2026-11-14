@@ -226,10 +226,10 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Reference frames: inertial (GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic, and transforms between them — partial: perifocal ↔ inertial (`Keplerian::perifocal_to_inertial`) and RTN (`frames::rtn_matrix`) are written and tested; LVLH needs an explicit axis convention; heliocentric ecliptic needs a heliocentric origin; Earth-fixed needs UT1; GCRF-like not separately defined yet
 - [ ] Element sets (Keplerian, equinoctial) and state-vector conversions — partial: Keplerian ↔ state for elliptic orbits, with fixed conventions for circular and equatorial cases, tested by round trips and known values; equinoctial elements not written
 - [x] Two-body propagation (universal variables) — `propagate::propagate`, tested for periods, conservation, composition, reversal, agreement with an independent Kepler-equation solve, and hyperbolic states
-- [ ] `ForceModel` trait
-- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust
-- [ ] Cowell combined numerical propagator
-- [ ] Integrator: fixed-step RK4
+- [x] `ForceModel` trait — `force::ForceModel` (acceleration at a time and state); a pair of models is a model (their sum)
+- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust — partial: central body (`force::CentralBody`) only
+- [x] Cowell combined numerical propagator — `integrate::Cowell` integrates any `ForceModel`, including summed models; tested against the analytic two-body solution
+- [x] Integrator: fixed-step RK4 — `integrate::rk4_step`; error falls as the fourth power of the step (measured 16.4× per halving)
 - [ ] Integrator: adaptive high-order Runge-Kutta
 - [ ] Integrator: symplectic for N-body
 - [ ] Lambert solver
