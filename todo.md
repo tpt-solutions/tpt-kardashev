@@ -227,14 +227,14 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Element sets (Keplerian, equinoctial) and state-vector conversions — partial: Keplerian ↔ state for elliptic orbits, with fixed conventions for circular and equatorial cases, tested by round trips and known values; equinoctial elements not written
 - [x] Two-body propagation (universal variables) — `propagate::propagate`, tested for periods, conservation, composition, reversal, agreement with an independent Kepler-equation solve, and hyperbolic states
 - [x] `ForceModel` trait — `force::ForceModel` (acceleration at a time and state); a pair of models is a model (their sum)
-- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust — partial: central body (`force::CentralBody`) and J2 (`force::J2Zonal`, WGS 84 constants) written; higher zonal harmonics, third bodies, SRP, drag and thrust not yet
+- [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust — partial: central body (`force::CentralBody`), J2 (`force::J2Zonal`, WGS 84 constants) and third-body gravity of the Sun and Moon (`force::ThirdBody`) written; higher zonal harmonics, SRP, drag and thrust not yet
 - [x] Cowell combined numerical propagator — `integrate::Cowell` integrates any `ForceModel`, including summed models; tested against the analytic two-body solution
 - [x] Integrator: fixed-step RK4 — `integrate::rk4_step`; error falls as the fourth power of the step (measured 16.4× per halving)
 - [ ] Integrator: adaptive high-order Runge-Kutta
 - [ ] Integrator: symplectic for N-body
 - [x] Lambert solver — `lambert::lambert` (zero-revolution, universal variables, bisection on z); tested on exact circular arcs and by round trip through the propagator for prograde and retrograde orbits; multi-revolution transfers not written
 - [x] Impulsive manoeuvres: Hohmann, bi-elliptic, plane change — `manoeuvre::hohmann`, `manoeuvre::bi_elliptic`, `manoeuvre::plane_change`; tested by propagating the transfer orbits to the next apsis, not by re-using the formulas
-- [x] `Ephemeris` trait with low-precision analytic provider — `ephemeris::Ephemeris` and `ephemeris::LowPrecision`, which gives the Sun only (longitude to about 0.01°, distance to about 10⁻⁴ AU); the Moon and planets are not written
+- [x] `Ephemeris` trait with low-precision analytic provider — `ephemeris::Ephemeris` and `ephemeris::LowPrecision`, which gives the Sun (longitude to about 0.01°, distance to about 10⁻⁴ AU) and the Moon (a few tenths of a degree in longitude); the planets are not written
 - [ ] SPK (Chebyshev) reader behind a feature (no ephemeris data bundled)
 - [ ] `sgp4` feature: SGP4/SDP4 and TLE parsing (port from zenith)
 - [ ] Visibility and contact-window computation
