@@ -225,7 +225,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Optional `relativity` feature for relativistic scale relations
 - [ ] Reference frames: inertial (GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic, and transforms between them — partial: perifocal ↔ inertial (`Keplerian::perifocal_to_inertial`) and RTN (`frames::rtn_matrix`) are written and tested; LVLH needs an explicit axis convention; heliocentric ecliptic needs a heliocentric origin; Earth-fixed needs UT1; GCRF-like not separately defined yet
 - [ ] Element sets (Keplerian, equinoctial) and state-vector conversions — partial: Keplerian ↔ state for elliptic orbits, with fixed conventions for circular and equatorial cases, tested by round trips and known values; equinoctial elements not written
-- [ ] Two-body propagation (universal variables)
+- [x] Two-body propagation (universal variables) — `propagate::propagate`, tested for periods, conservation, composition, reversal, agreement with an independent Kepler-equation solve, and hyperbolic states
 - [ ] `ForceModel` trait
 - [ ] Forces: central body, zonal harmonics J2…Jn, third bodies, SRP with shadow model, atmospheric drag, thrust
 - [ ] Cowell combined numerical propagator
