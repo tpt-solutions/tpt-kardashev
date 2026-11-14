@@ -19,6 +19,8 @@ pub mod causal;
 pub mod clock;
 pub mod consistency;
 pub mod error;
+#[cfg(feature = "alloc")]
+pub mod transport;
 pub mod vector;
 
 #[cfg(feature = "alloc")]
