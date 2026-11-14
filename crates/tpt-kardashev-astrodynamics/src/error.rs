@@ -60,6 +60,17 @@ pub enum Error {
         /// The unsupported feature.
         what: &'static str,
     },
+    /// A two-line element set is malformed: a line is too short, has the wrong number, or has a
+    /// field that is not a number. `what` says which.
+    BadTle {
+        /// What is wrong with the element set.
+        what: &'static str,
+    },
+    /// The SGP4 model cannot be applied, or the satellite has decayed or diverged. `what` says why.
+    Sgp4 {
+        /// Why the model fails.
+        what: &'static str,
+    },
     /// No segment of the file covers the requested body pair.
     NotFound,
     /// A segment covers the body pair, but not the requested epoch.
@@ -84,6 +95,8 @@ impl fmt::Display for Error {
             Error::OutOfRange { what } => write!(f, "{what} is out of range"),
             Error::Malformed { what } => write!(f, "malformed SPK file: {what}"),
             Error::Unsupported { what } => write!(f, "unsupported in this reader: {what}"),
+            Error::BadTle { what } => write!(f, "malformed element set: {what}"),
+            Error::Sgp4 { what } => write!(f, "SGP4: {what}"),
             Error::NotFound => f.write_str("no segment covers this body pair"),
             Error::OutOfCoverage => f.write_str("the epoch is outside the segment's coverage"),
             Error::InvalidTimeOfFlight => {
