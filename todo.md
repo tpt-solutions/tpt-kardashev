@@ -223,7 +223,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Define `Scalar`, units newtypes (`Kilometres`, `Seconds`), error enum — partial: `Kilometres`, `Seconds`, `Radians` (finite-checked), `Error` (`#[non_exhaustive]`) and `Vec3` are written and tested; no `Scalar` type yet (plain `f64` in the API)
 - [ ] Epochs and time scales (UTC, TAI, TT, TDB), Julian dates, leap-second handling (user-supplied table, no bundled data) — partial: TT epochs, TAI, UTC through a caller-supplied table, and Julian dates are written and tested; TDB not written (its periodic difference from TT needs a series not yet verified); UT1 not written
 - [ ] Optional `relativity` feature for relativistic scale relations
-- [ ] Reference frames: inertial (GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic, and transforms between them
+- [ ] Reference frames: inertial (GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic, and transforms between them — partial: perifocal ↔ inertial (`Keplerian::perifocal_to_inertial`) and RTN (`frames::rtn_matrix`) are written and tested; LVLH needs an explicit axis convention; heliocentric ecliptic needs a heliocentric origin; Earth-fixed needs UT1; GCRF-like not separately defined yet
 - [ ] Element sets (Keplerian, equinoctial) and state-vector conversions — partial: Keplerian ↔ state for elliptic orbits, with fixed conventions for circular and equatorial cases, tested by round trips and known values; equinoctial elements not written
 - [ ] Two-body propagation (universal variables)
 - [ ] `ForceModel` trait
