@@ -31,6 +31,9 @@ pub enum Error {
     NoConvergence,
     /// An integration step must be positive and finite.
     InvalidStep,
+    /// A radius must be positive and finite, and for a bi-elliptic transfer the intermediate
+    /// radius must exceed both end radii.
+    InvalidRadius,
 }
 
 impl fmt::Display for Error {
@@ -45,6 +48,7 @@ impl fmt::Display for Error {
             Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
             Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
+            Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
             Error::NoLeapSecondEntry => {
                 f.write_str("the instant is before the first leap-second table entry")
             }

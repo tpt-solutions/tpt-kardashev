@@ -25,6 +25,8 @@ pub mod force;
 pub mod frames;
 #[cfg(feature = "std")]
 pub mod integrate;
+#[cfg(feature = "std")]
+pub mod manoeuvre;
 pub mod matrix;
 #[cfg(feature = "std")]
 pub mod propagate;
