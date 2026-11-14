@@ -27,6 +27,8 @@ pub enum Error {
     NoLeapSecondEntry,
     /// The leap-second table is empty, or its dates or offsets are not in increasing order.
     InvalidLeapSeconds,
+    /// The Newton iteration for the universal Kepler equation did not converge.
+    NoConvergence,
 }
 
 impl fmt::Display for Error {
@@ -39,6 +41,7 @@ impl fmt::Display for Error {
             Error::NotElliptic => f.write_str("the orbit is not elliptic"),
             Error::Degenerate => f.write_str("the state has zero angular momentum"),
             Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
+            Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
             Error::NoLeapSecondEntry => {
                 f.write_str("the instant is before the first leap-second table entry")
             }

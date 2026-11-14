@@ -22,6 +22,8 @@ pub mod error;
 #[cfg(feature = "std")]
 pub mod frames;
 pub mod matrix;
+#[cfg(feature = "std")]
+pub mod propagate;
 pub mod time;
 pub mod units;
 pub mod vector;
