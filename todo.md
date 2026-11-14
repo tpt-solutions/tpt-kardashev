@@ -110,7 +110,7 @@ Exit: each crate at its v0.1 exit.
 - [x] Optional `serde` feature on data types
 - [x] Known-answer tests from the CCSDS standard — from its tables and definitions (Annex F matrix, Annex G generator, §9.2 ASM, §4.4.1 interleaving, §3.3 convolutional code). The standard has no codeword vectors.
 - [x] Round-trip property tests (≤ t symbol errors always recovered)
-- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: targets in `fuzz/` ran 60 s each on nightly (frame ~6M runs, RS ~44k, soft Viterbi ~348k, LDPC ~1.7M) with no crash; longer campaigns and a kept corpus are still to do
+- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: targets in `fuzz/` ran 60 s each on nightly (frame ~6M runs, RS ~44k, soft Viterbi ~348k, LDPC ~1.7M), then 4 minutes each (frame ~24M, RS ~175k, soft Viterbi ~837k, LDPC ~7M), with no crash; a kept corpus is still to do
 - [x] Kani proofs for selected arithmetic (GF ops) — 5 GF(2^8) harnesses and 2 dual-basis harnesses, all verified with Kani 0.68 (run in WSL Ubuntu; Kani does not support Windows)
 - [x] Benchmarks: BER curves vs theory as regression checks — `tests/ber.rs` (exhaustive-ML minimum-metric check; soft BER within the converged union bound at 3 dB) and `examples/ber_curve` (2–4 dB table, release mode). Criterion timing benchmarks are not part of this item.
 - [x] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
