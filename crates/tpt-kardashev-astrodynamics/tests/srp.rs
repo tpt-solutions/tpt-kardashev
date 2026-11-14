@@ -107,11 +107,15 @@ fn the_force_is_linear_in_reflectivity_and_area_to_mass() {
 }
 
 #[test]
-fn the_earths_night_side_shadow_is_a_cylinder() {
+fn the_earths_shadow_has_an_umbra_and_a_penumbra() {
     let u = sun_unit();
     let p = perpendicular(u);
     let radius = WGS84_EQUATORIAL_RADIUS_KM;
-    // Directly behind the Earth, on the axis: in shadow, no force.
+    let full = srp()
+        .acceleration(seconds(0.0), &at(u * -10_000.0 + p * (radius + 200.0)))
+        .expect("accel")
+        .norm();
+    // Directly behind the Earth, on the axis: in the umbra, no force.
     let on_axis = u * -7_000.0;
     assert_eq!(
         srp()
@@ -119,16 +123,27 @@ fn the_earths_night_side_shadow_is_a_cylinder() {
             .expect("accel"),
         Vec3::new(0.0, 0.0, 0.0)
     );
-    // Behind the Earth, just inside one Earth radius of the axis: in shadow.
-    let inside = u * -10_000.0 + p * (radius - 1.0);
+    // Behind the Earth, halfway to the axis: well inside the umbra, no force.
+    let inside = u * -10_000.0 + p * (0.5 * radius);
     assert_eq!(
         srp()
             .acceleration(seconds(0.0), &at(inside))
             .expect("accel"),
         Vec3::new(0.0, 0.0, 0.0)
     );
-    // Just outside: sunlit.
-    let outside = u * -10_000.0 + p * (radius + 1.0);
+    // Just inside one Earth radius of the axis, 10 000 km behind: the penumbra, so a partial force.
+    // The penumbra there runs from about 6 330 km to 6 425 km from the axis.
+    let penumbra = u * -10_000.0 + p * (radius - 1.0);
+    let partial = srp()
+        .acceleration(seconds(0.0), &at(penumbra))
+        .expect("accel")
+        .norm();
+    assert!(
+        partial > 0.0 && partial < full,
+        "partial {partial} against full {full}"
+    );
+    // Well outside the penumbra: sunlit.
+    let outside = u * -10_000.0 + p * (radius + 200.0);
     assert!(
         srp()
             .acceleration(seconds(0.0), &at(outside))

@@ -265,16 +265,63 @@ impl<E: Ephemeris> ForceModel for ThirdBody<E> {
 /// file).
 pub const SOLAR_PRESSURE_1AU_PA: f64 = 4.56e-6;
 
-/// Solar radiation pressure on a spacecraft, with a cylindrical Earth shadow.
+/// Nominal solar radius in km, from IAU 2015 Resolution B3 (695 700 km, a defined value).
+pub const SUN_RADIUS_KM: f64 = 695_700.0;
+
+/// The fraction of the Sun's disk visible from a geocentric position, from 0 (umbra) to 1 (full
+/// sunlight), with the Earth's penumbra.
+///
+/// Seen from the spacecraft, the Sun and the Earth are two discs: the Sun's of angular radius
+/// `a_s = asin(R_sun/|r_sun − r|)` and the Earth's of angular radius `a_e = asin(R_E/|r|)`, with
+/// centres `c` apart. The overlap is the area of a circular segment of the Sun's disk beyond the
+/// Earth's limb, which lies `c − a_e` from the Sun's centre; the visible fraction is one minus the
+/// overlap over `π·a_s²`. The limb is treated as a straight line across the Sun's disk, which is
+/// accurate because the disk is small compared with the Earth's (a sagitta of order 10⁻⁵ of the
+/// Sun's radius at the closest distances).
+///
+/// `position` and `sun` are geocentric, in km and in the same frame. A position inside the Earth
+/// returns 0.
+pub fn lit_fraction(position: Vec3, sun: Vec3) -> f64 {
+    let r = position.norm();
+    if r.is_nan() || r <= WGS84_EQUATORIAL_RADIUS_KM {
+        return 0.0;
+    }
+    let to_sun = sun - position;
+    let d_sun = to_sun.norm();
+    if d_sun.is_nan() {
+        return 0.0;
+    }
+    if d_sun <= SUN_RADIUS_KM {
+        return 1.0;
+    }
+    let a_e = (WGS84_EQUATORIAL_RADIUS_KM / r).asin();
+    let a_s = (SUN_RADIUS_KM / d_sun).asin();
+    let cos_c = (-position.dot(to_sun) / (r * d_sun)).clamp(-1.0, 1.0);
+    let c = cos_c.acos();
+    // Signed distance from the Sun's centre to the Earth's limb: positive when the Sun's centre is
+    // outside the Earth's disk.
+    let x = c - a_e;
+    if x >= a_s {
+        return 1.0;
+    }
+    if x <= -a_s {
+        return 0.0;
+    }
+    // Area of the circular segment of the Sun's disk beyond a line at signed distance x.
+    let segment = a_s * a_s * (x / a_s).acos() - x * (a_s * a_s - x * x).sqrt();
+    (1.0 - segment / (core::f64::consts::PI * a_s * a_s)).clamp(0.0, 1.0)
+}
+
+/// Solar radiation pressure on a spacecraft, with the Earth's penumbra.
 ///
 /// The acceleration is `ν·C_R·(A/m)·P·(AU/d)²·(r − r_sun)/d`, where `r` is the spacecraft's
 /// geocentric position, `r_sun` the Sun's, `d = |r − r_sun|`, `C_R` the reflectivity coefficient,
 /// `A/m` the area-to-mass ratio in m²/kg, and `P` the pressure at one AU. The shadow factor `ν` is
-/// 0 when the spacecraft is on the night side and within one Earth radius of the Sun–Earth axis,
-/// and 1 otherwise.
+/// the visible fraction of the Sun's disk from [`lit_fraction`]: 1 in full sunlight, 0 in the
+/// umbra, and between them in the penumbra.
 ///
-/// Not modelled: the penumbra (the shadow is sharp), the Earth's albedo and infrared, and the
-/// spacecraft's attitude and surface optics beyond `C_R`.
+/// Not modelled: the Earth's albedo and infrared, and the spacecraft's attitude and surface optics
+/// beyond `C_R`.
 #[derive(Clone, Copy, Debug)]
 pub struct SolarRadiationPressure<E> {
     ephemeris: E,
@@ -330,7 +377,8 @@ impl<E: Ephemeris> ForceModel for SolarRadiationPressure<E> {
     fn acceleration(&self, t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
         let at = Epoch::from_tt_seconds(self.epoch.tt_seconds() + t.get())?;
         let sun = ecliptic_to_equatorial(self.ephemeris.geocentric_position(Body::Sun, at)?);
-        if Self::in_shadow(state.position, sun) {
+        let lit = lit_fraction(state.position, sun);
+        if lit == 0.0 {
             return Ok(Vec3::new(0.0, 0.0, 0.0));
         }
         let from_sun = state.position - sun;
@@ -340,7 +388,8 @@ impl<E: Ephemeris> ForceModel for SolarRadiationPressure<E> {
         }
         let au_over_d = AU_KM / d;
         // Pressure in N/m² gives m/s² per m²/kg; convert to km/s² with 1e-3.
-        let magnitude = self.reflectivity
+        let magnitude = lit
+            * self.reflectivity
             * self.area_to_mass
             * SOLAR_PRESSURE_1AU_PA
             * au_over_d
