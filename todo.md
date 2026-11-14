@@ -55,7 +55,7 @@ Exit: CI green on empty crates.
 - [x] Each crate: `README.md` (one-line description, what it does not model), `CHANGELOG.md`, `examples/`
 - [x] Each crate: `docs/provenance/<crate>.md` stub (origin of ported code, licence of any third-party source)
 - [x] Add placeholder `examples/` directory at repo root for cross-crate examples
-- [x] Optional feature flags declared per §4.2 (relativity, dtn, energy) with no mandatory internal deps
+- [x] Optional feature flags declared per §4.2 (relativity, energy) with no mandatory internal deps — `dtn` was removed from astrodynamics, as `fec` was from dtn, because a dependency on another crate breaks the rule. `relativity` in astrodynamics remains a placeholder pending a decision the same way
 - [x] Verify no sibling `path = "../tpt-xyz"` dependencies outside this workspace
 
 ### Repo docs
@@ -237,8 +237,8 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] `Ephemeris` trait with low-precision analytic provider — `ephemeris::Ephemeris` and `ephemeris::LowPrecision`, which gives the Sun (longitude to about 0.01°, distance to about 10⁻⁴ AU) and the Moon (a few tenths of a degree in longitude); the planets are not written
 - [ ] SPK (Chebyshev) reader behind a feature (no ephemeris data bundled)
 - [ ] `sgp4` feature: SGP4/SDP4 and TLE parsing (port from zenith)
-- [ ] Visibility and contact-window computation
-- [ ] Optional `dtn` feature: emit `ContactPlan` from visibility windows
+- [x] Visibility and contact-window computation — `visibility`: WGS 84 ground stations, Earth rotation from a caller-supplied start angle (no UT1), elevation, and `contact_windows` with edges bisected to a millisecond; tested on exact station geometry and on a 500 km equatorial orbit (15 passes a day, 237–474 s each, edges on the 10° limit)
+- [x] Optional `dtn` feature: emit `ContactPlan` from visibility windows — dropped as a feature: it would be a dependency on another crate. `visibility::contact_windows` gives the windows, and the caller builds the `ContactPlan` with `dtn`'s `Contact::new`
 - [ ] SGP4 reference vector tests
 - [ ] Textbook Lambert and Kepler cases
 - [ ] Energy and angular-momentum drift checks (symplectic, adaptive) over long arcs
