@@ -20,3 +20,8 @@ These repos are listed in the todo but have not been opened yet. Review is an op
 ## Third-party licences
 
 None.
+
+## Sibling review (todo §1.3: TMR)
+
+- `tpt-solutions/tpt-equinox`, crate `tpt-equinox-tmr`, read, not copied. Its `vote3` returns a value in every case. When all three copies differ, it returns copy `a` and sets `double_mismatch`. This crate's `Nmr::vote` returns `Err(NoMajority)` in that case, so no caller can take a guess for a voted value. This crate keeps its behaviour. The sibling's flag is a sound design too; the difference is which one a caller sees by default.
+- `tpt-for-redundancy`: not found on GitHub under `tpt-solutions` (404). It stays unreviewed.

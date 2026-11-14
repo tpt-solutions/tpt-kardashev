@@ -91,7 +91,7 @@ Exit: CI green on empty crates.
 Exit: each crate at its v0.1 exit.
 
 ### 1.1 `tpt-kardashev-archive-codes`
-- [ ] Investigate `tpt-aion` and `tpt-rfc` for existing archival coding/CRC (§12.6); record result in provenance — blocked: neither repo is in the local workspace; provenance records this
+- [x] Investigate `tpt-aion` and `tpt-rfc` for existing archival coding/CRC (§12.6); record result in provenance — done: read from GitHub; neither has archival coding or CRC code (provenance records this)
 - [x] Obtain current CCSDS 131.0-B revision; record parameters, polynomials, sync markers from the document (not memory) — CCSDS 131.0-B-5 (Sept 2023) fetched and read; sources in `docs/provenance/tpt-kardashev-archive-codes.md`
 - [x] Define error type (`CodeError`, `#[non_exhaustive]`), `DecodeReport`, and traits (`BlockEncoder`, `BlockDecoder`, `SoftDecoder`, `ErasureCoder`)
 - [x] GF(2^8) arithmetic (in-crate, tables generated at const time)
@@ -119,7 +119,7 @@ Exit: each crate at its v0.1 exit.
 - [x] **v0.1 exit:** RS(255,223)+interleaving with vectors (standard tables: Annex F, Annex G, §4.4.1; the standard has no codeword vectors); conv K=7 + Viterbi (ML-checked, BER-checked); CRC; framing; no_std/no-alloc
 
 ### 1.2 `tpt-kardashev-relativity`
-- [ ] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance
+- [x] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance — done: the bound is a configured limit (`DEFAULT_MAX_DRIFT_MS`), recorded in provenance
 - [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes — partial: `f64` only; generic `Scalar` trait not defined
 - [x] `Event`, `FourVector`, `Interval` (timelike/spacelike/lightlike)
 - [x] `Lorentz` boost with `|v| < c` enforced; composition via rapidity
@@ -141,7 +141,7 @@ Exit: each crate at its v0.1 exit.
 - [x] **v0.1 exit:** events, intervals, boosts, proper time, causality, Doppler, weak-field redshift, tolerance policy (time-scale constants still to verify against the IAU texts)
 
 ### 1.3 `tpt-kardashev-radhard`
-- [ ] Review `tpt-equinox-tmr` and `tpt-for-redundancy`; record in provenance
+- [ ] Review `tpt-equinox-tmr` (done: read, recorded in provenance) and `tpt-for-redundancy` (not found on GitHub; stays open)
 - [x] `Tmr<T>` with majority vote and scrub-on-mismatch
 - [x] N-modular variant
 - [x] Typestate wrappers (unvoted vs voted types)
@@ -160,7 +160,7 @@ Exit: each crate at its v0.1 exit.
 - [ ] **v0.1 exit:** Tmr, SECDED(72,64), checksummed cells, checkpoint/rollback, injector, Kani proofs
 
 ### 1.4 `tpt-kardashev-energy-ledger`
-- [ ] Review `tpt-equinox-power`, `tpt-energy`, `tpt-thermodynamics` (physics only, no code duplication)
+- [x] Review `tpt-equinox-power`, `tpt-energy`, `tpt-thermodynamics` (physics only, no code duplication)
 - [x] Newtypes `Joules`, `Watts`, `Kelvin`
 - [x] Physical constants (k_B, σ) with CODATA source and year recorded
 - [x] Double-entry `Ledger` with explicit `WasteHeat` account

@@ -32,3 +32,7 @@ A web search also surfaced a published constant for the dual-basis matrix (Phil 
 ## Third-party licences
 
 None.
+
+## Sibling review (todo §1.1: archival coding and CRC prior art)
+
+- `tpt-solutions/tpt-aion` and `tpt-solutions/tpt-rfc`, read from shallow clones, not copied: neither has archival coding (no Reed–Solomon, Viterbi, LDPC, fountain, interleaver or CRC code). The matches for "interleave" are prose in comments. Nothing here conflicts with the in-crate design, and no code was taken from either.

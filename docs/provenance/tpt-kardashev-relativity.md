@@ -21,3 +21,7 @@ These older repos are listed in the todo but have not been opened yet. Review is
 ## Third-party licences
 
 None.
+
+## Sibling review (todo §1.2: bounded-drift assumption)
+
+- `tpt-solutions/tpt-replicate`, `src/clock.rs`, read, not copied. Its hybrid logical clock assumes that the skew between clocks is bounded, and enforces the bound by rejecting a remote timestamp more than `max_drift_ms` ahead of local physical time (default 60 000 ms, `DEFAULT_MAX_DRIFT_MS`). The bound is a configured parameter, not derived from a clock model. The ordering itself does not depend on the bound; only acceptance does. A physical clock model that bounds skew (for example, the relativistic rate relations in this crate) would give a principled value for the parameter, but the sibling crate does not derive one.
