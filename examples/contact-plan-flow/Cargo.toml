@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+# Cross-crate example (Phase 2 exit): visibility windows from tpt-kardashev-astrodynamics become a
+# ContactPlan for tpt-kardashev-dtn. Library crates in this repo do not depend on each other; an
+# example may, which is why this is a separate package. It is its own workspace, outside the
+# library workspace (crates/*).
+
+[package]
+name = "tpt-kardashev-contact-plan-flow"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+tpt-kardashev-astrodynamics = { path = "../../crates/tpt-kardashev-astrodynamics" }
+tpt-kardashev-dtn = { path = "../../crates/tpt-kardashev-dtn" }
+
+[workspace]
