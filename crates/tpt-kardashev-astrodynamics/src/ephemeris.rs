@@ -18,7 +18,7 @@
 use crate::{Epoch, Error, Vec3};
 
 /// One astronomical unit in km (IAU 2012, exact).
-const AU_KM: f64 = 149_597_870.7;
+pub const AU_KM: f64 = 149_597_870.7;
 
 /// A body whose position can be queried.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

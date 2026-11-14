@@ -36,6 +36,11 @@ pub enum Error {
     InvalidRadius,
     /// A time of flight must be positive and finite.
     InvalidTimeOfFlight,
+    /// A coefficient that must not be negative is negative. `what` names it.
+    Negative {
+        /// The quantity that is negative.
+        what: &'static str,
+    },
 }
 
 impl fmt::Display for Error {
@@ -51,6 +56,7 @@ impl fmt::Display for Error {
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
             Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
             Error::InvalidRadius => f.write_str("a radius is out of range for this transfer"),
+            Error::Negative { what } => write!(f, "{what} must not be negative"),
             Error::InvalidTimeOfFlight => {
                 f.write_str("the time of flight must be positive and finite")
             }

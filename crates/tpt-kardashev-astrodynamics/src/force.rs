@@ -6,7 +6,7 @@
 //! body gravity and the J2 zonal harmonic. Not yet: higher zonal harmonics, third bodies,
 //! radiation pressure, drag and thrust.
 
-use crate::ephemeris::{Body, Ephemeris};
+use crate::ephemeris::{AU_KM, Body, Ephemeris};
 use crate::frames::ecliptic_to_equatorial;
 use crate::{Epoch, Error, Seconds, StateVector, Vec3};
 
@@ -179,5 +179,94 @@ impl<E: Ephemeris> ForceModel for ThirdBody<E> {
         let direct = d * (1.0 / (d_norm * d_norm * d_norm));
         let indirect = rb * (1.0 / (rb_norm * rb_norm * rb_norm));
         Ok((direct - indirect) * self.mu)
+    }
+}
+
+/// Solar radiation pressure at one astronomical unit, in N/m² (as recalled; see the provenance
+/// file).
+pub const SOLAR_PRESSURE_1AU_PA: f64 = 4.56e-6;
+
+/// Solar radiation pressure on a spacecraft, with a cylindrical Earth shadow.
+///
+/// The acceleration is `ν·C_R·(A/m)·P·(AU/d)²·(r − r_sun)/d`, where `r` is the spacecraft's
+/// geocentric position, `r_sun` the Sun's, `d = |r − r_sun|`, `C_R` the reflectivity coefficient,
+/// `A/m` the area-to-mass ratio in m²/kg, and `P` the pressure at one AU. The shadow factor `ν` is
+/// 0 when the spacecraft is on the night side and within one Earth radius of the Sun–Earth axis,
+/// and 1 otherwise.
+///
+/// Not modelled: the penumbra (the shadow is sharp), the Earth's albedo and infrared, and the
+/// spacecraft's attitude and surface optics beyond `C_R`.
+#[derive(Clone, Copy, Debug)]
+pub struct SolarRadiationPressure<E> {
+    ephemeris: E,
+    epoch: Epoch,
+    reflectivity: f64,
+    area_to_mass: f64,
+}
+
+impl<E: Ephemeris> SolarRadiationPressure<E> {
+    /// Pressure on a spacecraft with reflectivity `reflectivity` (C_R) and area-to-mass ratio
+    /// `area_to_mass` (m²/kg), with `t = 0` at `epoch`. Fails with [`Error::Negative`] for a
+    /// negative value, and [`Error::NonFinite`] for a non-finite one.
+    pub fn new(
+        ephemeris: E,
+        epoch: Epoch,
+        reflectivity: f64,
+        area_to_mass: f64,
+    ) -> Result<Self, Error> {
+        for (value, what) in [
+            (reflectivity, "reflectivity"),
+            (area_to_mass, "area-to-mass ratio"),
+        ] {
+            if !value.is_finite() {
+                return Err(Error::NonFinite { what });
+            }
+            if value < 0.0 {
+                return Err(Error::Negative { what });
+            }
+        }
+        Ok(Self {
+            ephemeris,
+            epoch,
+            reflectivity,
+            area_to_mass,
+        })
+    }
+
+    /// Whether a geocentric position is in the Earth's cylindrical shadow at the Sun position
+    /// `sun` (km, equatorial).
+    pub fn in_shadow(position: Vec3, sun: Vec3) -> bool {
+        let sun_norm = sun.norm();
+        let along = position.dot(sun) / sun_norm;
+        if along >= 0.0 {
+            return false;
+        }
+        let axis = sun * (1.0 / sun_norm);
+        let across = position - axis * along;
+        across.norm() < WGS84_EQUATORIAL_RADIUS_KM
+    }
+}
+
+impl<E: Ephemeris> ForceModel for SolarRadiationPressure<E> {
+    fn acceleration(&self, t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
+        let at = Epoch::from_tt_seconds(self.epoch.tt_seconds() + t.get())?;
+        let sun = ecliptic_to_equatorial(self.ephemeris.geocentric_position(Body::Sun, at)?);
+        if Self::in_shadow(state.position, sun) {
+            return Ok(Vec3::new(0.0, 0.0, 0.0));
+        }
+        let from_sun = state.position - sun;
+        let d = from_sun.norm();
+        if d.is_nan() || d <= 0.0 {
+            return Err(Error::Degenerate);
+        }
+        let au_over_d = AU_KM / d;
+        // Pressure in N/m² gives m/s² per m²/kg; convert to km/s² with 1e-3.
+        let magnitude = self.reflectivity
+            * self.area_to_mass
+            * SOLAR_PRESSURE_1AU_PA
+            * au_over_d
+            * au_over_d
+            * 1e-3;
+        Ok(from_sun * (magnitude / d))
     }
 }
