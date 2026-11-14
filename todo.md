@@ -233,7 +233,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Integrator: adaptive high-order Runge-Kutta
 - [ ] Integrator: symplectic for N-body
 - [ ] Lambert solver
-- [ ] Impulsive manoeuvres: Hohmann, bi-elliptic, plane change
+- [x] Impulsive manoeuvres: Hohmann, bi-elliptic, plane change — `manoeuvre::hohmann`, `manoeuvre::bi_elliptic`, `manoeuvre::plane_change`; tested by propagating the transfer orbits to the next apsis, not by re-using the formulas
 - [ ] `Ephemeris` trait with low-precision analytic provider
 - [ ] SPK (Chebyshev) reader behind a feature (no ephemeris data bundled)
 - [ ] `sgp4` feature: SGP4/SDP4 and TLE parsing (port from zenith)
