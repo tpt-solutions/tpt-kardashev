@@ -245,7 +245,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Frame round-trip tests — ecliptic ↔ equatorial round trip (inverse written in the test) and length preservation; RTN components mapped back to the inertial state over a 192-case element grid; RTN normal equals the perifocal W axis (`tests/frames.rs`)
 - [ ] Cross-check new force model against old secular formulas (J2, drag, etc.) — partial: J2 nodal regression of an integrated orbit matches the secular rate to 0.2% (`tests/j2.rs`); drag not written
 - [ ] Fuzz: TLE and SPK parsers — partial: deterministic robustness tests (`tests/parser_robustness.rs`) feed 20 000 mutated and 20 000 random element-set pairs, truncations of a valid set, and 5 000 random byte strings (half with the DAF magic) to `parse_tle` and `read_segments`; none panics. A coverage-guided `cargo-fuzz` target is not written
-- [ ] `no_std` + `alloc` build
+- [x] `no_std` + `alloc` build — builds with `--no-default-features --features alloc` on the host and on thumbv7em; the crate has no heap-allocating API yet, so this checks the feature only, and no alloc-dependent test exists
 - [ ] README states force-model limits and what is not modelled
 - [ ] Low-thrust (Edelbaum-type) approximations (post-v0.1)
 - [ ] **v0.1 exit:** time scales, frames, elements, two-body + Cowell (J2/third-body/SRP/drag), RK4 + adaptive, Lambert, impulsive manoeuvres, analytic ephemeris, SGP4 feature
