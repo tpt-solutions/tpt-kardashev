@@ -1,21 +1,28 @@
 # tpt-kardashev-isru
 
-In-situ resource planning: elemental mass-balance checks, LP planning over a horizon and closure scores.
+In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and (not yet) closure scores.
 
-**Status:** Phase 0 scaffold. No public API yet.
+**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver, and a planner that maximises the amount of a target species made within stocks and run limits. Not yet: closure scores, the energy account, the resource type, a loading format, and the worked lunar-regolith example.
 
 ## Features
 
 - `std` (default): links the standard library.
-- `alloc`: enables heap-allocating APIs. Core is `no_std`.
+- `alloc`: enables the processes, the planner and the simplex solver. The element, composition and balance checks need no heap.
+- `energy`: declared; no code behind it yet.
 
-## Optional features
+## Conventions
 
-- `energy`: declared per spec §4.2; no code behind it yet.
+- Masses are in kg, atomic masses in g/mol. Atomic masses are the midpoints of the CIAAW intervals (https://ciaaw.org/atomic-weights.htm), so an element's mass is taken to the precision of that table.
+- A process balances when the total mass and the mass of each element agree to a relative tolerance of 1e-6 (`plan::BALANCE_TOLERANCE`).
+- A plan is a linear program over the runs of each process. A horizon here is the stock on hand and the run limits; there are no time-indexed stocks yet.
 
 ## What it does not model
 
-Pending: stated in full at v0.1 (todo §3.2).
+- No time: a plan does not sequence runs, schedule power, or account for the time a process takes.
+- No energy: the energy account and closure in energy terms are not written.
+- No closure score yet, and no list of limiting imports.
+- Compositions are elemental. A species' oxide or mineral form is not modelled, only its elements.
+- The simplex is dense and suits small problems only; it has no sparse or revised form.
 
 ## Licence
 

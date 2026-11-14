@@ -311,20 +311,20 @@ Exit: each crate at v0.1 exit.
 
 ### 3.2 `tpt-kardashev-isru`
 - [ ] Review `tpt-process` (`tpt-proc-mass-balance`, `tpt-proc-flowsheet`), `tpt-systems-optimisation`, `hiveforge-resources`; record in provenance
-- [ ] Types: `Element`, `Material` (mass fractions), `Resource`, `Process`
-- [ ] Elemental mass-balance validation (reject unbalanced processes at load time, with tolerance)
-- [ ] Atomic-mass data source for elements (documented, licence recorded)
+- [ ] Types: `Element`, `Material` (mass fractions), `Resource`, `Process` — `Resource` is not written (stock is a plain array indexed by species); `Element` (14 elements with atomic masses), `Composition` (fixed array of mass fractions, no heap), `Material`, `Process` (`plan::Process`, checked at construction)
+- [x] Elemental mass-balance validation (reject unbalanced processes at load time, with tolerance) — `material::check_balance` checks total mass and each element to a relative tolerance; `Process::new` rejects unbalanced processes (tests in `tests/planning.rs`)
+- [x] Atomic-mass data source for elements (documented, licence recorded) — https://ciaaw.org/atomic-weights.htm, read for this crate: midpoints of the intervals, or the single value; the CIAAW table's terms of use were not checked
 - [ ] Process/resource loading format (document it)
-- [ ] LP formulation over a time horizon
-- [ ] Built-in simplex solver for small problems
+- [x] LP formulation over a time horizon — `plan::plan_maximum`: run counts as variables, stocks and run limits as bounds, the target produced as the objective; a horizon is the stock and run limits (no time-indexed stocks yet)
+- [x] Built-in simplex solver for small problems — `simplex::maximise`: dense tableau, Bland's rule, slack start (b >= 0), tested on a textbook LP and an unbounded case
 - [ ] Solver adapter trait for external solvers
 - [ ] Closure scores (bill of materials and energy) and list of limiting imports
 - [ ] Optional `energy` feature: accounts via `tpt-kardashev-energy-ledger`
-- [ ] Conservation tests (total mass and each element through any plan)
-- [ ] Closed-form toy systems with known optima
-- [ ] Closure monotonicity test (adding a process never lowers closure)
+- [x] Conservation tests (total mass and each element through any plan) — the planner's plans conserve every element (`tests/planning.rs`)
+- [x] Closed-form toy systems with known optima — hematite reduction in exact proportions, and hydrogen reduction against its closed form
+- [ ] Closure monotonicity test (adding a process never lowers closure) — partial: the planner's optimum never falls when a route is added (`tests/planning.rs`); closure scores are not written, so the closure test is not yet
 - [ ] Worked lunar-regolith example
-- [ ] `no_std` + `alloc` build
+- [ ] `no_std` + `alloc` build — partial: the crate builds with no features on thumbv7em and with `alloc` on the host; the planner needs `alloc`, so it is not in the no-alloc build
 - [ ] README states what is not modelled
 - [ ] **v0.1 exit:** types, balance validation, LP planner, closure score, lunar-regolith example
 
