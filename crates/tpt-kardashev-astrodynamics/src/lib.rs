@@ -20,7 +20,11 @@ extern crate alloc;
 pub mod elements;
 pub mod error;
 #[cfg(feature = "std")]
+pub mod force;
+#[cfg(feature = "std")]
 pub mod frames;
+#[cfg(feature = "std")]
+pub mod integrate;
 pub mod matrix;
 #[cfg(feature = "std")]
 pub mod propagate;
@@ -31,6 +35,10 @@ pub mod vector;
 #[cfg(feature = "std")]
 pub use elements::{Keplerian, StateVector};
 pub use error::Error;
+#[cfg(feature = "std")]
+pub use force::{CentralBody, ForceModel};
+#[cfg(feature = "std")]
+pub use integrate::Cowell;
 pub use matrix::Mat3;
 pub use time::{Epoch, LeapEntry, LeapSeconds, UtcTime};
 pub use units::{Kilometres, Radians, Seconds};

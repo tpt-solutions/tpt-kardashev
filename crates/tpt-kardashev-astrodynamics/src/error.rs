@@ -29,6 +29,8 @@ pub enum Error {
     InvalidLeapSeconds,
     /// The Newton iteration for the universal Kepler equation did not converge.
     NoConvergence,
+    /// An integration step must be positive and finite.
+    InvalidStep,
 }
 
 impl fmt::Display for Error {
@@ -42,6 +44,7 @@ impl fmt::Display for Error {
             Error::Degenerate => f.write_str("the state has zero angular momentum"),
             Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
+            Error::InvalidStep => f.write_str("the integration step must be positive and finite"),
             Error::NoLeapSecondEntry => {
                 f.write_str("the instant is before the first leap-second table entry")
             }
