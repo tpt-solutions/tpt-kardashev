@@ -11,7 +11,18 @@
 //! and the second needs UT1.
 
 use crate::elements::StateVector;
-use crate::{Error, Mat3};
+use crate::{Error, Mat3, Vec3};
+
+/// The obliquity of the ecliptic at J2000, in arcseconds (IAU 2006: 84 381.406″).
+pub const OBLIQUITY_J2000_ARCSEC: f64 = 84_381.406;
+
+/// Rotates a vector from the mean ecliptic of J2000 to the mean equator of J2000: a rotation about
+/// the x axis by the obliquity. The ecliptic pole `(0, 0, 1)` maps to `(0, −sin ε, cos ε)`.
+pub fn ecliptic_to_equatorial(v: Vec3) -> Vec3 {
+    let eps = (OBLIQUITY_J2000_ARCSEC / 3600.0).to_radians();
+    let (s, c) = eps.sin_cos();
+    Vec3::new(v.x, c * v.y - s * v.z, s * v.y + c * v.z)
+}
 
 /// The matrix whose rows are the RTN axes, as unit vectors in the state's own frame. Applying it
 /// to a vector gives that vector's `(radial, transverse, normal)` components.

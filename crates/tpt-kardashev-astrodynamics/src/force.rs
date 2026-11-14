@@ -6,7 +6,9 @@
 //! body gravity and the J2 zonal harmonic. Not yet: higher zonal harmonics, third bodies,
 //! radiation pressure, drag and thrust.
 
-use crate::{Error, Seconds, StateVector, Vec3};
+use crate::ephemeris::{Body, Ephemeris};
+use crate::frames::ecliptic_to_equatorial;
+use crate::{Epoch, Error, Seconds, StateVector, Vec3};
 
 /// An acceleration (km/s²) on a spacecraft at `t` seconds past the epoch, for a state in km and
 /// km/s.
@@ -115,5 +117,67 @@ impl ForceModel for J2Zonal {
             k * p.y * (1.0 - 5.0 * z2_over_r2),
             k * p.z * (3.0 - 5.0 * z2_over_r2),
         ))
+    }
+}
+
+/// Gravitational parameter of the Sun, in km³/s² (DE430 value, as recalled; see the provenance
+/// file).
+pub const SUN_MU_KM3_S2: f64 = 1.327_124_400_41e11;
+/// Gravitational parameter of the Moon, in km³/s² (DE430 value, as recalled; see the provenance
+/// file).
+pub const MOON_MU_KM3_S2: f64 = 4_902.800_066;
+
+/// The third-body perturbation of a body at a position given by an ephemeris, on a spacecraft
+/// orbiting the Earth:
+///
+/// `a = μ_b·((r_b − r)/|r_b − r|³ − r_b/|r_b|³)`,
+///
+/// where `r` is the spacecraft's geocentric position and `r_b` the body's. The ephemeris gives
+/// positions in the ecliptic, and this force rotates them into the equatorial frame that the
+/// spacecraft state uses. Time `t` is seconds past `epoch`.
+#[derive(Clone, Copy, Debug)]
+pub struct ThirdBody<E> {
+    ephemeris: E,
+    body: Body,
+    mu: f64,
+    epoch: Epoch,
+}
+
+impl<E: Ephemeris> ThirdBody<E> {
+    /// A perturbation by `body` with parameter `mu` (km³/s²), with `t = 0` at `epoch`. Fails with
+    /// [`Error::InvalidMu`] unless `mu` is positive and finite.
+    pub fn new(ephemeris: E, body: Body, mu: f64, epoch: Epoch) -> Result<Self, Error> {
+        if mu.is_finite() && mu > 0.0 {
+            Ok(Self {
+                ephemeris,
+                body,
+                mu,
+                epoch,
+            })
+        } else {
+            Err(Error::InvalidMu)
+        }
+    }
+
+    /// The body's position relative to the Earth at time `t`, in the equatorial frame (km).
+    pub fn position(&self, t: Seconds) -> Result<Vec3, Error> {
+        let at = Epoch::from_tt_seconds(self.epoch.tt_seconds() + t.get())?;
+        let ecliptic = self.ephemeris.geocentric_position(self.body, at)?;
+        Ok(ecliptic_to_equatorial(ecliptic))
+    }
+}
+
+impl<E: Ephemeris> ForceModel for ThirdBody<E> {
+    fn acceleration(&self, t: Seconds, state: &StateVector) -> Result<Vec3, Error> {
+        let rb = self.position(t)?;
+        let d = rb - state.position;
+        let d_norm = d.norm();
+        let rb_norm = rb.norm();
+        if d_norm.is_nan() || d_norm <= 0.0 || rb_norm.is_nan() || rb_norm <= 0.0 {
+            return Err(Error::Degenerate);
+        }
+        let direct = d * (1.0 / (d_norm * d_norm * d_norm));
+        let indirect = rb * (1.0 / (rb_norm * rb_norm * rb_norm));
+        Ok((direct - indirect) * self.mu)
     }
 }
