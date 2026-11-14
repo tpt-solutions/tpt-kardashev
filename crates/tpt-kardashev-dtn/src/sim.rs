@@ -425,6 +425,15 @@ impl Network {
         self.failures.push((from, to, start, end));
     }
 
+    /// Partitions `a` from `b` during `[start, end)`: datagrams that start on either direction of
+    /// the link in that window are lost, and the link works again afterwards. A short partition
+    /// is absorbed by the retransmissions of the sessions; a long one cancels them, and the link
+    /// is then learned as failed.
+    pub fn partition(&mut self, a: u64, b: u64, start: u64, end: u64) {
+        self.fail_link_between(a, b, start, end);
+        self.fail_link_between(b, a, start, end);
+    }
+
     /// Sets how long a suspicion of a failed link lasts, in milliseconds.
     pub fn set_suspect_hold(&mut self, ms: u64) {
         self.suspect_hold = ms;

@@ -458,3 +458,32 @@ fn a_completed_transfer_clears_a_suspicion_still_in_force() {
         "a completed transfer cleared the suspicion"
     );
 }
+
+#[test]
+fn a_short_partition_delays_delivery_until_it_heals() {
+    // Both directions of 1 <-> 2 are cut from 0 to 2 s. The sessions retransmit their checkpoints
+    // through the outage, so the bundle arrives once the partition has healed, and a short outage
+    // does not get the link marked as failed.
+    let mut net = network(duplex(&[(1, 2)], 0, 100_000), &[1, 2]);
+    net.partition(1, 2, 0, 2_000);
+    let payload = bundle_bytes(1, 2, 0, 10_000_000, "partitioned");
+    assert!(net.send_routed(1, payload.clone()).expect("send"));
+
+    net.run_until(1_500);
+    assert!(
+        net.inbox(2).is_empty(),
+        "nothing crosses during the partition"
+    );
+
+    net.run_until(30_000);
+    assert_eq!(
+        net.inbox(2),
+        &[(1, payload)],
+        "delivered after the partition"
+    );
+    assert!(
+        net.suspect_links().is_empty(),
+        "a short partition is not a failed link"
+    );
+    assert_eq!(net.discarded(), 0);
+}
