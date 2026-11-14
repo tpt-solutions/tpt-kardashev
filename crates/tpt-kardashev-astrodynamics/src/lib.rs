@@ -18,6 +18,8 @@ extern crate alloc;
 
 #[cfg(feature = "std")]
 pub mod elements;
+#[cfg(feature = "std")]
+pub mod ephemeris;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod force;
