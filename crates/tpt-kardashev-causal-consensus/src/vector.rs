@@ -57,6 +57,17 @@ impl<const N: usize> VectorClock<N> {
         Ok(())
     }
 
+    /// Raises the entry for node `index` to at least `value`. Fails with
+    /// [`ClockError::NodeOutOfRange`] when `index` is not below `N`.
+    pub fn observe(&mut self, index: usize, value: u64) -> Result<(), ClockError> {
+        let entry = self
+            .entries
+            .get_mut(index)
+            .ok_or(ClockError::NodeOutOfRange { index })?;
+        *entry = (*entry).max(value);
+        Ok(())
+    }
+
     /// Takes the entry-wise maximum with `other`, as on receiving a message.
     pub fn merge(&mut self, other: &Self) {
         for (mine, theirs) in self.entries.iter_mut().zip(other.entries.iter()) {
