@@ -4,7 +4,9 @@
 #![cfg(feature = "std")]
 #![allow(clippy::expect_used)]
 
-use tpt_kardashev_astrodynamics::frames::rtn_matrix;
+use tpt_kardashev_astrodynamics::frames::{
+    OBLIQUITY_J2000_ARCSEC, ecliptic_to_equatorial, rtn_matrix,
+};
 use tpt_kardashev_astrodynamics::{Error, Keplerian, Kilometres, Mat3, Radians, StateVector, Vec3};
 
 /// Earth's gravitational parameter in km³/s², as in the element tests.
@@ -148,6 +150,87 @@ fn circular_orbit_velocity_is_purely_transverse() {
     assert_close(v_rtn.x, 0.0, ROUND_REL, ROUND_ABS);
     assert_close(v_rtn.y, v, ROUND_REL, ROUND_ABS);
     assert_close(v_rtn.z, 0.0, ROUND_REL, ROUND_ABS);
+}
+
+/// The inverse of `ecliptic_to_equatorial`, written here (the crate does not expose it): a rotation
+/// about x by −ε.
+fn equatorial_to_ecliptic(v: Vec3) -> Vec3 {
+    let eps = (OBLIQUITY_J2000_ARCSEC / 3600.0).to_radians();
+    let (s, c) = eps.sin_cos();
+    Vec3::new(v.x, c * v.y + s * v.z, -s * v.y + c * v.z)
+}
+
+#[test]
+fn ecliptic_to_equatorial_round_trips_and_keeps_length() {
+    let samples = [
+        Vec3::new(1.0, 0.0, 0.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(0.0, 0.0, 1.0),
+        Vec3::new(0.3, -0.8, 0.52),
+        Vec3::new(-7_000.0, 1_234.5, -9_876.5),
+    ];
+    for v in samples {
+        let eq = ecliptic_to_equatorial(v);
+        assert_close(eq.norm(), v.norm(), CLOSED_REL, CLOSED_ABS);
+        assert_vec_close(equatorial_to_ecliptic(eq), v, ROUND_REL, ROUND_ABS);
+    }
+}
+
+#[test]
+fn ecliptic_x_axis_is_unchanged_and_the_pole_is_tilted() {
+    // The rotation is about x, so the vernal equinox direction does not move.
+    let x = ecliptic_to_equatorial(Vec3::new(1.0, 0.0, 0.0));
+    assert_vec_close(x, Vec3::new(1.0, 0.0, 0.0), CLOSED_REL, CLOSED_ABS);
+    // The ecliptic pole sits at the obliquity from the equatorial pole.
+    let eps = (OBLIQUITY_J2000_ARCSEC / 3600.0).to_radians();
+    let pole = ecliptic_to_equatorial(Vec3::new(0.0, 0.0, 1.0));
+    assert_vec_close(
+        pole,
+        Vec3::new(0.0, -eps.sin(), eps.cos()),
+        CLOSED_REL,
+        CLOSED_ABS,
+    );
+}
+
+#[test]
+fn rtn_components_map_back_to_the_inertial_state() {
+    // Over a grid of element sets, the RTN components of a state, mapped back by the transpose,
+    // reproduce its position and velocity.
+    let mut count = 0;
+    for a in [6_778.0, 7_000.0, 26_560.0, 42_164.0] {
+        for e in [0.0, 0.05, 0.3, 0.6] {
+            for i in [0.0, 0.6, 1.4, 2.6] {
+                for nu in [0.1, 2.0, 4.5] {
+                    let state = elements(a, e, i, 1.1, 0.7, nu).to_state(MU).expect("state");
+                    let m = rtn_matrix(&state).expect("non-degenerate");
+                    let components = m.mul_vec(state.velocity);
+                    let back = m.transpose().mul_vec(components);
+                    assert_vec_close(back, state.velocity, ROUND_REL, ROUND_ABS);
+                    let back_r = m.transpose().mul_vec(m.mul_vec(state.position));
+                    assert_vec_close(back_r, state.position, ROUND_REL, ROUND_ABS);
+                    count += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(count, 192);
+}
+
+#[test]
+fn rtn_normal_axis_is_the_perifocal_w_axis() {
+    // The normal axis of RTN is the orbit normal, which the perifocal frame calls W.
+    for (e, i, raan, argp, nu) in [(0.1, 0.6, 1.0, 2.0, 0.7), (0.4, 2.2, 4.0, 5.5, 3.0)] {
+        let el = elements(26_560.0, e, i, raan, argp, nu);
+        let state = el.to_state(MU).expect("state");
+        let rtn = rtn_matrix(&state).expect("non-degenerate");
+        let w = el.perifocal_to_inertial().transpose().rows[2];
+        assert_vec_close(
+            Vec3::new(rtn.rows[2][0], rtn.rows[2][1], rtn.rows[2][2]),
+            Vec3::new(w[0], w[1], w[2]),
+            ROUND_REL,
+            ROUND_ABS,
+        );
+    }
 }
 
 #[test]
