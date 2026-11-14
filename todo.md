@@ -290,7 +290,7 @@ Exit: each crate at v0.1 exit.
 ### 3.1 `tpt-kardashev-causal-consensus`
 - [ ] Review `tpt-replicate`, `hiveforge-consensus`, `tpt-scheduler`, `tpt-fabric`; record in provenance — partial: read tpt-replicate clock, tpt-fabric clock, tpt-scheduler; hiveforge-consensus is not on GitHub under tpt-solutions (404), so it stays open
 - [x] Hybrid logical clock and vector clock — `clock::HybridClock` (strictly increasing per node, causal across receives, drift bound) and `vector::VectorClock<N>` (fixed size, inline), tested in `tests/clocks.rs`
-- [ ] Causally ordered operation log
+- [x] Causally ordered operation log — `causal::CausalBroadcast` (feature `alloc`): causal broadcast with vector-clock dependencies; a message is delivered only after its causes, duplicates are dropped, early messages wait in a buffer. Tested with a seeded simulation (4 nodes, random sends, reordering and duplicates: every node delivers every message once, in causal order) and a reply-before-cause case
 - [ ] Optional `relativity` feature: `CausalOrder` as ordering source
 - [ ] Domain layer: Raft-style leader election and log replication within a domain
 - [ ] `Transport` trait (pluggable)

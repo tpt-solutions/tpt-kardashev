@@ -2,7 +2,7 @@
 
 Causal ordering and hierarchical consensus (domains and federation) with consistency bounds stated per level.
 
-**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`) and fixed-size vector clocks (`vector::VectorClock`). The operation log, the domain and federation layers and the consistency levels are not written yet.
+**Status:** Phase 3.1, in progress. Implemented: the hybrid logical clock (`clock::HybridClock`, `Timestamp`), fixed-size vector clocks (`vector::VectorClock`), and a causally ordered operation log by causal broadcast (`causal::CausalBroadcast`, feature `alloc`). The domain and federation layers and the consistency levels are not written yet.
 
 ## Features
 
@@ -27,3 +27,7 @@ MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
 - `VectorClock<N>`: a vector clock over a fixed set of `N` nodes, stored inline, so it needs no heap. It decides `Before`, `After`, `Equal` and `Concurrent`.
 
 Not modelled yet: the causally ordered log, the domain consensus, the federation layer, and the consistency levels. Nothing here is Byzantine-tolerant.
+
+## Causal log
+
+- `CausalBroadcast<T, N>` (feature `alloc`): each message carries the sender's vector clock. A node delivers a message only when it has delivered everything that clock says the sender had seen, so the delivered log is a causal order. Duplicates are dropped, and early messages wait in a buffer. Two concurrent messages may be delivered in different orders at different nodes; this layer does not order them.

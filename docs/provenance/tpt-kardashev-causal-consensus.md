@@ -25,3 +25,5 @@ None.
 - `tpt-solutions/tpt-fabric`, `crates/tpt-fabric-core/src/clock.rs` (read): a Lamport clock and a map-based vector clock with `happens_before` and `concurrent_with`. Its module doc says it never orders by wall-clock time across nodes. Its distributed lease is described as not real consensus. This crate's HLC does use the wall clock, bounded by the drift rule, so the two designs differ on purpose.
 - `tpt-solutions/tpt-scheduler`: its ID and core types only; no clock or consensus code.
 - `hiveforge-consensus`: not on GitHub under `tpt-solutions` (404). Stays unreviewed.
+
+- `causal.rs` (causal broadcast): the delivery rule of Birman, Schiper and Stephenson (1991), written from that description: deliver a message from sender s with clock V when V[s] = delivered[s] + 1 and V[k] ≤ delivered[k] for every other k. The buffer, the duplicate handling, and the pruning of buffered copies whose sequence number is already delivered are this crate's. No reference code consulted.
