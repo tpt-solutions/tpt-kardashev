@@ -38,6 +38,8 @@ pub mod lambert;
 #[cfg(feature = "std")]
 pub mod manoeuvre;
 pub mod matrix;
+#[cfg(all(feature = "std", feature = "alloc"))]
+pub mod nbody;
 #[cfg(feature = "std")]
 pub mod propagate;
 #[cfg(feature = "std")]

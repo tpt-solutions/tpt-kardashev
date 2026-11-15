@@ -20,6 +20,9 @@ pub enum Error {
     /// The state has zero angular momentum (zero radius, or position and velocity parallel), so no
     /// orbital plane is defined.
     Degenerate,
+    /// An N-body system or state needs at least one body, and its positions, velocities and
+    /// gravitational parameters must all have the same length.
+    BodyCount,
     /// A calendar date or time of day is out of range, or a UTC second is 60 or more (leap-second
     /// insertion is not modelled).
     InvalidCalendar,
@@ -88,6 +91,9 @@ impl fmt::Display for Error {
             }
             Error::NotElliptic => f.write_str("the orbit is not elliptic"),
             Error::Degenerate => f.write_str("the state has zero angular momentum"),
+            Error::BodyCount => f.write_str(
+                "an N-body system needs at least one body, with one position, velocity and gravitational parameter each",
+            ),
             Error::InvalidCalendar => f.write_str("the calendar date or time is out of range"),
             Error::NoConvergence => f.write_str("the universal Kepler equation did not converge"),
             Error::InvalidTolerance => f.write_str("a tolerance must be positive and finite"),
