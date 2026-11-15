@@ -13,6 +13,11 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(feature = "alloc")]
+pub mod equilibrium;
 pub mod error;
 pub mod rng;
 #[cfg(feature = "std")]

@@ -14,6 +14,13 @@ pub enum NeutronicsError {
     BadThickness,
     /// A run was asked for zero histories.
     NoHistories,
+    /// The grid is not usable: the radii must be positive and increasing, the heights increasing, and each
+    /// direction needs at least three nodes.
+    BadGrid,
+    /// A solver tolerance is not positive and finite.
+    BadTolerance,
+    /// The iteration did not converge within its limit.
+    NotConverged,
 }
 
 impl fmt::Display for NeutronicsError {
@@ -24,6 +31,9 @@ impl fmt::Display for NeutronicsError {
             ),
             NeutronicsError::BadThickness => f.write_str("the slab thickness must be positive and finite"),
             NeutronicsError::NoHistories => f.write_str("a run needs at least one history"),
+            NeutronicsError::BadGrid => f.write_str("the grid is not usable"),
+            NeutronicsError::BadTolerance => f.write_str("the tolerance must be positive and finite"),
+            NeutronicsError::NotConverged => f.write_str("the solver did not converge within its limit"),
         }
     }
 }
