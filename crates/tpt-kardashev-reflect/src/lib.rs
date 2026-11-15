@@ -15,6 +15,8 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(all(feature = "crypto", feature = "alloc"))]
+pub mod attest;
 pub mod error;
 #[cfg(feature = "alloc")]
 pub mod gate;

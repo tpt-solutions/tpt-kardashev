@@ -36,6 +36,8 @@ pub enum ReflectError {
     },
     /// The certificate does not have one multiplier vector per invariant row, of the update's length.
     CertificateShape,
+    /// A replacement invariant was not signed by the attestation authority.
+    BadAttestation,
 }
 
 impl fmt::Display for ReflectError {
@@ -59,6 +61,9 @@ impl fmt::Display for ReflectError {
                     f,
                     "invariant row {row} is not implied by the update's bounds"
                 )
+            }
+            ReflectError::BadAttestation => {
+                f.write_str("the replacement invariant is not attested by the authority")
             }
             ReflectError::CertificateShape => {
                 f.write_str("the certificate does not have one multiplier per invariant row")

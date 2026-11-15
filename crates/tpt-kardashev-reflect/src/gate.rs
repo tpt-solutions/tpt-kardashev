@@ -30,6 +30,8 @@ pub const GENESIS: Hash = [0; 32];
 pub enum Outcome {
     /// The update was contained in the invariant, and is now the policy.
     Accepted,
+    /// The invariant was replaced, under an attestation by the authority.
+    InvariantReplaced,
     /// The update was refused, for the reason given.
     Rejected(ReflectError),
 }
@@ -114,6 +116,7 @@ fn receipt_hash(sequence: u64, previous: &Hash, update_digest: &Hash, outcome: &
     hash.update(update_digest);
     match outcome {
         Outcome::Accepted => hash.update(&[1u8]),
+        Outcome::InvariantReplaced => hash.update(&[2u8]),
         Outcome::Rejected(reason) => {
             hash.update(&[0u8]);
             hash.update(reason_code(*reason).as_bytes());
@@ -133,6 +136,7 @@ fn reason_code(reason: ReflectError) -> &'static str {
         ReflectError::CoefficientMismatch { .. } => "coefficient-mismatch",
         ReflectError::BoundExceeded { .. } => "bound-exceeded",
         ReflectError::CertificateShape => "certificate-shape",
+        ReflectError::BadAttestation => "bad-attestation",
     }
 }
 
@@ -178,6 +182,39 @@ impl UpdateGate {
     /// The hash of the latest receipt, or [`GENESIS`] when nothing was submitted.
     pub fn head(&self) -> Hash {
         self.receipts.last().map_or(GENESIS, |r| r.hash)
+    }
+
+    /// Records a submission that the attestation path refused, and returns the receipt. Crate-private:
+    /// only [`crate::attest::AttestedGate`] calls it.
+    pub(crate) fn record_refusal(&mut self, update_digest: Hash, reason: ReflectError) -> Receipt {
+        self.push(update_digest, Outcome::Rejected(reason))
+    }
+
+    /// Replaces the invariant with one that the attestation path has checked, and records the
+    /// replacement. Crate-private: only [`crate::attest::AttestedGate`] calls it, after verifying the
+    /// authority's signature and the containment of the current policy.
+    pub(crate) fn install_invariant(&mut self, invariant: Constraints, digest: Hash) -> Receipt {
+        self.invariant = invariant;
+        self.push(digest, Outcome::InvariantReplaced)
+    }
+
+    fn push(&mut self, update_digest: Hash, outcome: Outcome) -> Receipt {
+        let sequence = self.receipts.len() as u64;
+        let previous = self.head();
+        let receipt = Receipt {
+            sequence,
+            previous,
+            update_digest,
+            outcome,
+            hash: receipt_hash(sequence, &previous, &update_digest, &outcome),
+        };
+        self.receipts.push(receipt);
+        receipt
+    }
+
+    /// The digest of the current invariant, as an attestation names it.
+    pub(crate) fn invariant_digest(&self) -> Hash {
+        digest_constraints(&self.invariant)
     }
 
     /// Submits an update with its certificate. If the certificate shows the update contained in the

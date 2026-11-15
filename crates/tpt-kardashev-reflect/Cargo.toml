@@ -15,8 +15,10 @@ publish.workspace = true
 default = ["std"]
 std = []
 alloc = []
+crypto = ["alloc", "dep:ed25519-compact"]
 
 [dependencies]
+ed25519-compact = { version = "2.6.1", default-features = false, optional = true }
 
 [lints]
 workspace = true
