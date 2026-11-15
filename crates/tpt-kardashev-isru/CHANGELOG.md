@@ -2,13 +2,15 @@
 
 ## Unreleased
 
+- `examples/regolith.rs` is now the worked lunar-regolith plan on measured Apollo regional bulk chemistry (NASA/TM-20240011783, Table 6; the same table as arXiv:2609.06496, Table 1). The oxides are converted to elemental mass fractions and normalised to 100 wt%. Hydrogen reduction of FeO with water electrolysis, planned for oxygen. Hand-checked: highlands 51.38 kg iron, 14.72 kg oxygen, closure 0.0368. The hematite stand-in is removed.
+
 - `closure`: monotonicity over a horizon. Tests in `tests/closure_horizon.rs`: the score is non-decreasing as hematite stock grows and matches min(1, iron/demand); non-decreasing as the run limit grows, with stock capping the runs; adding a magnetite process never lowers the score and raises it for some demands.
 - `element::Element`: the 14 elements of lunar regolith and the processes that make them, with standard atomic masses (midpoints of the CIAAW intervals, read from https://ciaaw.org/atomic-weights.htm for this crate).
 - `material::Composition` and `material::Material`: mass fractions in a fixed array (no heap), validated to sum to 1 and to be in range. `material::check_balance`: the elemental mass balance of a process to a relative tolerance.
 - `plan::Process` and `plan::plan_maximum` (feature `alloc`): a process is checked for elemental balance when it is built. The planner chooses run counts to maximise the amount of a target species, within stocks and run limits, as a linear program. Tests in `tests/planning.rs`: a textbook LP through the solver, an unbounded case, balanced and unbalanced processes, hematite reduction in exact proportions, hydrogen reduction against its closed form, element conservation through a plan, monotonicity when a route is added, and rejection of bad input.
 - `simplex::maximise` (feature `alloc`): a dense simplex solver with Bland's rule, for `maximise c·x` subject to `A·x <= b, x >= 0` with `b >= 0`.
 - `error::IsruError` (`#[non_exhaustive]`).
-- Not written yet: closure scores, the energy account, the resource type, a solver adapter trait, the loading format, and the worked regolith example.
+- Not written yet: the energy account and the resource type (stock is a plain array indexed by species).
 - `closure::closure` and `closure::Closure` (feature `alloc`): closure of a plan against a demand. Per demanded species, the in-situ net production over the demand, capped at 1; the score is the lowest ratio, and `limiting` and `imports_kg` name the shortfalls. Tests in `tests/closure.rs`.
 - `simplex::LpSolver` trait and `simplex::Simplex`; `plan::plan_maximum_with` takes any solver. A counting adapter is tested.
 - The empty `energy` feature is removed: the energy account is for the caller to combine with the energy ledger, since a library crate may not depend on it.

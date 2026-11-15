@@ -10,6 +10,8 @@ None yet.
 
 - tpt-process (tpt-proc-mass-balance, tpt-proc-flowsheet), tpt-systems-optimisation, hiveforge-resources (todo §3.2)
 
+- Regolith composition (`examples/regolith.rs`): NASA/TM-20240011783, Revision A, "Lunar Regolith Simulant User's Guide" (Oct 2024), Table 6, the regional average oxide chemistry from the Lunar Sample Compendium (https://ntrs.nasa.gov/citations/20240011783, read for this crate). The values are the Apollo regional averages, with their totals 99.84 (highlands), 98.81 (low-Ti mare) and 99.23 (high-Ti mare) wt%. The same values appear in arXiv:2609.06496, Table 1, which cites this guide and the Lunar Sourcebook. Note: the low-Ti mare and highlands SiO2 are both 45.62 wt% in the source; this is not corrected here. The oxide-to-element conversion is this crate's example code, from the atomic masses above.
+
 ## Third-party licences
 
 None.

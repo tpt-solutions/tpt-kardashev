@@ -2,7 +2,7 @@
 
 In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and closure scores against a demand.
 
-**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, closure against a demand with its limiting imports, and a text format for materials and processes (`format`). Not yet: the resource type, the energy account (by decision, the caller's), the measured regolith composition, and a time horizon.
+**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, closure against a demand with its limiting imports, and a text format for materials and processes (`format`). Not yet: the resource type, the energy account (by decision, the caller's), and a time horizon. The worked example uses measured Apollo regional chemistry.
 
 ## Features
 
@@ -22,6 +22,7 @@ In-situ resource planning: elemental mass-balance checks, linear-program plannin
 - No energy: the energy account and closure in energy terms are not written.
 - The closure score is a ratio of in-situ supply to demand. It is not weighted by cost, time or energy.
 - Compositions are elemental. A species' oxide or mineral form is not modelled, only its elements.
+- The regolith in the example is a regional average of Apollo samples, not a site or a mission's regolith. Its oxides are normalised to 100 wt% (the analyses total 98.8 to 99.8 wt%). Only FeO is reduced, so the oxygen in the other oxides is not counted: the example's closure is a lower bound.
 - The simplex is dense and suits small problems only; it has no sparse or revised form.
 
 ## Licence
@@ -30,7 +31,7 @@ MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
 
 ## Example
 
-- `cargo run --example regolith --features alloc`: two reductions of an iron oxide standing in for regolith, planned against a demand for iron and oxygen, with the closure and the imports. The ore is an illustration, not a measured lunar composition.
+- `cargo run --example regolith --features alloc`: lunar regolith from the Apollo regional averages (highlands, low-Ti mare, high-Ti mare; NASA/TM-20240011783, Table 6), reduced by hydrogen (FeO only) with the water electrolysed back to hydrogen and oxygen. Planned for oxygen against a demand for iron and oxygen, with the closure and the imports. Mass only; the energy is not modelled.
 
 ## Loading format
 

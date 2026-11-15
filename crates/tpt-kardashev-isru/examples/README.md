@@ -1,3 +1,3 @@
 # Examples: tpt-kardashev-isru
 
-Examples arrive with the v0.1 API.
+- `regolith.rs`: the lunar regolith plan on Apollo regional averages (`cargo run --example regolith --features alloc`). Mass only; no energy.
