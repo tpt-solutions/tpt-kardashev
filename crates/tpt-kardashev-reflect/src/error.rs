@@ -38,6 +38,8 @@ pub enum ReflectError {
     CertificateShape,
     /// A replacement invariant was not signed by the attestation authority.
     BadAttestation,
+    /// No certificate of the checked form exists for this containment (the generator found none).
+    NoCertificate,
 }
 
 impl fmt::Display for ReflectError {
@@ -61,6 +63,9 @@ impl fmt::Display for ReflectError {
                     f,
                     "invariant row {row} is not implied by the update's bounds"
                 )
+            }
+            ReflectError::NoCertificate => {
+                f.write_str("no containment certificate of this form exists")
             }
             ReflectError::BadAttestation => {
                 f.write_str("the replacement invariant is not attested by the authority")

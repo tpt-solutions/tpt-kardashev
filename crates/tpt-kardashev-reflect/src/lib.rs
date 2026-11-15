@@ -17,6 +17,8 @@ extern crate alloc;
 
 #[cfg(all(feature = "crypto", feature = "alloc"))]
 pub mod attest;
+#[cfg(feature = "alloc")]
+pub mod certify;
 pub mod error;
 #[cfg(feature = "alloc")]
 pub mod gate;
@@ -27,6 +29,8 @@ pub mod rational;
 #[cfg(feature = "alloc")]
 pub mod verify;
 
+#[cfg(feature = "alloc")]
+pub use certify::certify;
 pub use error::ReflectError;
 #[cfg(feature = "alloc")]
 pub use invariant::{Certificate, Constraints, Invariant, Row, Update};

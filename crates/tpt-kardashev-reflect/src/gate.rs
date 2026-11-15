@@ -137,6 +137,7 @@ fn reason_code(reason: ReflectError) -> &'static str {
         ReflectError::BoundExceeded { .. } => "bound-exceeded",
         ReflectError::CertificateShape => "certificate-shape",
         ReflectError::BadAttestation => "bad-attestation",
+        ReflectError::NoCertificate => "no-certificate",
     }
 }
 
