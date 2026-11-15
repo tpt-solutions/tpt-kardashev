@@ -20,7 +20,7 @@ Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronic
 ## What it does not model
 
 - No data: no cross-section library is bundled. The reader reads this crate's own multigroup text format (version 1), and ENDF-6 and ACE are not read.
-- One group, one dimension, normal incidence at the left face. No multigroup transport, no curved geometry, no anisotropic scattering.
+- One group, one dimension, normal incidence at the left face, in one slab or a row of layers (`layers`). No multigroup transport, no three-dimensional geometry, no anisotropic scattering.
 - No eigenvalue or criticality calculation. The runs are fixed-source only.
 - Russian roulette is played at one fixed weight threshold; splitting is not implemented.
 - The equilibrium part is partial: the toroidal-field function is not solved, and the safety factor assumes a constant F. The reviewed sibling (`tpt-ignis`) has a reduced Miller-parametrised equilibrium, not a grid solve, and this crate's solver will be a grid solve.
