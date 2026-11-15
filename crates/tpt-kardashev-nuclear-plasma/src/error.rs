@@ -19,6 +19,8 @@ pub enum NeutronicsError {
     BadGrid,
     /// A solver tolerance is not positive and finite.
     BadTolerance,
+    /// A flux surface could not be found, or the contour leaves the grid.
+    NoSurface,
     /// The iteration did not converge within its limit.
     NotConverged,
 }
@@ -34,6 +36,7 @@ impl fmt::Display for NeutronicsError {
             NeutronicsError::BadGrid => f.write_str("the grid is not usable"),
             NeutronicsError::BadTolerance => f.write_str("the tolerance must be positive and finite"),
             NeutronicsError::NotConverged => f.write_str("the solver did not converge within its limit"),
+            NeutronicsError::NoSurface => f.write_str("no flux surface found inside the grid"),
         }
     }
 }

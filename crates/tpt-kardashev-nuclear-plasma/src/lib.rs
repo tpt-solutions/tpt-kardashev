@@ -22,6 +22,8 @@ pub mod error;
 pub mod rng;
 #[cfg(feature = "std")]
 pub mod slab;
+#[cfg(all(feature = "std", feature = "alloc"))]
+pub mod surface;
 
 pub use error::NeutronicsError;
 pub use rng::SplitMix64;
