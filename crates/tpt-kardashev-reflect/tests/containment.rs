@@ -159,9 +159,8 @@ fn an_accepted_certificate_holds_on_every_sampled_point_of_the_update() {
             let mut coefficients = [0i128; 2];
             let mut bound = 0i128;
             for (j, update_row) in update_rows.iter().enumerate() {
-                for k in 0..2 {
-                    let a = update_row.coefficients[k].numerator();
-                    coefficients[k] += lambda[j] * a;
+                for (c, a) in coefficients.iter_mut().zip(update_row.coefficients.iter()) {
+                    *c += lambda[j] * a.numerator();
                 }
                 bound += lambda[j] * update_row.bound.numerator();
             }

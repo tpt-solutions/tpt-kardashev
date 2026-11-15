@@ -17,6 +17,9 @@ extern crate alloc;
 
 pub mod error;
 #[cfg(feature = "alloc")]
+pub mod gate;
+pub mod hash;
+#[cfg(feature = "alloc")]
 pub mod invariant;
 pub mod rational;
 #[cfg(feature = "alloc")]
