@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 
 use crate::error::IsruError;
 use crate::material::{Material, check_balance};
-use crate::simplex::maximise;
+use crate::simplex::{LpSolver, Simplex};
 
 /// Relative tolerance of a process's elemental balance. Tight enough to catch a mistyped fraction,
 /// loose enough for the rounding of published compositions.
@@ -99,6 +99,17 @@ pub fn plan_maximum(
     stock: &[f64],
     target: usize,
 ) -> Result<Plan, IsruError> {
+    plan_maximum_with(&Simplex, species, processes, stock, target)
+}
+
+/// As [`plan_maximum`], with the linear program solved by `solver`.
+pub fn plan_maximum_with<S: LpSolver>(
+    solver: &S,
+    species: &[Material],
+    processes: &[Process],
+    stock: &[f64],
+    target: usize,
+) -> Result<Plan, IsruError> {
     if target >= species.len() {
         return Err(IsruError::UnknownSpecies { index: target });
     }
@@ -143,7 +154,7 @@ pub fn plan_maximum(
         b.push(process.max_runs);
     }
 
-    let solution = maximise(&c, &a, &b)?;
+    let solution = solver.maximise(&c, &a, &b)?;
     let runs = solution.x;
     let mut net_change = vec![0.0; species.len()];
     for (p, process) in processes.iter().enumerate() {

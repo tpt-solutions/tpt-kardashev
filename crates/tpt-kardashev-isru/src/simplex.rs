@@ -137,3 +137,20 @@ fn finish(n: usize, basis: &[usize], tableau: &[Vec<f64>], rhs: usize, value: f6
         objective: value,
     }
 }
+
+/// A solver for `maximise c·x subject to a·x ≤ b, x ≥ 0`. The planner takes any solver that
+/// implements this, so an external solver can be used through an adapter.
+pub trait LpSolver {
+    /// Maximises `c·x` subject to `a·x ≤ b` and `x ≥ 0`, as [`maximise`] does.
+    fn maximise(&self, c: &[f64], a: &[Vec<f64>], b: &[f64]) -> Result<Solution, IsruError>;
+}
+
+/// The built-in dense simplex solver, as an [`LpSolver`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Simplex;
+
+impl LpSolver for Simplex {
+    fn maximise(&self, c: &[f64], a: &[Vec<f64>], b: &[f64]) -> Result<Solution, IsruError> {
+        maximise(c, a, b)
+    }
+}
