@@ -263,7 +263,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] **neutronics:** constructive solid geometry
 - [x] neutronics: multigroup cross-section types and the chosen format reader — `xs::Multigroup` and `xs::read_multigroup` (text format version 1), with a writer; tests in `tests/xs.rs` cover valid files, comments, round trips and malformed files with their line numbers
 - [x] neutronics: seeded RNG and fixed-source Monte Carlo transport — `rng::SplitMix64` and `slab::run_slab` (tests in `tests/neutronics.rs`)
-- [ ] neutronics: tallies (flux, reaction rates) — partial: tallies are the transmission, reflection, absorption, track length (the flux integrated over the slab) and collisions, each with its standard error; spatial flux bins and reaction-rate tallies per reaction are not written
+- [ ] neutronics: tallies (flux, reaction rates) — partial: transmission, reflection, absorption, track length and collisions, each with its standard error; spatial flux bins (`slab::run_slab_binned`, checked against the exponential in each bin and summing to the total track length); reaction-rate tallies per reaction are not written
 - [ ] neutronics: implicit capture, Russian roulette, splitting — partial: implicit capture and Russian roulette at one weight threshold (unbiased, checked against analog); splitting is not implemented
 - [x] neutronics: slab-attenuation (exponential law) validation — the pure-absorber transmission exp(-σt T) and track length, checked at four standard errors with fixed seeds
 - [x] neutronics: infinite-medium validation — track length 1/σa per source neutron in an infinite medium with scattering, checked at four standard errors

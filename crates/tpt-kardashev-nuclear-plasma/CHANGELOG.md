@@ -12,3 +12,4 @@
 - `error::NeutronicsError::NoSurface`.
 - `xs::Multigroup` and `xs::read_multigroup` (features `std` and `alloc`): multigroup total and absorption cross sections in this crate's text format, version 1 (documented in the module). `Multigroup::to_text` writes the same format. Tests in `tests/xs.rs`. The format was chosen over ENDF-6 and ACE so that no third-party format is needed for the first version.
 - `fuzz/`: the `xs_read` target. A run of 2.5 minutes found no crash.
+- `slab::run_slab_binned` (feature `std`): spatial flux tally, track length per source neutron in each of equal bins of the slab, with standard errors. Tests in `tests/neutronics.rs`: each bin matches the exponential integral for a pure absorber, and the bins sum to the total track length.
