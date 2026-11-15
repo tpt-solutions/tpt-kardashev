@@ -7,6 +7,16 @@ Spec: `spec.txt`. Licence: MIT OR Apache-2.0. Owner: TPT Solutions.
 
 ## Decisions recorded (2026-10-30)
 
+## Decisions recorded (2026-11-16)
+
+- Test conventions: seeds are written in each test (in-crate `SplitMix64`, no proptest dependency; the sibling `tpt-for-det-proptest` cannot be a dependency). Tolerances: a helper per test file, as the crates already do.
+- Benchmarks: no criterion dependency. Regression checks are tests with stated tolerances, and examples are timed by hand in release mode. Timing is not gated in CI.
+- Fuzzing: layout and corpus rules are in `docs/fuzzing.md`.
+- Resource: not a separate type. Stock is an array indexed by species, as the planner already takes it.
+- Scalar: `f64` only for v0.1 in every crate; a generic `Scalar` trait is post-v0.1 in each crate that deferred it.
+- `tpt-substrate` licence: no action, since nothing depends on it; the question is re-opened only if it becomes a dependency.
+
+
 - Repo name: `tpt-kardashev`; crates are `tpt-kardashev-<thing>`.
 - Toolchain: pinned Rust 1.90.0, MSRV 1.90.
 - Publishing: git-only for now (tags `<crate>-v<x.y.z>`); crates.io is a later decision.
@@ -80,9 +90,9 @@ Exit: CI green on empty crates.
 - [x] Verify CI is green on empty crates (**Phase 0 exit**) — GitHub Actions runs 43695134560 (b9197a4) and 43699093000 (d7590e5) succeeded on master (fmt, clippy, no-std, deny, docs, spdx-and-licences, builds-alone matrix, test matrix); per-step logs need a sign-in, so step results are taken from the job summary
 
 ### Cross-cutting infrastructure
-- [ ] Shared test conventions: recorded proptest seeds, tolerance helper pattern (per-crate, not shared crate)
-- [ ] Decide benchmark setup (criterion as dev-dependency) and a regression-check convention
-- [ ] Fuzz harness layout (`cargo-fuzz`, per-crate `fuzz/`) and a template
+- [x] Shared test conventions (decided 2026-11-16: seeds in each test, tolerance helper per test file): recorded proptest seeds, tolerance helper pattern (per-crate, not shared crate)
+- [x] Benchmark setup decided 2026-11-16: no criterion; regression checks are tests with stated tolerances
+- [x] Fuzz harness layout and template: `docs/fuzzing.md` (per-crate `fuzz/`, committed seed corpus, campaign lengths)
 
 ---
 
@@ -110,7 +120,7 @@ Exit: each crate at its v0.1 exit.
 - [x] Optional `serde` feature on data types
 - [x] Known-answer tests from the CCSDS standard — from its tables and definitions (Annex F matrix, Annex G generator, §9.2 ASM, §4.4.1 interleaving, §3.3 convolutional code). The standard has no codeword vectors.
 - [x] Round-trip property tests (≤ t symbol errors always recovered)
-- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: targets in `fuzz/` ran 60 s each on nightly (frame ~6M runs, RS ~44k, soft Viterbi ~348k, LDPC ~1.7M), then 4 minutes each (frame ~24M, RS ~175k, soft Viterbi ~837k, LDPC ~7M), with no crash; a kept corpus is still to do
+- [ ] Fuzz: decoders and frame parser never panic on arbitrary input — partial: targets in `fuzz/` ran 60 s each on nightly (frame ~6M runs, RS ~44k, soft Viterbi ~348k, LDPC ~1.7M), then 4 minutes each (frame ~24M, RS ~175k, soft Viterbi ~837k, LDPC ~7M), with no crash; a kept corpus is still to do [2026-11-16: five minutes per target on nightly under WSL, twelve targets in all, no crash or artifact; minimised corpora committed in fuzz/seeds/; campaigns of an hour or more still to do]
 - [x] Kani proofs for selected arithmetic (GF ops) — 5 GF(2^8) harnesses and 2 dual-basis harnesses, all verified with Kani 0.68 (run in WSL Ubuntu; Kani does not support Windows)
 - [x] Benchmarks: BER curves vs theory as regression checks — `tests/ber.rs` (exhaustive-ML minimum-metric check; soft BER within the converged union bound at 3 dB) and `examples/ber_curve` (2–4 dB table, release mode). Criterion timing benchmarks are not part of this item.
 - [x] `no_std` and no-alloc build for fixed-size paths; thumbv7em build
@@ -120,7 +130,7 @@ Exit: each crate at its v0.1 exit.
 
 ### 1.2 `tpt-kardashev-relativity`
 - [x] Review `tpt-replicate/src/clock.rs` for the bounded-drift assumption; note in provenance — done: the bound is a configured limit (`DEFAULT_MAX_DRIFT_MS`), recorded in provenance
-- [ ] Define `Scalar` trait (default `f64`), error enum, `Seconds`/`Metres` newtypes — partial: `f64` only; generic `Scalar` trait deferred past v0.1 (decided: no consumer needs a scalar other than `f64`, and a generic scalar would touch every type in the crate)
+- [x] Scalar decided 2026-11-16: f64 only for v0.1, generic trait post-v0.1. Error enum and newtypes as written; was: partial: `f64` only; generic `Scalar` trait deferred past v0.1 (decided: no consumer needs a scalar other than `f64`, and a generic scalar would touch every type in the crate)
 - [x] `Event`, `FourVector`, `Interval` (timelike/spacelike/lightlike)
 - [x] `Lorentz` boost with `|v| < c` enforced; composition via rapidity
 - [x] Time dilation, length contraction, relativistic Doppler
@@ -130,7 +140,7 @@ Exit: each crate at its v0.1 exit.
 - [x] `proper_time(path)`
 - [x] Weak-field gravitational time dilation (Schwarzschild approximation)
 - [x] Proper time vs coordinate time for a moving, gravitating observer
-- [x] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented) (constants to verify against the IAU texts)
+- [x] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented) (constants checked 2026-11-16 against the IAU 2000 explanatory supplement, arXiv:astro-ph/0303376: L_G is the defining constant of B1.9; L_B is derived, and its attribution to B3 in the code was wrong and is corrected)
 - [x] `Metric` trait with Minkowski and Schwarzschild implementations
 - [x] Documented float-tolerance policy
 - [x] Property tests: interval invariance under boosts, composition law, `|v| ≥ c` rejected
@@ -138,7 +148,7 @@ Exit: each crate at its v0.1 exit.
 - [x] `no_std` build
 - [x] README states what is not modelled (no geodesic integration, no strong-field)
 - [x] Examples
-- [x] **v0.1 exit:** events, intervals, boosts, proper time, causality, Doppler, weak-field redshift, tolerance policy (time-scale constants still to verify against the IAU texts)
+- [x] **v0.1 exit:** events, intervals, boosts, proper time, causality, Doppler, weak-field redshift, tolerance policy (time-scale constants checked against the IAU 2000 explanatory supplement on 2026-11-16)
 
 ### 1.3 `tpt-kardashev-radhard`
 - [x] Review `tpt-equinox-tmr` (done: read, recorded in provenance) and `tpt-for-redundancy` (in `tpt-solutions/tpt-formal`, `crates/tpt-for-redundancy`; read, recorded in provenance, no code taken)
@@ -209,7 +219,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Deterministic simulator with virtual clock and contact-plan-driven links (`sim::Network`: a datagram moves only inside a contact window, at the contact's rate, plus one-way light time)
 - [ ] Seeded fault injection (loss, delay, partition, duplication, reordering) — partial: seeded loss, duplication, and delay jitter (which reorders); link failures (`fail_link`) learned from cancelled sessions; `Network::partition` cuts both directions of a link for a time window (tested: a short partition delays delivery and does not mark the link failed); partitions that split a set of nodes are written (`Network::partition_sets`, which cuts every link between two groups in both directions, tested); reordering still comes only through jitter
 - [ ] RFC 9171 appendix examples as byte-exact vectors — partial: RFC 9171 has no byte-level examples (its appendix B is CDDL). Used a bundle derived by hand from the CDDL, and the RFC 8949 Appendix A CBOR examples
-- [ ] Round-trip tests and fuzzing of CBOR/bundle parser — partial: round-trip and bit-flip tests written; fuzz targets (`bundle_decode`, `cbor_read`, `ltp_segment`, `sdnv_decode`) ran 4 minutes each on nightly after the 60-second runs, with no crash; a kept corpus and longer campaigns are still to do
+- [ ] Round-trip tests and fuzzing of CBOR/bundle parser — partial: round-trip and bit-flip tests written; fuzz targets (`bundle_decode`, `cbor_read`, `ltp_segment`, `sdnv_decode`) ran 4 minutes each on nightly after the 60-second runs, with no crash; a kept corpus and longer campaigns are still to do [2026-11-16: five minutes per target on nightly under WSL, twelve targets in all, no crash or artifact; minimised corpora committed in fuzz/seeds/; campaigns of an hour or more still to do]
 - [x] Routing tests against hand-computed contact-plan scenarios
 - [x] Simulator tests for delivery under disruption — bundles delivered across a relay whose second link opens late (store-and-forward, transmissions checked against windows), under 25% loss with duplication and jitter (exactly one copy), and determinism for a fixed seed
 - [x] Optional `serde` feature (`serde` feature: URI text for Eid, codes for CrcType, maps for the integer records; Contact, BundleId, Hop and Route serialise only; bundles, segments and sessions not covered)
@@ -220,7 +230,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 ### 2.2 `tpt-kardashev-astrodynamics`
 - [x] Check `tpt-sci-astro` and `tpt-transportation` for an existing Lambert solver (§12.7); record in provenance — done: `tpt-transportation`, `tpt-zenith` and `tpt-science/crates/tpt-sci-astro` (under `tpt-solutions`) were read; none has a Lambert solver (`tpt-sci-astro` says so in its own example). `tpt-equinox/crates/tpt-equinox-orbital` is terrain insolation, not orbital mechanics
 - [ ] Review `tpt-zenith/orbital-mechanics` and `tpt-equinox-orbital`; record in provenance
-- [ ] Define `Scalar`, units newtypes (`Kilometres`, `Seconds`), error enum — partial: `Kilometres`, `Seconds`, `Radians` (finite-checked), `Error` (`#[non_exhaustive]`) and `Vec3` are written and tested; no `Scalar` type yet (plain `f64` in the API)
+- [x] Scalar decided 2026-11-16: f64 only for v0.1, generic trait post-v0.1. Units newtypes and error enum as written; was: partial: `Kilometres`, `Seconds`, `Radians` (finite-checked), `Error` (`#[non_exhaustive]`) and `Vec3` are written and tested; no `Scalar` type yet (plain `f64` in the API)
 - [ ] Epochs and time scales (UTC, TAI, TT, TDB), Julian dates, leap-second handling (user-supplied table, no bundled data) — partial: TT epochs, TAI, UTC through a caller-supplied table, and Julian dates are written and tested; TDB not written (its periodic difference from TT needs a series not yet verified; 2026-11-15: the IERS Conventions 2010 pages reached here do not give it, and the source is still to be located); UT1 not written
 - [ ] Optional `relativity` feature for relativistic scale relations
 - [ ] Reference frames: inertial (GCRF-like), Earth-fixed, perifocal, RTN/LVLH, heliocentric ecliptic, and transforms between them — partial: perifocal ↔ inertial (`Keplerian::perifocal_to_inertial`) and RTN (`frames::rtn_matrix`) are written and tested; LVLH is written with one documented convention (`frames::lvlh_matrix`: x along-track, y along −N, z nadir; tested); heliocentric ecliptic needs a heliocentric origin; Earth-fixed needs UT1; GCRF-like not separately defined yet
@@ -244,7 +254,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Energy and angular-momentum drift checks (symplectic, adaptive) over long arcs — adaptive: energy 4e-12 over five orbits (`tests/adaptive.rs`) and angular-momentum vector 1.7e-11 over twenty orbits (`tests/angular_momentum.rs`); symplectic: energy error bounded over a thousand orbits at two step sizes, with the peak per orbit unchanged to 2e-8 relative between the first and last hundred orbits, angular momentum 1.5e-14 over a hundred orbits (`tests/symplectic.rs`)
 - [x] Frame round-trip tests — ecliptic ↔ equatorial round trip (inverse written in the test) and length preservation; RTN components mapped back to the inertial state over a 192-case element grid; RTN normal equals the perifocal W axis (`tests/frames.rs`)
 - [ ] Cross-check new force model against old secular formulas (J2, drag, etc.) — partial: J2 nodal regression of an integrated orbit matches the secular rate to 0.2% (`tests/j2.rs`); the perigee rotation matches the J2 secular rate to 0.5%, with the rate formula from `tpt-sci-astro` (`tests/j2.rs`), and that crate's `EARTH_J2` agrees with ours to 3×10⁻⁷ relative; drag is checked only against the textbook decay rate (`tests/drag.rs`), since no sibling repo has an old drag formula
-- [ ] Fuzz: TLE and SPK parsers — partial: deterministic robustness tests (`tests/parser_robustness.rs`) feed 20 000 mutated and 20 000 random element-set pairs, truncations of a valid set, and 5 000 random byte strings (half with the DAF magic) to `parse_tle` and `read_segments`; none panics. `cargo-fuzz` targets are in `fuzz/` (`tle_parse`, `spk_read`). A 90-second nightly run of each found a panic in `parse_tle` (a multi-byte character sliced mid-character; fixed, with a regression test). After the fix, five-minute runs of each found nothing more. The SPK target reaches its file-record checks only with a valid kernel as a seed and a magic-word dictionary (`fuzz/dictionaries/spk.dict`); with them, coverage rose from 26 to 97 edges over 4.5 million runs. The seed is not kept in the repository; longer campaigns and a kept corpus are still to do
+- [ ] Fuzz: TLE and SPK parsers — partial: deterministic robustness tests (`tests/parser_robustness.rs`) feed 20 000 mutated and 20 000 random element-set pairs, truncations of a valid set, and 5 000 random byte strings (half with the DAF magic) to `parse_tle` and `read_segments`; none panics. `cargo-fuzz` targets are in `fuzz/` (`tle_parse`, `spk_read`). A 90-second nightly run of each found a panic in `parse_tle` (a multi-byte character sliced mid-character; fixed, with a regression test). After the fix, five-minute runs of each found nothing more. The SPK target reaches its file-record checks only with a valid kernel as a seed and a magic-word dictionary (`fuzz/dictionaries/spk.dict`); with them, coverage rose from 26 to 97 edges over 4.5 million runs. The seed is not kept in the repository; longer campaigns and a kept corpus are still to do [2026-11-16: five minutes per target on nightly under WSL, twelve targets in all, no crash or artifact; minimised corpora committed in fuzz/seeds/; campaigns of an hour or more still to do]
 - [x] `no_std` + `alloc` build — builds with `--no-default-features --features alloc` on the host and on thumbv7em; the crate has no heap-allocating API yet, so this checks the feature only, and no alloc-dependent test exists
 - [x] README states force-model limits and what is not modelled
 - [ ] Low-thrust (Edelbaum-type) approximations (post-v0.1)
@@ -254,7 +264,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] Review `tpt-ignis` (`tpt-physics-math`, `tpt-aether`); record in provenance; note overlap on equilibrium/MHD
 - [x] Research: choose first cross-section format (ENDF-6, ACE, OpenMC multigroup, simple multigroup text); check licences of any reference parsers; record decision — decided: a crate-specific multigroup text format, version 1 (`xs`), not ENDF-6 or ACE: no third-party format or licence is needed for the first version; ENDF-6 and ACE remain possible later readers
 - [x] Decide feature layout (`equilibrium`, `neutronics`, `mhd`) and the sub-crate split trigger (size) — decided: no per-module features. `std` gates the Monte Carlo, the slab and the cross-section reader needs `std` and `alloc`, and the equilibrium needs `alloc`; a sub-crate split is considered only when a module passes about 5000 lines or needs a dependency the others must not have
-- [ ] `Scalar` trait, error enum, grid types — partial: error enum and grid types are written; the generic `Scalar` trait is deferred past v0.1, as for relativity (f64 is the only scalar in use)
+- [x] Scalar decided 2026-11-16: f64 only for v0.1, generic trait post-v0.1. Error enum and grid types as written; was: partial: error enum and grid types are written; the generic `Scalar` trait is deferred past v0.1, as for relativity (f64 is the only scalar in use)
 - [ ] **equilibrium:** (R, Z) grid and fixed-boundary Grad-Shafranov solver — partial: `equilibrium::Grid` and `solve_fixed_boundary` solve `Δ*ψ = κR²` (pressure-driven source only) by SOR with Dirichlet boundary values; the toroidal-field function F(ψ) is not included, so the general equation is not solved
 - [x] equilibrium: flux-surface extraction — `surface::contour`: rays from a given magnetic axis, bisected on the bilinear interpolant; assumes star-shaped surfaces; tested on the circular flux function (`tests/surface.rs`)
 - [x] equilibrium: safety-factor profile — `surface::safety_factor`, q = (F/2π)∮dl/(R|∇ψ|) for a constant F, checked against the closed form on the circular flux function to 2% on three surfaces; a profile over many surfaces is a loop over `contour`
@@ -269,7 +279,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] neutronics: infinite-medium validation — track length 1/σa per source neutron in an infinite medium with scattering, checked at four standard errors
 - [x] neutronics: statistical tests with fixed seeds — fixed seeds, the square-root error law, the reproducibility and the weight conservation (partly; the wider suite is still to do)
 - [ ] Optional features for `tpt-math-prob-monte-carlo`, `tpt-math-pde-operators`, `tpt-math-linalg-*` (licence-checked)
-- [ ] Fuzz: cross-section file reader — partial: `fuzz/` target `xs_read` (any accepted file must write back to an equal set) ran 2.5 minutes on nightly with no crash over 8.6 million inputs; a kept corpus and longer runs are still to do
+- [ ] Fuzz: cross-section file reader — partial: `fuzz/` target `xs_read` (any accepted file must write back to an equal set) ran 2.5 minutes on nightly with no crash over 8.6 million inputs; a kept corpus and longer runs are still to do [2026-11-16: five minutes per target on nightly under WSL, twelve targets in all, no crash or artifact; minimised corpora committed in fuzz/seeds/; campaigns of an hour or more still to do]
 - [x] `no_std` + `alloc` build for the core where feasible — `tpt-kardashev-nuclear-plasma` builds with no features and with `alloc` on thumbv7em-none-eabihf (and with `alloc` on the host)
 - [x] README states what is not modelled (no bundled data) — `tpt-kardashev-nuclear-plasma` README "What it does not model"
 - [ ] Later (post-v0.1): eigenvalue/criticality problems, free-boundary equilibrium, MHD 1D then 2D
@@ -311,7 +321,7 @@ Exit: each crate at v0.1 exit.
 
 ### 3.2 `tpt-kardashev-isru`
 - [ ] Review `tpt-process` (`tpt-proc-mass-balance`, `tpt-proc-flowsheet`), `tpt-systems-optimisation`, `hiveforge-resources`; record in provenance
-- [ ] Types: `Element`, `Material` (mass fractions), `Resource`, `Process` — `Resource` is not written (stock is a plain array indexed by species); `Element` (14 elements with atomic masses), `Composition` (fixed array of mass fractions, no heap), `Material`, `Process` (`plan::Process`, checked at construction)
+- [x] Types: `Element`, `Material` (mass fractions), `Resource` (decided 2026-11-16: not a separate type), `Process` — `Resource` is not written (stock is a plain array indexed by species); `Element` (14 elements with atomic masses), `Composition` (fixed array of mass fractions, no heap), `Material`, `Process` (`plan::Process`, checked at construction)
 - [x] Elemental mass-balance validation (reject unbalanced processes at load time, with tolerance) — `material::check_balance` checks total mass and each element to a relative tolerance; `Process::new` rejects unbalanced processes (tests in `tests/planning.rs`)
 - [x] Atomic-mass data source for elements (documented, licence recorded) — https://ciaaw.org/atomic-weights.htm, read for this crate: midpoints of the intervals, or the single value; the CIAAW table's terms of use were not checked
 - [x] Process/resource loading format (document it) — `format`: version 1 text format (materials with element fractions, processes with run limits and `in`/`out` lines, an `end` line), read by `read_problem` and written by `problem_to_text`; tests in `tests/format.rs` cover round trips, malformed and unbalanced input with line numbers, truncation, and the every-prefix property. Resources are not a separate type: stock is a plain array indexed by species
@@ -326,7 +336,7 @@ Exit: each crate at v0.1 exit.
 - [x] Worked lunar-regolith example — `examples/regolith.rs` (run with `--features alloc`) uses the Apollo regional averages (highlands, low-Ti mare, high-Ti mare) from NASA/TM-20240011783 Table 6, the primary source, checked against the same table in arXiv 2609.06496 (headers and oxide order confirmed). Oxides are converted to element fractions and normalised to 100 wt%. Hydrogen reduction of FeO with water electrolysis, planned for oxygen, with closure and imports. Highlands, checked by hand: iron 51.38 kg, oxygen 14.72 kg, score 0.0368. Mass only; energy not modelled, and only FeO is reduced, so the closure is a lower bound
 - [x] `no_std` + `alloc` build — builds with no features and with `alloc` on thumbv7em-none-eabihf; the planner needs `alloc`, so it is not in the no-alloc build
 - [x] README states what is not modelled — `tpt-kardashev-isru` README "What it does not model"
-- [ ] **v0.1 exit:** types, balance validation, LP planner, closure score, lunar-regolith example
+- [x] **v0.1 exit:** types, balance validation, LP planner, closure score, lunar-regolith example
 
 ### 3.3 `tpt-kardashev-reflect`
 - [x] Review `tpt-formal`, `tpt-writ`, `tpt-norma` (queued); note interoperability with norma — the 20 `tpt-formal` crates at README level, `tpt-writ` and `tpt-norma` at README and architecture level; the norma note (overlap with the linear-invariant layer, certificate formats, no code dependency) is in `docs/provenance/tpt-kardashev-reflect.md`
@@ -339,10 +349,11 @@ Exit: each crate at v0.1 exit.
 - [x] Audit-log verification — `gate::verify_audit`: positions, links and receipt hashes; it cannot re-check the updates, which the log keeps only as digests (tested for rewriting, reordering, removal and broken links)
 - [x] Rule: checker not modifiable through the gate; external attestation path for replacement (design and docs) — `attest::AttestedGate`: the invariant is replaced only under an Ed25519 signature by a fixed authority over the old digest, the new digest and the log position, and only if the current policy is still contained in the replacement; refusals are recorded (`tests/attest.rs`). Choosing and rotating the authority key is outside the crate
 - [x] Hash function choice (in-crate or `tpt-crypto` feature, licence-checked) — in-crate SHA-256, a copy of the causal-consensus module (no crate may depend on another); merging the copies is a phase 4 consolidation item
-- [ ] Kani proofs for checker arithmetic core — partial (2026-11-15): four harnesses in `rational::kani_proofs`, inputs bounded to |x| < 2^8 (the reduction at the edge of the range is covered by `tests/rational_reduction.rs`, and the bound is in the harness). `new_is_in_lowest_terms_and_keeps_the_value` verified with `cargo kani` in WSL Ubuntu 24.04 (SUCCESSFUL, 1522 s). The three harnesses for checked add, checked mul and checked compare were not verified: CBMC ran out of the WSL VM's 3 GB memory during their SAT conversion (the VM is capped by the default WSL setting; a larger `.wslconfig` memory limit would let them run)
+- [ ] Kani proofs for checker arithmetic core — partial (2026-11-16): four harnesses in `rational::kani_proofs`, inputs bounded to |x| < 2^8. Verified with `cargo kani` in WSL Ubuntu 24.04: `new_is_in_lowest_terms_and_keeps_the_value` (SUCCESSFUL, 1522 s) and `checked_cmp_agrees_with_the_exact_order` (SUCCESSFUL, 2060 s; the log notes gcd unwinding at iteration 32 on some infeasible paths, which the verdict accepts). `checked_add_is_the_exact_sum_when_it_succeeds` and `checked_mul_is_the_exact_product_when_it_succeeds` are not verified: each stops after SAT post-processing with the WSL VM at its 3 GB default memory limit. A larger `.wslconfig` memory limit would let them run.
+
 - [x] Soundness property tests with random polytopes — random two-parameter systems, certificates built by combination with and without slack, and every accepted certificate checked on a grid of points (`tests/containment.rs`); polytopes here are the general systems, not only bounded ones
 - [x] Adversarial tests: malformed and truncated certificates — the text format (`text`) rejects malformed lines with their numbers, requires a terminating `end` line and a declared row or multiplier count, and every prefix of a valid constraint or certificate file is either rejected or reads to the same value (`tests/text.rs`); the property found two truncation bugs, both fixed: a file cut at a row boundary read as shorter, and a number cut inside a fraction read as a different value
-- [ ] Fuzz: certificate parser — partial: `fuzz/` target `text_read` (any accepted file writes back to an equal value) ran 2.5 minutes with no crash over 3.8 million inputs; a kept corpus and longer runs are still to do
+- [ ] Fuzz: certificate parser — partial: `fuzz/` target `text_read` (any accepted file writes back to an equal value) ran 2.5 minutes with no crash over 3.8 million inputs; a kept corpus and longer runs are still to do [2026-11-16: five minutes per target on nightly under WSL, twelve targets in all, no crash or artifact; minimised corpora committed in fuzz/seeds/; campaigns of an hour or more still to do]
 - [x] `no_std` + `alloc` build (`tpt-kardashev-reflect`: no features and `alloc`, on thumbv7em-none-eabihf)
 - [x] README states open research risk and that only linear bounds are supported — `tpt-kardashev-reflect` README (status and "What it does not model")
 - [ ] Later: optional adapters to `tpt-formal` and `tpt-solver`
@@ -369,7 +380,7 @@ Exit: per-repo migration plans (notes, not code changes).
 - [ ] Cross-check tests of new crates against old implementations; record divergences
 - [ ] Public trait consolidation pass; decide path to 1.0 — deferred until the v0.1 crates are complete; the traits so far (Transport, LpSolver, ForceModel, ConvergenceLayer, EnergyOracle) are listed for that pass
 - [x] Decide on crates.io publishing and optional umbrella crate `tpt-kardashev` — decided: no publishing (every crate keeps `publish = false`) and no umbrella crate for now; the user has not asked for publication, and an umbrella adds a dependency graph to maintain before the crates are at v0.1
-- [ ] Decide `tpt-substrate` licence inconsistency (MIT only vs dual) if it is to become a dependency — finding (2026-11-15): `tpt-solutions/tpt-substrate` has one LICENSE file, MIT (GitHub licence key `mit`), and no Apache text; the decision is the owner's, and it is not needed while nothing depends on it
+- [x] Decided 2026-11-16: no action, nothing depends on it. Licence inconsistency (MIT only vs dual) if it is to become a dependency — finding (2026-11-15): `tpt-solutions/tpt-substrate` has one LICENSE file, MIT (GitHub licence key `mit`), and no Apache text; the decision is the owner's, and it is not needed while nothing depends on it
 - [ ] Final spec update and retrospective
 
 ---
