@@ -2,13 +2,13 @@
 
 In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and (not yet) closure scores.
 
-**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver, and a planner that maximises the amount of a target species made within stocks and run limits. Not yet: closure scores, the energy account, the resource type, a loading format, and the worked lunar-regolith example.
+**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, and closure against a demand with its limiting imports. Not yet: the resource type, a loading format, the energy account (by decision, the caller's), and the worked lunar-regolith example.
 
 ## Features
 
 - `std` (default): links the standard library.
 - `alloc`: enables the processes, the planner and the simplex solver. The element, composition and balance checks need no heap.
-- `energy`: declared; no code behind it yet.
+- `energy` is not a feature. An in-repo library crate may not depend on the energy-ledger crate, so the caller combines the two.
 
 ## Conventions
 

@@ -8,3 +8,6 @@
 - `simplex::maximise` (feature `alloc`): a dense simplex solver with Bland's rule, for `maximise c·x` subject to `A·x <= b, x >= 0` with `b >= 0`.
 - `error::IsruError` (`#[non_exhaustive]`).
 - Not written yet: closure scores, the energy account, the resource type, a solver adapter trait, the loading format, and the worked regolith example.
+- `closure::closure` and `closure::Closure` (feature `alloc`): closure of a plan against a demand. Per demanded species, the in-situ net production over the demand, capped at 1; the score is the lowest ratio, and `limiting` and `imports_kg` name the shortfalls. Tests in `tests/closure.rs`.
+- `simplex::LpSolver` trait and `simplex::Simplex`; `plan::plan_maximum_with` takes any solver. A counting adapter is tested.
+- The empty `energy` feature is removed: the energy account is for the caller to combine with the energy ledger, since a library crate may not depend on it.

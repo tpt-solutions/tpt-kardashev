@@ -317,9 +317,9 @@ Exit: each crate at v0.1 exit.
 - [ ] Process/resource loading format (document it)
 - [x] LP formulation over a time horizon — `plan::plan_maximum`: run counts as variables, stocks and run limits as bounds, the target produced as the objective; a horizon is the stock and run limits (no time-indexed stocks yet)
 - [x] Built-in simplex solver for small problems — `simplex::maximise`: dense tableau, Bland's rule, slack start (b >= 0), tested on a textbook LP and an unbounded case
-- [ ] Solver adapter trait for external solvers
-- [ ] Closure scores (bill of materials and energy) and list of limiting imports
-- [ ] Optional `energy` feature: accounts via `tpt-kardashev-energy-ledger`
+- [x] Solver adapter trait for external solvers — `simplex::LpSolver` trait; `plan_maximum_with` takes any solver, and `Simplex` is the built-in one; a counting adapter is tested (`tests/closure.rs`)
+- [x] Closure scores (bill of materials) and list of limiting imports — `closure::closure`: per demanded species, in-situ net production over demand capped at 1; the score is the lowest ratio; `limiting` and `imports_kg` name the shortfalls. Energy closure is not in it (see the energy item)
+- [ ] Optional `energy` feature: accounts via `tpt-kardashev-energy-ledger` — decided: no feature. A library crate in this repo may not depend on the ledger crate; the caller combines the planner's output with the ledger. The empty feature is removed
 - [x] Conservation tests (total mass and each element through any plan) — the planner's plans conserve every element (`tests/planning.rs`)
 - [x] Closed-form toy systems with known optima — hematite reduction in exact proportions, and hydrogen reduction against its closed form
 - [ ] Closure monotonicity test (adding a process never lowers closure) — partial: the planner's optimum never falls when a route is added (`tests/planning.rs`); closure scores are not written, so the closure test is not yet
