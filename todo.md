@@ -251,7 +251,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] **v0.1 exit:** time scales, frames, elements, two-body + Cowell (J2/third-body/SRP/drag), RK4 + adaptive, Lambert, impulsive manoeuvres, analytic ephemeris, SGP4 feature
 
 ### 2.3 `tpt-kardashev-nuclear-plasma`
-- [ ] Review `tpt-ignis` (`tpt-physics-math`, `tpt-aether`); record in provenance; note overlap on equilibrium/MHD
+- [x] Review `tpt-ignis` (`tpt-physics-math`, `tpt-aether`); record in provenance; note overlap on equilibrium/MHD
 - [ ] Research: choose first cross-section format (ENDF-6, ACE, OpenMC multigroup, simple multigroup text); check licences of any reference parsers; record decision
 - [ ] Decide feature layout (`equilibrium`, `neutronics`, `mhd`) and the sub-crate split trigger (size)
 - [ ] `Scalar` trait, error enum, grid types
@@ -262,12 +262,12 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] equilibrium: convergence-order tests
 - [ ] **neutronics:** constructive solid geometry
 - [ ] neutronics: multigroup cross-section types and the chosen format reader
-- [ ] neutronics: seeded RNG and fixed-source Monte Carlo transport
-- [ ] neutronics: tallies (flux, reaction rates)
-- [ ] neutronics: implicit capture, Russian roulette, splitting
-- [ ] neutronics: slab-attenuation (exponential law) validation
-- [ ] neutronics: infinite-medium validation
-- [ ] neutronics: statistical tests with fixed seeds
+- [x] neutronics: seeded RNG and fixed-source Monte Carlo transport — `rng::SplitMix64` and `slab::run_slab` (tests in `tests/neutronics.rs`)
+- [ ] neutronics: tallies (flux, reaction rates) — partial: tallies are the transmission, reflection, absorption, track length (the flux integrated over the slab) and collisions, each with its standard error; spatial flux bins and reaction-rate tallies per reaction are not written
+- [ ] neutronics: implicit capture, Russian roulette, splitting — partial: implicit capture and Russian roulette at one weight threshold (unbiased, checked against analog); splitting is not implemented
+- [x] neutronics: slab-attenuation (exponential law) validation — the pure-absorber transmission exp(-σt T) and track length, checked at four standard errors with fixed seeds
+- [x] neutronics: infinite-medium validation — track length 1/σa per source neutron in an infinite medium with scattering, checked at four standard errors
+- [x] neutronics: statistical tests with fixed seeds — fixed seeds, the square-root error law, the reproducibility and the weight conservation (partly; the wider suite is still to do)
 - [ ] Optional features for `tpt-math-prob-monte-carlo`, `tpt-math-pde-operators`, `tpt-math-linalg-*` (licence-checked)
 - [ ] Fuzz: cross-section file reader
 - [ ] `no_std` + `alloc` build for the core where feasible
