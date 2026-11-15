@@ -305,7 +305,7 @@ Exit: each crate at v0.1 exit.
 - [ ] Randomised partition/delay simulation tests — partial: the domain layer has seeded loss, duplication and partitions with per-step invariant checks (`tests/domain.rs`); GlobalAgreed now has 60 seeded schedules with jitter, loss, duplication and a random partition window and up to two crash windows (a crashed domain keeps its state), checking after every step that no key commits two values and that each commit is backed by a majority of domains that hold it (`tests/global_random.rs`, a mutation that drops the conflict rule is caught); the domain layer now has 40 seeded schedules with loss, duplication, pair partitions and crash windows, checking the Raft invariants after every step (`tests/domain_random.rs`; weakening the quorum makes it fail); crashes that lose state are not modelled
 - [ ] Fuzz: message decoders
 - [x] `no_std` + `alloc` build — builds with no features on thumbv7em (the clock, vector, consistency and error modules), and with `alloc` on the host; the `alloc` modules are not built for thumbv7em
-- [ ] README states honest limits (CAP under partition); Byzantine tolerance deferred
+- [x] README states honest limits (CAP under partition); Byzantine tolerance deferred — `README.md` gives the choice per level with its test, and states the crash model, the clock bound, the history scope and the signature scope; a causal-layer partition test is still to do
 - [ ] Later: Byzantine tolerance behind a feature
 - [ ] **v0.1 exit:** causal layer, domain consensus, federation epochs, consistency API with bounds, simulator
 

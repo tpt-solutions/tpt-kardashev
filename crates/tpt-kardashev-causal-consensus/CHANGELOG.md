@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- README: rewritten to match the code. The status, transport, domain and federation sections no longer call implemented parts unwritten. A new section states the CAP choice per level (causal levels need no quorum; the domain and GlobalAgreed levels commit only with a majority), the crash model (state kept), the scope of the history checks, and the signature scope.
 - Domain consensus: `tests/domain_linearizable.rs` proposes writes and reads as log entries of a replicated register under partitions, loss and crashes (300 seeded schedules). It checks that the committed history is linearizable with `linearizable::is_linearizable`, and that all nodes agree on committed entries.
 - Domain consensus: `tests/domain_random.rs` runs 40 seeded schedules with loss, duplication, pair partitions and crash windows (state kept), checking the Raft invariants after every step: one leader per term, commit indexes that never fall, and agreement on committed entries. A mutation that weakens the quorum makes it fail.
 - `global`: randomised GlobalAgreed runs. `tests/global_random.rs` runs 60 seeded schedules of random delay, loss, duplication, one partition window and up to two crash windows (state kept), checking after every step that no key commits two values and each commit has a majority of domains holding it, then that every chain verifies. A seed replays to the same outcome.
