@@ -335,10 +335,10 @@ Exit: each crate at v0.1 exit.
 - [x] Exact or rational arithmetic choice for the checker (in-crate, no float surprises); document — `rational::Rational` on checked `i128`: every operation reduces or reports `Overflow`; the checker compares exactly, with no tolerance (tests in `tests/rational.rs`)
 - [x] `Verifier`: Farkas-style containment certificate checker — `verify::verify`: the checker; the soundness argument is in its module docs, and the property test in `tests/containment.rs` checks it on 2000 seeded systems
 - [ ] Certificate generation helper (not trusted) for tests/examples
-- [ ] `UpdateGate` issuing hash-chained `Receipt` or rejection with reason
-- [ ] Audit-log verification
-- [ ] Rule: checker not modifiable through the gate; external attestation path for replacement (design and docs)
-- [ ] Hash function choice (in-crate or `tpt-crypto` feature, licence-checked)
+- [x] `UpdateGate` issuing hash-chained `Receipt` or rejection with reason — `gate::UpdateGate`: the only path to a new policy; every submission is recorded, accepted or refused with its reason, in a hash-chained log (`gate::Receipt`, `Outcome`); tests in `tests/gate.rs`
+- [x] Audit-log verification — `gate::verify_audit`: positions, links and receipt hashes; it cannot re-check the updates, which the log keeps only as digests (tested for rewriting, reordering, removal and broken links)
+- [ ] Rule: checker not modifiable through the gate; external attestation path for replacement (design and docs) — partial: the gate has no method that changes the invariant (tested), and the README states the rule; the external attestation path itself is not designed
+- [x] Hash function choice (in-crate or `tpt-crypto` feature, licence-checked) — in-crate SHA-256, a copy of the causal-consensus module (no crate may depend on another); merging the copies is a phase 4 consolidation item
 - [ ] Kani proofs for checker arithmetic core
 - [x] Soundness property tests with random polytopes — random two-parameter systems, certificates built by combination with and without slack, and every accepted certificate checked on a grid of points (`tests/containment.rs`); polytopes here are the general systems, not only bounded ones
 - [ ] Adversarial tests: malformed and truncated certificates — partial: wrong shape, negative multiplier, coefficient mismatch, bound exceeded, dimension mismatch and overflow are tested; a fuzzed certificate parser does not exist yet
