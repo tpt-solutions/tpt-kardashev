@@ -5,11 +5,18 @@
 //! total cross section; at each collision the neutron is absorbed with probability `σa/σt`, and
 //! otherwise scatters isotropically (the direction cosine is uniform on [-1, 1]).
 //!
-//! Two estimators are provided. The analog one follows each neutron to its end. The implicit-capture
+//! Three estimators are provided. The analog one follows each neutron to its end. The implicit-capture
 //! one never absorbs a neutron outright: at each collision it removes the absorbed fraction of its
 //! weight, and it plays Russian roulette when the weight falls below a threshold, which keeps the
-//! estimates unbiased while reducing the variance of deep penetration. Both are checked against
-//! analytic results in the tests.
+//! estimates unbiased while reducing the variance of deep penetration. The splitting one does the same
+//! and, when a neutron first enters a deeper zone of the slab, splits it into copies of equal share of
+//! the weight at that face; the copies are followed in turn, and all of them count toward the source
+//! neutron that made them. Every estimator is checked against analytic results or against each other
+//! in the tests.
+//!
+//! Reaction rates are tallied per reaction at each collision: the absorption weight and the scattering
+//! weight, which sum to the collision weight. The estimators are collision estimators, so the
+//! rates are the expected number of each reaction per source neutron.
 
 use crate::error::NeutronicsError;
 use crate::rng::SplitMix64;
@@ -69,8 +76,11 @@ pub struct SlabTally {
     pub transmitted: Estimate,
     /// Weight leaving through the near face.
     pub reflected: Estimate,
-    /// Weight absorbed in the slab.
+    /// Weight absorbed in the slab: the absorption reaction rate, per source neutron.
     pub absorbed: Estimate,
+    /// Weight scattered in the slab: the scattering reaction rate, per source neutron. With
+    /// `absorbed`, it sums to `collisions` history by history.
+    pub scattered: Estimate,
     /// The track length in the slab (the flux integrated over the slab), per source neutron.
     pub track_length: Estimate,
     /// Collisions per source neutron (the reaction count for all reactions).
@@ -85,6 +95,19 @@ pub enum Estimator {
     /// A neutron is never absorbed outright; its weight is reduced at each collision, and
     /// Russian roulette removes low-weight neutrons without bias.
     ImplicitCapture,
+    /// As [`Estimator::ImplicitCapture`], with deep-penetration splitting. The slab is divided into
+    /// `zones` equal slices. When a neutron first enters a slice deeper than any it has reached, it
+    /// is replaced by `copies` neutrons at that face, each with `1/copies` of its weight and the same
+    /// direction; the copies then travel on independently. Splitting raises the number of neutrons
+    /// that reach the far zones. Whether that lowers the variance of a given tally depends on the
+    /// problem, and it costs more histories to follow. With one zone or one copy there is no
+    /// splitting, and the run is implicit capture draw for draw.
+    Splitting {
+        /// The number of equal slices of the slab. Must be at least 1.
+        zones: usize,
+        /// The number of neutrons made at each zone face. Must be at least 1.
+        copies: usize,
+    },
 }
 
 /// Weight below which Russian roulette is played, and the survival probability used in it.
@@ -114,14 +137,69 @@ impl Accumulator {
     }
 }
 
+/// A particle in flight: its position in the slab, its direction cosine and its weight.
+#[derive(Clone, Copy, Debug)]
+struct Particle {
+    x: f64,
+    mu: f64,
+    weight: f64,
+    /// The deepest zone the particle's line of descent has entered.
+    zone: usize,
+}
+
+/// The scores of one source neutron, summed over every particle its history gives rise to.
+#[derive(Default, Clone, Copy)]
+struct Scores {
+    transmitted: f64,
+    reflected: f64,
+    absorbed: f64,
+    scattered: f64,
+    track: f64,
+    collisions: f64,
+}
+
+/// The accumulators behind a [`SlabTally`].
+#[derive(Default)]
+struct Totals {
+    transmitted: Accumulator,
+    reflected: Accumulator,
+    absorbed: Accumulator,
+    scattered: Accumulator,
+    track: Accumulator,
+    collisions: Accumulator,
+}
+
+impl Totals {
+    fn add(&mut self, s: &Scores) {
+        self.transmitted.add(s.transmitted);
+        self.reflected.add(s.reflected);
+        self.absorbed.add(s.absorbed);
+        self.scattered.add(s.scattered);
+        self.track.add(s.track);
+        self.collisions.add(s.collisions);
+    }
+
+    fn estimates(&self, n: usize) -> SlabTally {
+        SlabTally {
+            transmitted: self.transmitted.estimate(n),
+            reflected: self.reflected.estimate(n),
+            absorbed: self.absorbed.estimate(n),
+            scattered: self.scattered.estimate(n),
+            track_length: self.track.estimate(n),
+            collisions: self.collisions.estimate(n),
+        }
+    }
+}
+
 fn sample_flight(rng: &mut SplitMix64, total: f64) -> f64 {
     // -ln(1 - ξ) / σt with ξ in [0, 1): the argument is in (0, 1], so the logarithm is finite.
     -(1.0 - rng.next_f64()).ln() / total
 }
 
 /// Runs `histories` source neutrons through the slab with `estimator`, seeded with `seed`. Fails with
-/// [`NeutronicsError::NoHistories`] for zero histories and [`NeutronicsError::BadThickness`] for a
-/// thickness that is not positive and finite.
+/// [`NeutronicsError::NoHistories`] for zero histories, [`NeutronicsError::BadThickness`] for a
+/// thickness that is not positive and finite, and [`NeutronicsError::BadSplitting`] for a splitting
+/// estimator with zero zones or zero copies.
 pub fn run_slab(
     slab: &Slab,
     estimator: Estimator,
@@ -134,77 +212,105 @@ pub fn run_slab(
     if !(slab.thickness.is_finite() && slab.thickness > 0.0) {
         return Err(NeutronicsError::BadThickness);
     }
+    let (zones, copies) = match estimator {
+        Estimator::Splitting { zones, copies } => {
+            if zones == 0 || copies == 0 {
+                return Err(NeutronicsError::BadSplitting);
+            }
+            (zones, copies)
+        }
+        Estimator::Analog | Estimator::ImplicitCapture => (1, 1),
+    };
+    let split = zones > 1 && copies > 1;
+    let zone_width = slab.thickness / zones as f64;
     let mut rng = SplitMix64::new(seed);
     let total = slab.xs.total;
     let p_absorb = slab.xs.absorption / total;
-    let mut transmitted = Accumulator::default();
-    let mut reflected = Accumulator::default();
-    let mut absorbed = Accumulator::default();
-    let mut track = Accumulator::default();
-    let mut collisions = Accumulator::default();
+    let mut totals = Totals::default();
+    // Copies made by splitting wait here until the particle that made them has ended.
+    let mut stack: Vec<Particle> = Vec::new();
 
     for _ in 0..histories {
-        let mut x = 0.0_f64;
-        let mut mu = 1.0_f64;
-        let mut weight = 1.0_f64;
-        let (mut t_score, mut r_score, mut a_score, mut track_score, mut coll_score) =
-            (0.0, 0.0, 0.0, 0.0, 0.0);
-        loop {
-            let flight = sample_flight(&mut rng, total);
-            let to_boundary = if mu > 0.0 {
-                (slab.thickness - x) / mu
-            } else {
-                -x / mu
-            };
-            if flight >= to_boundary {
-                // Leaves the slab through the face it is heading for.
-                track_score += weight * to_boundary;
-                if mu > 0.0 {
-                    t_score += weight;
-                } else {
-                    r_score += weight;
-                }
-                break;
-            }
-            track_score += weight * flight;
-            x += mu * flight;
-            coll_score += weight;
-            match estimator {
-                Estimator::Analog => {
-                    if rng.next_f64() < p_absorb {
-                        a_score += weight;
-                        break;
+        let mut scores = Scores::default();
+        stack.clear();
+        stack.push(Particle {
+            x: 0.0,
+            mu: 1.0,
+            weight: 1.0,
+            zone: 0,
+        });
+        while let Some(mut p) = stack.pop() {
+            loop {
+                let flight = sample_flight(&mut rng, total);
+                if split && p.mu > 0.0 && p.zone + 1 < zones {
+                    let edge = (p.zone + 1) as f64 * zone_width;
+                    let to_edge = (edge - p.x) / p.mu;
+                    if to_edge < flight {
+                        // The face of the next zone comes before a collision. The flight is
+                        // exponential and so has no memory: resampling it at the face is exact.
+                        scores.track += p.weight * to_edge;
+                        p.x = edge;
+                        p.zone += 1;
+                        let share = p.weight / copies as f64;
+                        for _ in 1..copies {
+                            stack.push(Particle {
+                                x: edge,
+                                mu: p.mu,
+                                weight: share,
+                                zone: p.zone,
+                            });
+                        }
+                        p.weight = share;
+                        continue;
                     }
-                    mu = 2.0 * rng.next_f64() - 1.0;
                 }
-                Estimator::ImplicitCapture => {
-                    a_score += weight * p_absorb;
-                    weight *= 1.0 - p_absorb;
-                    mu = 2.0 * rng.next_f64() - 1.0;
-                    if weight < ROULETTE_WEIGHT {
-                        if rng.next_f64() < ROULETTE_SURVIVAL {
-                            weight /= ROULETTE_SURVIVAL;
-                        } else {
+                let to_boundary = if p.mu > 0.0 {
+                    (slab.thickness - p.x) / p.mu
+                } else {
+                    -p.x / p.mu
+                };
+                if flight >= to_boundary {
+                    // Leaves the slab through the face it is heading for.
+                    scores.track += p.weight * to_boundary;
+                    if p.mu > 0.0 {
+                        scores.transmitted += p.weight;
+                    } else {
+                        scores.reflected += p.weight;
+                    }
+                    break;
+                }
+                scores.track += p.weight * flight;
+                p.x += p.mu * flight;
+                scores.collisions += p.weight;
+                match estimator {
+                    Estimator::Analog => {
+                        if rng.next_f64() < p_absorb {
+                            scores.absorbed += p.weight;
                             break;
+                        }
+                        scores.scattered += p.weight;
+                        p.mu = 2.0 * rng.next_f64() - 1.0;
+                    }
+                    Estimator::ImplicitCapture | Estimator::Splitting { .. } => {
+                        scores.absorbed += p.weight * p_absorb;
+                        scores.scattered += p.weight * (1.0 - p_absorb);
+                        p.weight *= 1.0 - p_absorb;
+                        p.mu = 2.0 * rng.next_f64() - 1.0;
+                        if p.weight < ROULETTE_WEIGHT {
+                            if rng.next_f64() < ROULETTE_SURVIVAL {
+                                p.weight /= ROULETTE_SURVIVAL;
+                            } else {
+                                break;
+                            }
                         }
                     }
                 }
             }
         }
-        transmitted.add(t_score);
-        reflected.add(r_score);
-        absorbed.add(a_score);
-        track.add(track_score);
-        collisions.add(coll_score);
+        totals.add(&scores);
     }
 
-    Ok(SlabTally {
-        transmitted: transmitted.estimate(histories),
-        reflected: reflected.estimate(histories),
-        absorbed: absorbed.estimate(histories),
-        track_length: track.estimate(histories),
-        collisions: collisions.estimate(histories),
-    })
+    Ok(totals.estimates(histories))
 }
 
 /// The track length per source neutron in an infinite medium of the given cross sections: every

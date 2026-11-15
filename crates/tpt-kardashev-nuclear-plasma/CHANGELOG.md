@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `slab::Estimator::Splitting { zones, copies }`: zone splitting for deep penetration. A neutron that first enters a deeper slice is split at that face into `copies` neutrons of equal share of the weight. The transport uses a stack for the copies. One zone or one copy is implicit capture draw for draw. `NeutronicsError::BadSplitting` for zero zones or copies. Tests in `tests/reactions.rs`, against analog for transmission, reflection, absorption and track length, including a deep slab.
+- `slab::SlabTally::scattered` and `layers::run_layers`: the scattering reaction rate per source neutron. With `absorbed`, it sums to `collisions` history by history.
 - Phase 0 scaffold.
 - `rng::SplitMix64`: a seeded 64-bit generator, reproducible from its seed.
 - `slab::{run_slab, run_infinite, CrossSections, Slab, Estimator, SlabTally, Estimate}` (feature `std`): one-group fixed-source Monte Carlo in a slab, with analog and implicit-capture estimators, and the infinite-medium track length. Tests in `tests/neutronics.rs`: the uncollided transmission law and track length for a pure absorber, the infinite-medium track length 1/σa, history-by-history weight conservation, agreement of the two estimators, reproducibility, the square-root error law, the generator's uniformity, and rejection of invalid input.

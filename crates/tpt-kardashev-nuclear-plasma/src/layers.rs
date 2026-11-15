@@ -94,7 +94,8 @@ pub fn run_layers(
         return Err(NeutronicsError::NoHistories);
     }
     let mut rng = SplitMix64::new(seed);
-    let (mut t_acc, mut r_acc, mut a_acc, mut track_acc, mut coll_acc) = (
+    let (mut t_acc, mut r_acc, mut a_acc, mut s_acc, mut track_acc, mut coll_acc) = (
+        Acc::default(),
         Acc::default(),
         Acc::default(),
         Acc::default(),
@@ -147,6 +148,9 @@ pub fn run_layers(
                 x = layers.edges[region + 1];
             }
         }
+        // Each analog collision either absorbs the neutron or scatters it, so the scattering weight
+        // is the collisions less the absorptions.
+        s_acc.add(coll_score - a_score);
         t_acc.add(t_score);
         r_acc.add(r_score);
         a_acc.add(a_score);
@@ -158,6 +162,7 @@ pub fn run_layers(
         transmitted: t_acc.estimate(histories),
         reflected: r_acc.estimate(histories),
         absorbed: a_acc.estimate(histories),
+        scattered: s_acc.estimate(histories),
         track_length: track_acc.estimate(histories),
         collisions: coll_acc.estimate(histories),
     })
