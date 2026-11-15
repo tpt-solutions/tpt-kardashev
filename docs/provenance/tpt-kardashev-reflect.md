@@ -25,3 +25,4 @@ None.
 ## Sibling review (migration notes)
 
 - `tpt-solutions/tpt-formal`, `crates/tpt-for-proof-ast` (MIT OR Apache-2.0), read: first-order term, formula and proof-tree structure, with soundness left to downstream tools. It has no linear-arithmetic certificates, so it does not replace the containment checker here. No code taken.
+- `certify.rs`: the phase-one simplex (artificial variables, Bland's rule, rational pivots) written from the standard method. The generator is not trusted: `verify` decides acceptance. No reference code consulted.

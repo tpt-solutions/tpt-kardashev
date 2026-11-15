@@ -25,7 +25,7 @@ Verified self-modification: linear-invariant containment certificates, a checker
 
 ## What it does not model
 
-- It does not find certificates. A certificate is an input; the checker only checks it. A generator would be a separate, untrusted helper.
+- The generator (`certify`) is a test and example helper, not part of the trusted base: its output is only a candidate, and `verify` decides. It finds certificates for the constructed cases and reports when none of this form exists.
 - It does not handle Byzantine or adversarial policy authors beyond the malformed-certificate tests.
 - It does not authenticate the log: the hash chain detects edits to a copy of the head, not a forged log.
 

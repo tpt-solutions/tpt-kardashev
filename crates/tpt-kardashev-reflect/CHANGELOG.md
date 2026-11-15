@@ -12,3 +12,5 @@
 - `hash`: SHA-256 (FIPS 180-4), a copy of the causal-consensus module, so that no crate depends on another. Consolidation is a phase 4 item.
 - `attest::AttestedGate` and `attest::replacement_message` (feature `crypto`): the only way to replace the invariant. The replacement must carry an Ed25519 signature by a fixed authority over the old invariant's digest, the new digest and the log position, and the current policy must still be contained in the replacement. Refusals are recorded in the log. Tests in `tests/attest.rs`.
 - Feature `crypto` (optional dependency `ed25519-compact`).
+- `certify::certify` (feature `alloc`): a certificate generator, not part of the trusted base. A phase-one simplex over exact rationals (Bland's rule) finds the multipliers, so the output needs no rounding; `verify` decides whether it is accepted. Tests in `tests/certify.rs`: a narrower interval is certified and accepted, a wider one gets `NoCertificate`, every constructed containment is certified, and every returned certificate passes the checker.
+- `ReflectError::NoCertificate`.
