@@ -256,8 +256,8 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Decide feature layout (`equilibrium`, `neutronics`, `mhd`) and the sub-crate split trigger (size)
 - [ ] `Scalar` trait, error enum, grid types
 - [ ] **equilibrium:** (R, Z) grid and fixed-boundary Grad-Shafranov solver — partial: `equilibrium::Grid` and `solve_fixed_boundary` solve `Δ*ψ = κR²` (pressure-driven source only) by SOR with Dirichlet boundary values; the toroidal-field function F(ψ) is not included, so the general equation is not solved
-- [ ] equilibrium: flux-surface extraction
-- [ ] equilibrium: safety-factor profile
+- [x] equilibrium: flux-surface extraction — `surface::contour`: rays from a given magnetic axis, bisected on the bilinear interpolant; assumes star-shaped surfaces; tested on the circular flux function (`tests/surface.rs`)
+- [x] equilibrium: safety-factor profile — `surface::safety_factor`, q = (F/2π)∮dl/(R|∇ψ|) for a constant F, checked against the closed form on the circular flux function to 2% on three surfaces; a profile over many surfaces is a loop over `contour`
 - [x] equilibrium: Solov'ev analytic benchmark — ψ = A R⁴ + B R² Z² (exact with κ = 8A + 2B), used as the boundary and as the reference (`tests/equilibrium.rs`)
 - [x] equilibrium: convergence-order tests — the discrete operator's residual on the exact function and the solver's interior error both fall by a factor of about 4 when the grid is halved (second order)
 - [ ] **neutronics:** constructive solid geometry
