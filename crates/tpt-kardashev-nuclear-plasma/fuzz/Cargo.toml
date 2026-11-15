@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+[package]
+name = "tpt-kardashev-nuclear-plasma-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tpt-kardashev-nuclear-plasma]
+path = ".."
+features = ["alloc"]
+
+[[bin]]
+name = "xs_read"
+path = "fuzz_targets/xs_read.rs"
+test = false
+doc = false
+bench = false
+
+# Separate workspace: the fuzzer is not part of the main workspace or its licence graph.
+[workspace]

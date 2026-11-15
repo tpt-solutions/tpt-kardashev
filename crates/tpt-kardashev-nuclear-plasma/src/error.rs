@@ -19,6 +19,14 @@ pub enum NeutronicsError {
     BadGrid,
     /// A solver tolerance is not positive and finite.
     BadTolerance,
+    /// A cross-section file line does not parse or is inconsistent. `line` is counted from 1; 0 means
+    /// the file as a whole (a missing or miscounted `groups` line).
+    Malformed {
+        /// The line.
+        line: usize,
+    },
+    /// A multigroup set has no groups.
+    NoGroups,
     /// A flux surface could not be found, or the contour leaves the grid.
     NoSurface,
     /// The iteration did not converge within its limit.
@@ -37,6 +45,8 @@ impl fmt::Display for NeutronicsError {
             NeutronicsError::BadTolerance => f.write_str("the tolerance must be positive and finite"),
             NeutronicsError::NotConverged => f.write_str("the solver did not converge within its limit"),
             NeutronicsError::NoSurface => f.write_str("no flux surface found inside the grid"),
+            NeutronicsError::Malformed { line } => write!(f, "cross-section file is malformed at line {line}"),
+            NeutronicsError::NoGroups => f.write_str("a multigroup set needs at least one group"),
         }
     }
 }
