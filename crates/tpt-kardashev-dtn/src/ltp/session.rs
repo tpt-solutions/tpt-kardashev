@@ -13,8 +13,8 @@
 //! [`Receiver::on_segment`] take in what arrived, and `next_timeout` says when to poll again.
 //!
 //! Green-part data is carried as [`green_segments`] and collected by the receiver, with gaps reported but
-//! never retransmitted. Not modelled: cancellation beyond reacting to a peer's cancel and the cancel
-//! issued at a retransmission limit, client-service notices, extension processing, link-state
+//! never retransmitted. A cancel segment is repeated until its peer acknowledges it, up to the
+//! transmission limit. Not modelled: client-service notices, extension processing, link-state
 //! scheduling, and asynchronous reports.
 
 use super::ranges::RangeSet;
@@ -137,6 +137,50 @@ struct Inflight {
     retransmitted: bool,
 }
 
+/// A cancel segment of this engine, repeated until the peer acknowledges it.
+#[derive(Clone, Debug)]
+struct CancelTimer {
+    segment: Segment,
+    /// When the countdown expires, or `NOT_TIMED` while the segment is queued again.
+    deadline: u64,
+    /// Transmissions so far.
+    transmissions: u32,
+}
+
+/// Queues the cancel segment again when its countdown has expired. At the transmission limit the
+/// cancel is given up, and the session stays cancelled.
+fn expire_cancel(
+    cancel: &mut Option<CancelTimer>,
+    queue: &mut VecDeque<Segment>,
+    now: u64,
+    max_transmissions: u32,
+) {
+    let Some(timer) = cancel.as_mut() else {
+        return;
+    };
+    if timer.deadline > now {
+        return;
+    }
+    if timer.transmissions >= max_transmissions {
+        *cancel = None;
+        return;
+    }
+    timer.deadline = NOT_TIMED;
+    queue.push_back(timer.segment.clone());
+}
+
+/// Starts the countdown when a cancel segment is sent. Only this engine's own cancel segments are
+/// ever queued, because a peer's cancel is answered with a cancel acknowledgment.
+fn sent_cancel(cancel: &mut Option<CancelTimer>, seg: &Segment, now: u64, timeout_ms: u64) {
+    if !matches!(seg.body, Body::Cancel { .. }) {
+        return;
+    }
+    if let Some(timer) = cancel.as_mut() {
+        timer.transmissions += 1;
+        timer.deadline = now.saturating_add(timeout_ms);
+    }
+}
+
 /// The checkpoint carried by a segment, if it is a checkpoint data segment.
 fn checkpoint_of(seg: &Segment) -> Option<Checkpoint> {
     match &seg.body {
@@ -197,6 +241,8 @@ pub struct Sender {
     rto_ms: u64,
     /// Round-trip samples taken since the last call to [`Sender::take_rtt_samples`].
     rtt_samples: Vec<u64>,
+    /// The cancel segment waiting for its acknowledgment, if the session was cancelled.
+    cancel: Option<CancelTimer>,
 }
 
 impl Sender {
@@ -230,6 +276,7 @@ impl Sender {
             status: Status::Active,
             rto_ms: config.timeout_ms,
             rtt_samples: Vec::new(),
+            cancel: None,
         };
         let mut segments = data_segments(
             block_len,
@@ -268,7 +315,14 @@ impl Sender {
     /// first: an unanswered checkpoint is queued again, or the session is cancelled.
     pub fn poll(&mut self, now: u64) -> Option<Segment> {
         self.expire(now);
+        expire_cancel(
+            &mut self.cancel,
+            &mut self.queue,
+            now,
+            self.config.max_transmissions,
+        );
         let seg = self.queue.pop_front()?;
+        sent_cancel(&mut self.cancel, &seg, now, self.config.timeout_ms);
         if let Some(cp) = checkpoint_of(&seg) {
             let entry = self.inflight.entry(cp.serial).or_insert_with(|| Inflight {
                 segment: seg.clone(),
@@ -302,7 +356,7 @@ impl Sender {
                 continue;
             };
             if entry.transmissions >= self.config.max_transmissions {
-                self.cancel(REASON_RLEXC);
+                self.begin_cancel(REASON_RLEXC);
                 return;
             }
             entry.deadline = NOT_TIMED;
@@ -310,16 +364,33 @@ impl Sender {
         }
     }
 
-    fn cancel(&mut self, reason: u8) {
+    /// Stops the transmission: drops the queued segments and sends a cancel segment, which is
+    /// repeated until the receiver acknowledges it or the transmission limit is reached.
+    fn begin_cancel(&mut self, reason: u8) {
         self.status = Status::Cancelled { reason };
         self.inflight.clear();
-        self.queue.push_back(Segment::new(
+        self.queue.clear();
+        let segment = Segment::new(
             self.session,
             Body::Cancel {
                 from: Party::Sender,
                 reason,
             },
-        ));
+        );
+        self.cancel = Some(CancelTimer {
+            segment: segment.clone(),
+            deadline: NOT_TIMED,
+            transmissions: 0,
+        });
+        self.queue.push_back(segment);
+    }
+
+    /// Cancels the session from the application, with an RFC 5326 reason code. Does nothing once
+    /// the session has ended.
+    pub fn cancel_session(&mut self, reason: u8) {
+        if self.status == Status::Active {
+            self.begin_cancel(reason);
+        }
     }
 
     /// Processes a segment from the receiver. Segments for other sessions, and segments that
@@ -329,6 +400,22 @@ impl Sender {
             return;
         }
         match (self.status, &seg.body) {
+            (Status::Cancelled { .. }, Body::CancelAck { to: Party::Sender }) => self.cancel = None,
+            (
+                Status::Cancelled { .. },
+                Body::Cancel {
+                    from: Party::Receiver,
+                    ..
+                },
+            ) => {
+                // Both sides cancelled at once: the peer's cancel is acknowledged all the same.
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::CancelAck {
+                        to: Party::Receiver,
+                    },
+                ));
+            }
             // A completed session still acknowledges reports: the receiver may have missed the
             // earlier acknowledgment and is waiting for it (RFC 5326 §6.13).
             (Status::Completed, Body::Report(rs)) => {
@@ -349,6 +436,7 @@ impl Sender {
             ) => {
                 self.status = Status::Cancelled { reason: *reason };
                 self.inflight.clear();
+                self.queue.clear();
                 self.queue.push_back(Segment::new(
                     self.session,
                     Body::CancelAck {
@@ -417,16 +505,23 @@ impl Sender {
         self.enqueue(segments);
     }
 
-    /// When the next countdown timer expires, if any.
+    /// When the next countdown timer or cancel timer expires, if any.
     pub fn next_timeout(&self) -> Option<u64> {
-        if self.status != Status::Active {
-            return None;
-        }
-        self.inflight
-            .values()
-            .map(|f| f.deadline)
-            .filter(|&d| d != NOT_TIMED)
-            .min()
+        let checkpoints = if self.status == Status::Active {
+            self.inflight
+                .values()
+                .map(|f| f.deadline)
+                .filter(|&d| d != NOT_TIMED)
+                .min()
+        } else {
+            None
+        };
+        let cancel = self
+            .cancel
+            .as_ref()
+            .map(|c| c.deadline)
+            .filter(|&d| d != NOT_TIMED);
+        checkpoints.into_iter().chain(cancel).min()
     }
 
     /// Where the session stands.
@@ -477,6 +572,8 @@ pub struct Receiver {
     green: BTreeMap<u64, Vec<u8>>,
     /// End offset of the green part, known once its end-of-block segment arrives.
     green_end: Option<u64>,
+    /// The cancel segment waiting for its acknowledgment, if the session was cancelled here.
+    cancel: Option<CancelTimer>,
 }
 
 impl Receiver {
@@ -499,14 +596,51 @@ impl Receiver {
             status: Status::Active,
             green: BTreeMap::new(),
             green_end: None,
+            cancel: None,
         })
+    }
+
+    /// Stops the transmission: drops the queued segments and sends a cancel segment, which is
+    /// repeated until the sender acknowledges it or the transmission limit is reached.
+    fn begin_cancel(&mut self, reason: u8) {
+        self.status = Status::Cancelled { reason };
+        self.inflight.clear();
+        self.queue.clear();
+        let segment = Segment::new(
+            self.session,
+            Body::Cancel {
+                from: Party::Receiver,
+                reason,
+            },
+        );
+        self.cancel = Some(CancelTimer {
+            segment: segment.clone(),
+            deadline: NOT_TIMED,
+            transmissions: 0,
+        });
+        self.queue.push_back(segment);
+    }
+
+    /// Cancels the session from the application, with an RFC 5326 reason code. Does nothing once
+    /// the session has ended.
+    pub fn cancel_session(&mut self, reason: u8) {
+        if self.status == Status::Active {
+            self.begin_cancel(reason);
+        }
     }
 
     /// The next segment to transmit at virtual time `now`, if any. Expired report timers are
     /// handled first.
     pub fn poll(&mut self, now: u64) -> Option<Segment> {
         self.expire(now);
+        expire_cancel(
+            &mut self.cancel,
+            &mut self.queue,
+            now,
+            self.config.max_transmissions,
+        );
         let seg = self.queue.pop_front()?;
+        sent_cancel(&mut self.cancel, &seg, now, self.config.timeout_ms);
         if let Body::Report(rs) = &seg.body {
             let serial = rs.report_serial;
             let entry = self.inflight.entry(serial).or_insert_with(|| Inflight {
@@ -538,17 +672,7 @@ impl Receiver {
                 continue;
             };
             if entry.transmissions >= self.config.max_transmissions {
-                self.status = Status::Cancelled {
-                    reason: REASON_RLEXC,
-                };
-                self.inflight.clear();
-                self.queue.push_back(Segment::new(
-                    self.session,
-                    Body::Cancel {
-                        from: Party::Receiver,
-                        reason: REASON_RLEXC,
-                    },
-                ));
+                self.begin_cancel(REASON_RLEXC);
                 return;
             }
             entry.deadline = NOT_TIMED;
@@ -558,10 +682,28 @@ impl Receiver {
 
     /// Processes a segment from the sender. Segments for other sessions are ignored.
     pub fn on_segment(&mut self, seg: &Segment) {
-        if seg.session != self.session || matches!(self.status, Status::Cancelled { .. }) {
+        if seg.session != self.session {
             return;
         }
         match (self.status, &seg.body) {
+            (
+                Status::Cancelled { .. },
+                Body::CancelAck {
+                    to: Party::Receiver,
+                },
+            ) => self.cancel = None,
+            (
+                Status::Cancelled { .. },
+                Body::Cancel {
+                    from: Party::Sender,
+                    ..
+                },
+            ) => {
+                self.queue.push_back(Segment::new(
+                    self.session,
+                    Body::CancelAck { to: Party::Sender },
+                ));
+            }
             // Green data is accepted in any live state, and never answered.
             (Status::Active | Status::Completed, Body::Data(d)) if d.color == Color::Green => {
                 self.on_green(d)
@@ -569,7 +711,7 @@ impl Receiver {
             (Status::Active, Body::Data(d)) => self.on_data(d),
             // Acknowledgments are processed even after the block is delivered, so the session
             // can finish once every report is acknowledged.
-            (_, Body::ReportAck { report_serial }) => {
+            (Status::Active | Status::Completed, Body::ReportAck { report_serial }) => {
                 self.inflight.remove(report_serial);
                 if self.delivered.is_some() && self.inflight.is_empty() {
                     self.status = Status::Completed;
@@ -584,6 +726,7 @@ impl Receiver {
             ) => {
                 self.status = Status::Cancelled { reason: *reason };
                 self.inflight.clear();
+                self.queue.clear();
                 self.queue.push_back(Segment::new(
                     self.session,
                     Body::CancelAck { to: Party::Sender },
@@ -709,16 +852,23 @@ impl Receiver {
         out
     }
 
-    /// When the next report timer expires, if any.
+    /// When the next report timer or cancel timer expires, if any.
     pub fn next_timeout(&self) -> Option<u64> {
-        if self.status != Status::Active {
-            return None;
-        }
-        self.inflight
-            .values()
-            .map(|f| f.deadline)
-            .filter(|&d| d != NOT_TIMED)
-            .min()
+        let reports = if self.status == Status::Active {
+            self.inflight
+                .values()
+                .map(|f| f.deadline)
+                .filter(|&d| d != NOT_TIMED)
+                .min()
+        } else {
+            None
+        };
+        let cancel = self
+            .cancel
+            .as_ref()
+            .map(|c| c.deadline)
+            .filter(|&d| d != NOT_TIMED);
+        reports.into_iter().chain(cancel).min()
     }
 
     /// Where the session stands.

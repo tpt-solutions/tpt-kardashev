@@ -28,3 +28,5 @@ No CBOR or BPv7 code was taken from any source. The codec was written from the R
 None.
 
 - Green part (RFC 5326 section 3 for the green data segment layout, and the absence of checkpoints and reports for green data): `ltp::session::green_segments` and the receiver green store were written from the same RFC text as the red part. No other implementation was consulted.
+
+- Cancellation (RFC 5326 section 6, cancellation procedures): the cancel is repeated until its acknowledgment, and each side acknowledges the other side's cancel. The repeat rule and the transmission limit are the code's own choice, following the same retransmission rules as checkpoints. The tests in tests/ltp_cancel.rs were written from the RFC text and not from any other implementation.
