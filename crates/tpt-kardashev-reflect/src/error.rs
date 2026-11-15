@@ -36,6 +36,12 @@ pub enum ReflectError {
     },
     /// The certificate does not have one multiplier vector per invariant row, of the update's length.
     CertificateShape,
+    /// A text file line does not parse or is inconsistent. `line` is counted from 1; 0 means the file as a
+    /// whole (a missing header line, or a count that does not match).
+    Malformed {
+        /// The line.
+        line: usize,
+    },
     /// A replacement invariant was not signed by the attestation authority.
     BadAttestation,
     /// No certificate of the checked form exists for this containment (the generator found none).
@@ -64,6 +70,7 @@ impl fmt::Display for ReflectError {
                     "invariant row {row} is not implied by the update's bounds"
                 )
             }
+            ReflectError::Malformed { line } => write!(f, "the text is malformed at line {line}"),
             ReflectError::NoCertificate => {
                 f.write_str("no containment certificate of this form exists")
             }

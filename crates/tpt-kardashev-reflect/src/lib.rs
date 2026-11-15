@@ -27,6 +27,8 @@ pub mod hash;
 pub mod invariant;
 pub mod rational;
 #[cfg(feature = "alloc")]
+pub mod text;
+#[cfg(feature = "alloc")]
 pub mod verify;
 
 #[cfg(feature = "alloc")]

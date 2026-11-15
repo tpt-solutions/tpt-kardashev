@@ -138,6 +138,7 @@ fn reason_code(reason: ReflectError) -> &'static str {
         ReflectError::CertificateShape => "certificate-shape",
         ReflectError::BadAttestation => "bad-attestation",
         ReflectError::NoCertificate => "no-certificate",
+        ReflectError::Malformed { .. } => "malformed",
     }
 }
 
