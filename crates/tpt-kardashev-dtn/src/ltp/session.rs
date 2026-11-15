@@ -105,6 +105,37 @@ impl Config {
         }
         Ok(())
     }
+
+    /// Checks that this configuration meets the CCSDS profile of LTP (CCSDS 734.1-B-1, §3.5.2 and
+    /// §3.5.5): the initial checkpoint and report serial numbers lie in `[1, 2^14 − 1]`, so that
+    /// they fit in two-octet SDNVs. Fails with [`Error::Ltp`] otherwise. The profile is optional:
+    /// RFC 5326 alone does not limit the serial numbers.
+    pub fn check_ccsds_profile(&self) -> Result<(), Error> {
+        if self.first_serial > CCSDS_MAX_INITIAL_SERIAL {
+            return Err(Error::Ltp {
+                what: "CCSDS profile: initial serial numbers must be at most 2^14 - 1",
+            });
+        }
+        Ok(())
+    }
+}
+
+/// The largest initial checkpoint or report serial number the CCSDS profile allows, `2^14 − 1`.
+pub const CCSDS_MAX_INITIAL_SERIAL: u64 = (1 << 14) - 1;
+
+/// The largest session number the CCSDS profile allows, `2^32 − 1`. The profile also requires
+/// session numbers to be at least 1.
+pub const CCSDS_MAX_SESSION_NUMBER: u64 = u32::MAX as u64;
+
+/// Checks that a session number meets the CCSDS profile (CCSDS 734.1-B-1, §3.5.1): it lies in
+/// `[1, 2^32 − 1]`. Fails with [`Error::Ltp`] otherwise.
+pub fn check_ccsds_session_number(session: &SessionId) -> Result<(), Error> {
+    if session.number == 0 || session.number > CCSDS_MAX_SESSION_NUMBER {
+        return Err(Error::Ltp {
+            what: "CCSDS profile: session numbers must lie in [1, 2^32 - 1]",
+        });
+    }
+    Ok(())
 }
 
 /// Where a session stands.
