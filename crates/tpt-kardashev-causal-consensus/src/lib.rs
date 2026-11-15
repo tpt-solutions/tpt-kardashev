@@ -31,6 +31,8 @@ pub mod global;
 pub mod hash;
 #[cfg(feature = "alloc")]
 pub mod linearizable;
+#[cfg(feature = "crypto")]
+pub mod signed;
 #[cfg(feature = "alloc")]
 pub mod transport;
 pub mod vector;

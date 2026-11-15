@@ -3,6 +3,12 @@
 version = 4
 
 [[package]]
+name = "ed25519-compact"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9547879431a90e352a35863a54416d92898a787b9af09e6ae2e09a96bd78be80"
+
+[[package]]
 name = "itoa"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -100,6 +106,9 @@ version = "0.0.0"
 [[package]]
 name = "tpt-kardashev-causal-consensus"
 version = "0.0.0"
+dependencies = [
+ "ed25519-compact",
+]
 
 [[package]]
 name = "tpt-kardashev-dtn"
@@ -132,6 +141,9 @@ version = "0.0.0"
 [[package]]
 name = "tpt-kardashev-reflect"
 version = "0.0.0"
+dependencies = [
+ "ed25519-compact",
+]
 
 [[package]]
 name = "tpt-kardashev-relativity"
