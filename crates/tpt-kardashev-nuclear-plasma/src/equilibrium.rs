@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Fixed-boundary Grad-Shafranov solve on a rectangular (R, Z) grid, and the Solov'ev benchmark.
 //!
-//! The equation is `Δ*ψ = κ R²`, with `Δ*ψ = ψ_RR − ψ_R / R + ψ_ZZ`. This is the Grad-Shafranov
-//! equation with pressure-driven current only, which is the case for which the Solov'ev function
-//! `ψ = A R⁴ + B R² Z²` is exact with `κ = 8A + 2B`. The solver discretises Δ* with central
-//! differences (second order in the grid spacing) and solves the system by successive over-relaxation,
-//! with the boundary values of ψ fixed by the caller.
+//! The equation is `Δ*ψ = S(R, ψ)`, with `Δ*ψ = ψ_RR − ψ_R / R + ψ_ZZ`. For the general equilibrium the
+//! source is `S = −μ0 R² p'(ψ) − F(ψ) F'(ψ)`, a function of R and ψ supplied by the caller (the pressure
+//! and toroidal-field profiles are the caller's). The pressure-only case `S = κ R²` is the one for which
+//! the Solov'ev function `ψ = A R⁴ + B R² Z²` is exact with `κ = 8A + 2B`.
 //!
-//! Scope: one linear elliptic solve. The toroidal-field function `F(ψ)` is not included, so the
-//! general equation is not solved. The flux-surface and safety-factor diagnostics are not written.
+//! The solver discretises Δ* with central differences (second order in the grid spacing) and solves the
+//! system by successive over-relaxation, with the boundary values of ψ fixed by the caller. A source that
+//! depends on ψ is evaluated at the current value of each node: this is a nonlinear, lagged-in-place
+//! relaxation. It converges for sources that vary slowly with ψ, and [`max_residual`] reports how well
+//! the converged solution satisfies the equation.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -144,6 +146,30 @@ pub fn solve_fixed_boundary<F>(
 where
     F: Fn(f64, f64) -> f64,
 {
+    solve_with_source(
+        grid,
+        |r, _psi| kappa * r * r,
+        boundary,
+        tolerance,
+        max_iterations,
+    )
+}
+
+/// Solves `Δ*ψ = S(R, ψ)` on `grid`, with `ψ = boundary(R, Z)` on the edge. The source is evaluated
+/// at the current value of each node, so a source that depends on ψ is handled by the same
+/// relaxation; see the module documentation for the convergence caveat. Stops as
+/// [`solve_fixed_boundary`] does.
+pub fn solve_with_source<S, B>(
+    grid: &Grid,
+    source: S,
+    boundary: B,
+    tolerance: f64,
+    max_iterations: usize,
+) -> Result<Solution, NeutronicsError>
+where
+    S: Fn(f64, f64) -> f64,
+    B: Fn(f64, f64) -> f64,
+{
     if !(tolerance > 0.0 && tolerance.is_finite()) {
         return Err(NeutronicsError::BadTolerance);
     }
@@ -174,7 +200,7 @@ where
                     + west * psi[grid.index(i - 1, j)]
                     + north * psi[grid.index(i, j + 1)]
                     + south * psi[grid.index(i, j - 1)];
-                let gauss_seidel = (kappa * r * r - neighbours) / center;
+                let gauss_seidel = (source(r, psi[idx]) - neighbours) / center;
                 let updated = (1.0 - OMEGA) * psi[idx] + OMEGA * gauss_seidel;
                 largest = largest.max((updated - psi[idx]).abs());
                 psi[idx] = updated;
@@ -190,6 +216,35 @@ where
         }
     }
     Err(NeutronicsError::NotConverged)
+}
+
+/// The largest residual `|Δ*ψ − S(R, ψ)|` over the interior nodes of a solution, with the same
+/// discretisation as the solver. Zero, to rounding, for a converged solution of the discrete equation.
+pub fn max_residual<S>(grid: &Grid, solution: &Solution, source: S) -> f64
+where
+    S: Fn(f64, f64) -> f64,
+{
+    let (h, k) = (grid.dr(), grid.dz());
+    let center = -2.0 / (h * h) - 2.0 / (k * k);
+    let mut worst: f64 = 0.0;
+    for j in 1..grid.nz - 1 {
+        for i in 1..grid.nr - 1 {
+            let r = grid.r(i);
+            let east = 1.0 / (h * h) - 1.0 / (2.0 * h * r);
+            let west = 1.0 / (h * h) + 1.0 / (2.0 * h * r);
+            let north = 1.0 / (k * k);
+            let south = 1.0 / (k * k);
+            let psi = |ii: usize, jj: usize| solution.at(grid, ii, jj);
+            let laplacian = east * psi(i + 1, j)
+                + west * psi(i - 1, j)
+                + north * psi(i, j + 1)
+                + south * psi(i, j - 1)
+                + center * psi(i, j);
+            let residual = (laplacian - source(r, psi(i, j))).abs();
+            worst = worst.max(residual);
+        }
+    }
+    worst
 }
 
 /// The largest difference between the solution and the exact function at the interior nodes.

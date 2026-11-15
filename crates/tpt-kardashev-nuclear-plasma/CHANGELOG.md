@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `equilibrium::solve_with_source` and `equilibrium::max_residual`: the general fixed-boundary Grad-Shafranov source `Δ*ψ = S(R, ψ)`, with the source evaluated at each node. `solve_fixed_boundary` is now a call to it with `S = κR²`, and gives identical results (tests in `tests/equilibrium_source.rs`). The test with a constant additive source checks an exact closed form and second-order error; a flux-dependent source is checked by residual.
+
 - `slab::Estimator::Splitting { zones, copies }`: zone splitting for deep penetration. A neutron that first enters a deeper slice is split at that face into `copies` neutrons of equal share of the weight. The transport uses a stack for the copies. One zone or one copy is implicit capture draw for draw. `NeutronicsError::BadSplitting` for zero zones or copies. Tests in `tests/reactions.rs`, against analog for transmission, reflection, absorption and track length, including a deep slab.
 - `slab::SlabTally::scattered` and `layers::run_layers`: the scattering reaction rate per source neutron. With `absorbed`, it sums to `collisions` history by history.
 - Phase 0 scaffold.

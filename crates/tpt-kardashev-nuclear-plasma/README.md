@@ -2,7 +2,7 @@
 
 Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronics with a cross-section reader.
 
-**Status:** Phase 2.3, in progress. Implemented: a seeded generator (always); with `alloc`, a fixed-boundary Grad-Shafranov solve for a pressure-driven source on a rectangular grid, checked against the Solov'ev benchmark; with `std`, a one-group fixed-source Monte Carlo for a slab and an infinite medium with analog and implicit-capture estimators. Also flux surfaces about a given axis and the safety factor for a constant toroidal flux function. Not yet: the toroidal-field function F(ψ), constructive solid geometry in three dimensions, reaction-rate tallies by track length, and the rest of the statistical suite.
+**Status:** Phase 2.3, in progress. Implemented: a seeded generator (always); with `alloc`, a fixed-boundary Grad-Shafranov solve for a pressure-driven source on a rectangular grid, checked against the Solov'ev benchmark; with `std`, a one-group fixed-source Monte Carlo for a slab and an infinite medium with analog and implicit-capture estimators. Also flux surfaces about a given axis and the safety factor for a constant toroidal flux function. Not yet: bundled pressure or toroidal-field profiles (the solver takes the source S(R, ψ) from the caller), constructive solid geometry in three dimensions, reaction-rate tallies by track length, and the rest of the statistical suite.
 
 ## Features
 
@@ -23,7 +23,7 @@ Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronic
 - One group, one dimension, normal incidence at the left face, in one slab or a row of layers (`layers`). No multigroup transport, no three-dimensional geometry, no anisotropic scattering.
 - No eigenvalue or criticality calculation. The runs are fixed-source only.
 - Russian roulette is played at one fixed weight threshold. Splitting is by fixed zones of the slab (`Estimator::Splitting`), not by an importance function, so the zone count is the caller's choice and no optimal one is found.
-- The equilibrium part is partial: the toroidal-field function is not solved, and the safety factor assumes a constant F. The reviewed sibling (`tpt-ignis`) has a reduced Miller-parametrised equilibrium, not a grid solve, and this crate's solver will be a grid solve.
+- The equilibrium part takes the source S(R, ψ) = −μ0R²p'(ψ) − FF'(ψ) from the caller. No profiles are bundled, and the safety factor assumes a constant F. The reviewed sibling (`tpt-ignis`) has a reduced Miller-parametrised equilibrium, not a grid solve, and this crate's solver will be a grid solve.
 
 ## Licence
 
@@ -31,4 +31,4 @@ MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
 
 ## Equilibrium
 
-- `equilibrium::solve_fixed_boundary` solves `Δ*ψ = κR²` on a rectangular (R, Z) grid, with the flux given on the boundary. The discretisation is second order, and the solve is SOR. The Solov'ev function `ψ = A R⁴ + B R² Z²`, exact with `κ = 8A + 2B`, is the benchmark. The toroidal-field function is not included, so this is not the full Grad-Shafranov equation.
+- `equilibrium::solve_fixed_boundary` solves `Δ*ψ = κR²` on a rectangular (R, Z) grid, with the flux given on the boundary. The discretisation is second order, and the solve is SOR. The Solov'ev function `ψ = A R⁴ + B R² Z²`, exact with `κ = 8A + 2B`, is the benchmark. The general source is `equilibrium::solve_with_source` (Δ*ψ = S(R, ψ), evaluated at each node). Its convergence for a flux-dependent source is not proven; `max_residual` reports how well the converged solution satisfies the discrete equation.
