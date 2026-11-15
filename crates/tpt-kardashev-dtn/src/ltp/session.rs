@@ -12,7 +12,8 @@
 //! [`Receiver::poll`] return the next segment to send, [`Sender::on_segment`] and
 //! [`Receiver::on_segment`] take in what arrived, and `next_timeout` says when to poll again.
 //!
-//! Not modelled: green-part data, cancellation beyond reacting to a peer's cancel and the cancel
+//! Green-part data is carried as [`green_segments`] and collected by the receiver, with gaps reported but
+//! never retransmitted. Not modelled: cancellation beyond reacting to a peer's cancel and the cancel
 //! issued at a retransmission limit, client-service notices, extension processing, link-state
 //! scheduling, and asynchronous reports.
 
@@ -23,6 +24,41 @@ use super::segment::{
 use crate::error::Error;
 use alloc::collections::{BTreeMap, BTreeSet, VecDeque};
 use alloc::vec::Vec;
+
+/// Splits a green-part block into data segments of at most `mtu` bytes. Green data is sent once: the
+/// segments carry no checkpoint and get no timer, so a lost one is not retransmitted. The last segment
+/// carries the end-of-block flag. An empty block gives no segments. Fails with [`Error::Ltp`] for an
+/// `mtu` of zero.
+pub fn green_segments(
+    session: SessionId,
+    client_service: u64,
+    block: &[u8],
+    mtu: usize,
+) -> Result<Vec<Segment>, Error> {
+    if mtu == 0 {
+        return Err(Error::Ltp {
+            what: "mtu must be positive",
+        });
+    }
+    let chunks: Vec<&[u8]> = block.chunks(mtu).collect();
+    let count = chunks.len();
+    let mut out = Vec::with_capacity(count);
+    for (i, chunk) in chunks.into_iter().enumerate() {
+        out.push(Segment::new(
+            session,
+            Body::Data(DataSegment {
+                color: Color::Green,
+                checkpoint: None,
+                eorp: false,
+                eob: i + 1 == count,
+                client_service,
+                offset: (i * mtu) as u64,
+                data: chunk.to_vec(),
+            }),
+        ));
+    }
+    Ok(out)
+}
 
 /// Reason code for "retransmission limit exceeded" (RFC 5326 §3.2.4).
 pub const REASON_RLEXC: u8 = 2;
@@ -437,6 +473,10 @@ pub struct Receiver {
     last_primary_upper: u64,
     delivered: Option<Vec<u8>>,
     status: Status,
+    /// Green-part bytes received, keyed by offset. Never retransmitted.
+    green: BTreeMap<u64, Vec<u8>>,
+    /// End offset of the green part, known once its end-of-block segment arrives.
+    green_end: Option<u64>,
 }
 
 impl Receiver {
@@ -457,6 +497,8 @@ impl Receiver {
             last_primary_upper: 0,
             delivered: None,
             status: Status::Active,
+            green: BTreeMap::new(),
+            green_end: None,
         })
     }
 
@@ -520,6 +562,10 @@ impl Receiver {
             return;
         }
         match (self.status, &seg.body) {
+            // Green data is accepted in any live state, and never answered.
+            (Status::Active | Status::Completed, Body::Data(d)) if d.color == Color::Green => {
+                self.on_green(d)
+            }
             (Status::Active, Body::Data(d)) => self.on_data(d),
             // Acknowledgments are processed even after the block is delivered, so the session
             // can finish once every report is acknowledged.
@@ -547,10 +593,44 @@ impl Receiver {
         }
     }
 
-    fn on_data(&mut self, d: &DataSegment) {
-        if d.color != Color::Red {
-            return; // green-part data is not modelled
+    fn on_green(&mut self, d: &DataSegment) {
+        self.green.entry(d.offset).or_insert_with(|| d.data.clone());
+        if d.eob {
+            self.green_end = Some(d.offset + d.data.len() as u64);
         }
+    }
+
+    /// The green-part bytes received so far, as `(offset, bytes)` in offset order. Gaps are not filled.
+    pub fn green_received(&self) -> Vec<(u64, &[u8])> {
+        self.green.iter().map(|(o, b)| (*o, b.as_slice())).collect()
+    }
+
+    /// The missing ranges of the green part, up to its end-of-block. Empty while the end is unknown
+    /// and when nothing is missing.
+    pub fn green_gaps(&self) -> Vec<(u64, u64)> {
+        let Some(end) = self.green_end else {
+            return Vec::new();
+        };
+        let mut covered = RangeSet::new();
+        for (offset, bytes) in &self.green {
+            covered.insert(*offset, offset + bytes.len() as u64);
+        }
+        covered.missing(0, end)
+    }
+
+    /// The whole green part, if it has arrived with no gaps.
+    pub fn green_delivered(&self) -> Option<Vec<u8>> {
+        if self.green_end.is_none() || !self.green_gaps().is_empty() {
+            return None;
+        }
+        let mut out = Vec::new();
+        for bytes in self.green.values() {
+            out.extend_from_slice(bytes);
+        }
+        Some(out)
+    }
+
+    fn on_data(&mut self, d: &DataSegment) {
         let end = d.offset + d.data.len() as u64;
         self.chunks
             .entry(d.offset)

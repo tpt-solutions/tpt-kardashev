@@ -26,3 +26,5 @@ No CBOR or BPv7 code was taken from any source. The codec was written from the R
 ## Third-party licences
 
 None.
+
+- Green part (RFC 5326 section 3 for the green data segment layout, and the absence of checkpoints and reports for green data): `ltp::session::green_segments` and the receiver green store were written from the same RFC text as the red part. No other implementation was consulted.
