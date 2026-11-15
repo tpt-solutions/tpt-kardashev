@@ -255,11 +255,11 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Research: choose first cross-section format (ENDF-6, ACE, OpenMC multigroup, simple multigroup text); check licences of any reference parsers; record decision
 - [ ] Decide feature layout (`equilibrium`, `neutronics`, `mhd`) and the sub-crate split trigger (size)
 - [ ] `Scalar` trait, error enum, grid types
-- [ ] **equilibrium:** (R, Z) grid and fixed-boundary Grad-Shafranov solver
+- [ ] **equilibrium:** (R, Z) grid and fixed-boundary Grad-Shafranov solver — partial: `equilibrium::Grid` and `solve_fixed_boundary` solve `Δ*ψ = κR²` (pressure-driven source only) by SOR with Dirichlet boundary values; the toroidal-field function F(ψ) is not included, so the general equation is not solved
 - [ ] equilibrium: flux-surface extraction
 - [ ] equilibrium: safety-factor profile
-- [ ] equilibrium: Solov'ev analytic benchmark
-- [ ] equilibrium: convergence-order tests
+- [x] equilibrium: Solov'ev analytic benchmark — ψ = A R⁴ + B R² Z² (exact with κ = 8A + 2B), used as the boundary and as the reference (`tests/equilibrium.rs`)
+- [x] equilibrium: convergence-order tests — the discrete operator's residual on the exact function and the solver's interior error both fall by a factor of about 4 when the grid is halved (second order)
 - [ ] **neutronics:** constructive solid geometry
 - [ ] neutronics: multigroup cross-section types and the chosen format reader
 - [x] neutronics: seeded RNG and fixed-source Monte Carlo transport — `rng::SplitMix64` and `slab::run_slab` (tests in `tests/neutronics.rs`)

@@ -2,7 +2,7 @@
 
 Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronics with a cross-section reader.
 
-**Status:** Phase 2.3, in progress. Implemented: a seeded generator (always), and with the `std` feature a one-group fixed-source Monte Carlo for a slab and for an infinite medium, with analog and implicit-capture estimators, validated against analytic results. Not yet: the equilibrium solver, the cross-section reader and multigroup types, constructive solid geometry, splitting, spatial flux bins, and the rest of the statistical suite.
+**Status:** Phase 2.3, in progress. Implemented: a seeded generator (always); with `alloc`, a fixed-boundary Grad-Shafranov solve for a pressure-driven source on a rectangular grid, checked against the Solov'ev benchmark; with `std`, a one-group fixed-source Monte Carlo for a slab and an infinite medium with analog and implicit-capture estimators. Not yet: the toroidal-field function, flux-surface extraction, the safety factor, the cross-section reader and multigroup types, constructive solid geometry, splitting, spatial flux bins and the rest of the statistical suite.
 
 ## Features
 
@@ -28,3 +28,7 @@ Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronic
 ## Licence
 
 MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
+
+## Equilibrium
+
+- `equilibrium::solve_fixed_boundary` solves `Δ*ψ = κR²` on a rectangular (R, Z) grid, with the flux given on the boundary. The discretisation is second order, and the solve is SOR. The Solov'ev function `ψ = A R⁴ + B R² Z²`, exact with `κ = 8A + 2B`, is the benchmark. The toroidal-field function is not included, so this is not the full Grad-Shafranov equation.

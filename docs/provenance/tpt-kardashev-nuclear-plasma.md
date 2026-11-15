@@ -13,3 +13,7 @@ None yet.
 ## Third-party licences
 
 None.
+
+## Written from standard relations
+
+- `equilibrium.rs`: the Grad-Shafranov operator `Δ* = R ∂_R(R⁻¹ ∂_R) + ∂_Z²` and its central-difference discretisation, and the Solov'ev function `ψ = A R⁴ + B R² Z²` with `Δ*ψ = (8A + 2B) R²`, written from the standard forms; the successive over-relaxation is the textbook method. No reference code consulted. The sibling `tpt-ignis` equilibrium (Miller parametrisation, reviewed above) is a different, reduced model and was not used.
