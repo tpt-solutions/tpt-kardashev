@@ -5,8 +5,7 @@
 //! ordered log by causal broadcast (`causal`, feature `alloc`); consistency levels with latency bounds
 //! ([`consistency`]); a message transport and a deterministic simulated network (`transport`, feature `alloc`);
 //! Raft-style domain consensus (`domain`, feature `alloc`); hash-chained epoch summaries (`federation`, feature `alloc`, with
-//! [`hash`]). Not yet: signatures, the Domain/Federation/Proposal types, and the consistency checks
-//! across domains. See the workspace `todo.md` for this crate's v0.1 scope.
+//! [`hash`]); the `GlobalAgreed` accept round (`global`, feature `alloc`), with `Domain`, `Proposal`, `Proposer` and `Federation`, which runs the round across domains and verifies their chains. Not yet: the consistency checks across domains. See the workspace `todo.md` for this crate's v0.1 scope.
 
 #![no_std]
 #![forbid(unsafe_code)]

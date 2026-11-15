@@ -13,7 +13,7 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
-use crate::federation::SummaryChain;
+use crate::federation::{FederationError, SummaryChain, verify_chain};
 use crate::transport::NodeId;
 
 /// A proposed operation on a key, with an identifier that is unique across the federation.
@@ -192,5 +192,88 @@ impl Proposer {
         self.outcomes
             .iter()
             .filter(|(_, outcome)| outcome.committed_ms.is_some())
+    }
+}
+
+/// The result of one accept round across the whole federation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Round {
+    /// Domains that accepted the proposal.
+    pub accepted: usize,
+    /// Domains that rejected it.
+    pub rejected: usize,
+    /// Whether a majority of the federation accepted, so the operation is committed.
+    pub committed: bool,
+}
+
+/// A federation of domains that run the accept round in process. This is the synchronous form of
+/// the `GlobalAgreed` protocol: each domain answers at once, and the round's result is the quorum.
+/// The networked form, with delays and losses, is driven through [`Proposer`] and the transport, and
+/// is tested in `tests/global.rs`.
+#[derive(Clone, Debug)]
+pub struct Federation<Op> {
+    domains: Vec<Domain<Op>>,
+    sealed: Vec<usize>,
+}
+
+impl<Op: Clone + Eq> Federation<Op> {
+    /// A federation of `size` domains, numbered from 0.
+    pub fn new(size: usize) -> Self {
+        let domains = (0..size)
+            .map(|id| Domain::new(id as NodeId, size))
+            .collect();
+        Self {
+            domains,
+            sealed: alloc::vec![0; size],
+        }
+    }
+
+    /// The number of domains.
+    pub fn size(&self) -> usize {
+        self.domains.len()
+    }
+
+    /// How many domains make a majority of the federation.
+    pub fn majority(&self) -> usize {
+        self.domains.len() / 2 + 1
+    }
+
+    /// The domain with identifier `id`, if there is one.
+    pub fn domain(&self, id: NodeId) -> Option<&Domain<Op>> {
+        self.domains.get(id as usize)
+    }
+
+    /// Runs one accept round for `proposal` across every domain. The proposal is committed when a
+    /// majority accept it. A federation with no domains commits nothing.
+    pub fn propose(&mut self, proposal: &Proposal<Op>) -> Round {
+        let mut accepted = 0;
+        let mut rejected = 0;
+        for domain in &mut self.domains {
+            match domain.propose(proposal) {
+                GlobalMessage::Reply { accepted: true, .. } => accepted += 1,
+                _ => rejected += 1,
+            }
+        }
+        Round {
+            accepted,
+            rejected,
+            committed: !self.domains.is_empty() && accepted >= self.majority(),
+        }
+    }
+
+    /// Seals, in every domain, the proposals accepted since its last seal into its next epoch.
+    pub fn seal_epoch(&mut self) {
+        for (domain, sealed) in self.domains.iter_mut().zip(self.sealed.iter_mut()) {
+            *sealed = domain.seal_epoch(*sealed);
+        }
+    }
+
+    /// Checks every domain's summary chain. Fails with the first domain's chain error. This checks
+    /// integrity, not authenticity: see [`crate::federation`].
+    pub fn verify(&self) -> Result<(), FederationError> {
+        for domain in &self.domains {
+            verify_chain(domain.id(), domain.chain().summaries())?;
+        }
+        Ok(())
     }
 }

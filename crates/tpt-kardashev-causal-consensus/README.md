@@ -46,6 +46,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 
 ## Federation
 
+- `global::Federation`: a set of domains that runs the `GlobalAgreed` accept round in process. `propose` commits a proposal when a majority of domains accept it, and `seal_epoch` and `verify` seal and check each domain's chain. Tests in `tests/federation_group.rs`: majority sizes, a clean commit, a conflicting operation for the same key cannot commit, a repeated operation is recorded once, and a changed copy of a chain fails. The networked form stays in `Proposer` and the transport.
 - `federation`: hash-chained epoch summaries. Each domain seals each epoch of committed commands into a summary that names the previous summary's hash and a SHA-256 digest of the epoch's commands (`hash::sha256`, written in-crate). A chain detects a changed, reordered, dropped or misattributed summary. It is integrity against a copy of the head, not authenticity: signatures are not written, and need a licence-checked dependency decision (`tpt-crypto`).
 
 ## Checking histories
