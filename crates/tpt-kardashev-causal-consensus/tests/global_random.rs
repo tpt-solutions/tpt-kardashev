@@ -148,7 +148,7 @@ impl Run {
     }
 }
 
-fn run_one(seed: u64) -> (usize, usize) {
+fn run_one(seed: u64) -> (usize, usize, usize) {
     let mut rng = Rng(seed);
     let config = SimConfig {
         base_delay_ms: 20,
@@ -169,6 +169,22 @@ fn run_one(seed: u64) -> (usize, usize) {
         .partition_sets(&left, &right, start, start + length)
         .expect("window");
 
+    // Up to two crash windows. A crashed domain keeps its state; its traffic is lost while it is down,
+    // and it does not propose.
+    let mut crashes: Vec<(NodeId, u64, u64)> = Vec::new();
+    for _ in 0..rng.below(3) {
+        let node = 1 + rng.below(SIZE);
+        let from = rng.below(RUN_MS / 2);
+        let until = from + 200 + rng.below(RUN_MS / 2);
+        run.net.crash(node, from, until).expect("crash window");
+        crashes.push((node, from, until));
+    }
+    let is_down = |node: NodeId, at: u64| {
+        crashes
+            .iter()
+            .any(|&(n, from, until)| n == node && (from..until).contains(&at))
+    };
+
     let mut next_id = 1u64;
     let steps = RUN_MS / STEP_MS;
     for _ in 0..steps {
@@ -176,7 +192,9 @@ fn run_one(seed: u64) -> (usize, usize) {
             let origin = 1 + rng.below(SIZE);
             let key = rng.below(3) as u32;
             let op = rng.below(3) as u32;
-            run.propose(origin, next_id, key, op);
+            if !is_down(origin, run.now) {
+                run.propose(origin, next_id, key, op);
+            }
             next_id += 1;
         }
         run.step();
@@ -197,19 +215,29 @@ fn run_one(seed: u64) -> (usize, usize) {
             "seed {seed}, domain {id}"
         );
     }
-    (run.committed().len(), next_id as usize - 1)
+    (
+        run.committed().len(),
+        next_id as usize - 1,
+        run.net.stats().partitioned as usize,
+    )
 }
 
 #[test]
 fn invariants_hold_across_random_schedules() {
     let mut committed = 0usize;
     let mut started = 0usize;
+    let mut cut_off = 0usize;
     for seed in 1..=60u64 {
-        let (c, s) = run_one(seed);
+        let (c, s, p) = run_one(seed);
         committed += c;
         started += s;
+        cut_off += p;
     }
     assert!(started > 500, "only {started} proposals were started");
+    assert!(
+        cut_off > 0,
+        "no message was lost to a partition or crash: the schedules do nothing"
+    );
     // With three keys and three values most proposals conflict by design, so a quarter committing
     // is the expected rate. The bound only guards against a run where nothing commits.
     assert!(
