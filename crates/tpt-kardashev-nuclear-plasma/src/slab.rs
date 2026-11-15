@@ -13,6 +13,8 @@
 
 use crate::error::NeutronicsError;
 use crate::rng::SplitMix64;
+use std::vec;
+use std::vec::Vec;
 
 /// One-group cross sections, in 1/cm (or any length unit, used consistently with the thickness).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -89,7 +91,7 @@ pub enum Estimator {
 const ROULETTE_WEIGHT: f64 = 0.25;
 const ROULETTE_SURVIVAL: f64 = 0.5;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Accumulator {
     sum: f64,
     sum_sq: f64,
@@ -234,4 +236,64 @@ pub fn run_infinite(
         track.add(length);
     }
     Ok(track.estimate(histories))
+}
+
+/// Track length per source neutron in each of `bins` equal slices of the slab, from the analog
+/// estimator: the spatial flux tally. Each bin's estimate has its standard error. The bins sum to the
+/// slab's total track length. Fails as [`run_slab`], and with [`NeutronicsError::NoHistories`] for
+/// zero bins.
+pub fn run_slab_binned(
+    slab: &Slab,
+    histories: usize,
+    seed: u64,
+    bins: usize,
+) -> Result<Vec<Estimate>, NeutronicsError> {
+    if histories == 0 || bins == 0 {
+        return Err(NeutronicsError::NoHistories);
+    }
+    if !(slab.thickness.is_finite() && slab.thickness > 0.0) {
+        return Err(NeutronicsError::BadThickness);
+    }
+    let mut rng = SplitMix64::new(seed);
+    let total = slab.xs.total;
+    let p_absorb = slab.xs.absorption / total;
+    let width = slab.thickness / bins as f64;
+    let mut sums = vec![Accumulator::default(); bins];
+    let mut history_scores = vec![0.0_f64; bins];
+    for _ in 0..histories {
+        let mut x = 0.0_f64;
+        let mut mu = 1.0_f64;
+        for score in history_scores.iter_mut() {
+            *score = 0.0;
+        }
+        loop {
+            let flight = sample_flight(&mut rng, total);
+            let to_boundary = if mu > 0.0 {
+                (slab.thickness - x) / mu
+            } else {
+                -x / mu
+            };
+            let length = flight.min(to_boundary);
+            // The segment covers x-extent |mu| * length, from x to x + mu * length.
+            let (x0, x1) = (x, x + mu * length);
+            let (lo, hi) = if x0 <= x1 { (x0, x1) } else { (x1, x0) };
+            for (bin, score) in history_scores.iter_mut().enumerate() {
+                let (b_lo, b_hi) = (bin as f64 * width, (bin + 1) as f64 * width);
+                let overlap = (hi.min(b_hi) - lo.max(b_lo)).max(0.0);
+                *score += overlap / mu.abs();
+            }
+            if flight >= to_boundary {
+                break;
+            }
+            x = x1;
+            if rng.next_f64() < p_absorb {
+                break;
+            }
+            mu = 2.0 * rng.next_f64() - 1.0;
+        }
+        for (acc, score) in sums.iter_mut().zip(history_scores.iter()) {
+            acc.add(*score);
+        }
+    }
+    Ok(sums.iter().map(|acc| acc.estimate(histories)).collect())
 }

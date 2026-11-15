@@ -177,3 +177,59 @@ fn scattering_is_the_difference_of_total_and_absorption() {
     let xs = CrossSections::new(1.0, 0.25).expect("xs");
     assert!((xs.scattering() - 0.75).abs() < 1e-15);
 }
+
+#[test]
+fn the_binned_flux_of_a_pure_absorber_matches_the_exponential_in_each_bin() {
+    // With no scattering every flight is along the normal. A track is counted in a bin where the flight
+    // reaches, so the expected track length in [a, b] is the integral of P(flight > x) = e^{-sigma x} over
+    // the bin, which is (e^{-sigma a} - e^{-sigma b}) / sigma.
+    let sigma = 0.9;
+    let thickness = 2.0;
+    let bins = 4;
+    let slab = Slab {
+        thickness,
+        xs: CrossSections::new(sigma, sigma).expect("xs"),
+    };
+    let tally =
+        tpt_kardashev_nuclear_plasma::slab::run_slab_binned(&slab, 200_000, 31, bins).expect("run");
+    let width = thickness / bins as f64;
+    for (bin, estimate) in tally.iter().enumerate() {
+        let a = bin as f64 * width;
+        let b = a + width;
+        let expected = ((-sigma * a).exp() - (-sigma * b).exp()) / sigma;
+        within_sigma(
+            estimate.mean,
+            estimate.std_error,
+            expected,
+            4.0,
+            "bin track length",
+        );
+    }
+}
+
+#[test]
+fn the_bins_of_a_run_sum_to_its_total_track_length() {
+    let xs = CrossSections::new(1.0, 0.3).expect("xs");
+    let slab = Slab { thickness: 1.5, xs };
+    let bins =
+        tpt_kardashev_nuclear_plasma::slab::run_slab_binned(&slab, 20_000, 32, 5).expect("run");
+    let total: f64 = bins.iter().map(|b| b.mean).sum();
+    let analog = run_slab(&slab, Estimator::Analog, 20_000, 32).expect("run");
+    assert!(
+        (total - analog.track_length.mean).abs() < 1e-9,
+        "{total} against {}",
+        analog.track_length.mean
+    );
+}
+
+#[test]
+fn an_empty_binning_is_rejected() {
+    let slab = Slab {
+        thickness: 1.0,
+        xs: CrossSections::new(1.0, 0.5).expect("xs"),
+    };
+    assert_eq!(
+        tpt_kardashev_nuclear_plasma::slab::run_slab_binned(&slab, 10, 1, 0),
+        Err(NeutronicsError::NoHistories)
+    );
+}
