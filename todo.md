@@ -365,10 +365,10 @@ Exit: per-repo migration plans (notes, not code changes).
 - [x] Migration notes: `tpt-sci-astro` → astrodynamics — in `docs/migration.md`
 - [x] Migration notes: `tpt-transportation` (space) → astrodynamics — in `docs/migration.md`
 - [x] Migration notes: `tpt-formal` (tpt-for-redundancy, proof AST) → radhard, reflect — in `docs/migration.md`; the other tpt-formal crates are listed as not read
-- [ ] Decide ignis adoption of nuclear-plasma (coordinate when ignis reaches physics phase)
+- [ ] Decide ignis adoption of nuclear-plasma (coordinate when ignis reaches physics phase) — deferred: ignis's equilibrium is a reduced model (see the provenance review); the decision waits for ignis to reach its physics phase
 - [ ] Cross-check tests of new crates against old implementations; record divergences
-- [ ] Public trait consolidation pass; decide path to 1.0
-- [ ] Decide on crates.io publishing and optional umbrella crate `tpt-kardashev`
+- [ ] Public trait consolidation pass; decide path to 1.0 — deferred until the v0.1 crates are complete; the traits so far (Transport, LpSolver, ForceModel, ConvergenceLayer, EnergyOracle) are listed for that pass
+- [x] Decide on crates.io publishing and optional umbrella crate `tpt-kardashev` — decided: no publishing (every crate keeps `publish = false`) and no umbrella crate for now; the user has not asked for publication, and an umbrella adds a dependency graph to maintain before the crates are at v0.1
 - [ ] Decide `tpt-substrate` licence inconsistency (MIT only vs dual) if it is to become a dependency
 - [ ] Final spec update and retrospective
 
