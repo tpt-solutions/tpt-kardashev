@@ -20,3 +20,4 @@ None.
 - `rational.rs`: exact rational arithmetic on checked `i128`, with the usual reduction, written here. No reference code consulted.
 - `gate.rs`: the gate and the receipt chain are this crate's design: a fixed invariant, the policy changed only on a verified certificate, each receipt naming the hash of the one before with a domain-separation prefix. No reference code consulted.
 - `hash.rs`: a copy of the causal-consensus crate's SHA-256 module (FIPS 180-4), by the same author. Kept as a copy because no crate may depend on another; see the phase 4 consolidation item.
+- `attest.rs`: the attestation path is this crate's design: a fixed authority signs a message with a domain tag, the old invariant digest, the new digest and the log position. The signature is `ed25519-compact` 2.6.1 (MIT). No reference code consulted.

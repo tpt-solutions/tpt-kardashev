@@ -10,3 +10,5 @@
 - `gate::UpdateGate` and `gate::Receipt` (feature `alloc`): the only way the policy changes. A submission is checked against the fixed invariant with its certificate; an accepted update becomes the policy, and every submission is recorded in a hash-chained log with its outcome. The invariant cannot be changed through the gate. Tests in `tests/gate.rs`.
 - `gate::verify_audit`, `gate::AuditError`: checks positions, links and receipt hashes of a log. Tests cover rewriting, reordering, removal and broken links.
 - `hash`: SHA-256 (FIPS 180-4), a copy of the causal-consensus module, so that no crate depends on another. Consolidation is a phase 4 item.
+- `attest::AttestedGate` and `attest::replacement_message` (feature `crypto`): the only way to replace the invariant. The replacement must carry an Ed25519 signature by a fixed authority over the old invariant's digest, the new digest and the log position, and the current policy must still be contained in the replacement. Refusals are recorded in the log. Tests in `tests/attest.rs`.
+- Feature `crypto` (optional dependency `ed25519-compact`).

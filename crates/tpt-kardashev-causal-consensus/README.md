@@ -55,3 +55,7 @@ Not modelled yet: the causally ordered log, the domain consensus, the federation
 ## GlobalAgreed
 
 - `global`: operations at the `GlobalAgreed` level. A proposal commits once a majority of domains accept it, and each domain accepts one operation per key, so two conflicting values for a key cannot both commit. The protocol is one round and assumes no domain crashes and loses no state. Recovery, membership, and Byzantine faults are not covered.
+
+## Signatures
+
+- With the `crypto` feature, `signed` signs each epoch summary's hash with Ed25519 (`ed25519-compact`, MIT). A single signer per domain; key distribution and rotation are not covered.

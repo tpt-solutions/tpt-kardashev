@@ -2,7 +2,7 @@
 
 Verified self-modification: linear-invariant containment certificates, a checker and an audited update gate.
 
-**Status:** Phase 3.3, in progress. Implemented: exact rational arithmetic (always available), linear constraint systems, Farkas-style containment certificates, the exact checker, and the update gate with a hash-chained, auditable log of its decisions. Not yet: certificate generation, Kani proofs, fuzzing, and the external attestation path for replacing the invariant.
+**Status:** Phase 3.3, in progress. Implemented: exact rational arithmetic (always available), linear constraint systems, Farkas-style containment certificates, the exact checker, the update gate with a hash-chained, auditable log, and (feature `crypto`) an attestation path for replacing the invariant. Not yet: certificate generation, Kani proofs, fuzzing.
 
 **Open research risk.** The checker is sound for the systems it supports, which are linear bounds only. Whether a policy that changes itself under a checked invariant stays safe in practice depends on the invariant being the right one; the checker proves containment, not that the invariant is wise.
 
@@ -15,7 +15,7 @@ Verified self-modification: linear-invariant containment certificates, a checker
 
 - The gate's invariant is fixed when it is built. No method changes it, and the tests check that refused and accepted submissions leave it as it was.
 - The policy changes only through `UpdateGate::submit`, and only when the certificate verifies.
-- Replacing the invariant is a separate question, for an external attestation path that is not designed here.
+- Replacing the invariant is possible only through `attest::AttestedGate` (feature `crypto`), under an Ed25519 signature by a fixed authority. Choosing and rotating that authority is outside the crate.
 
 ## What is supported
 
