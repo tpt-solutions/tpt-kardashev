@@ -38,23 +38,23 @@ fn species() -> Vec<Material> {
     .expect("water");
     vec![
         Material {
-            name: "hematite",
+            name: String::from("hematite"),
             composition: Composition::new(&[(Element::Fe, fe), (Element::O, o)]).expect("hematite"),
         },
         Material {
-            name: "iron",
+            name: String::from("iron"),
             composition: Composition::new(&[(Element::Fe, 1.0)]).expect("iron"),
         },
         Material {
-            name: "oxygen",
+            name: String::from("oxygen"),
             composition: Composition::new(&[(Element::O, 1.0)]).expect("oxygen"),
         },
         Material {
-            name: "hydrogen",
+            name: String::from("hydrogen"),
             composition: Composition::new(&[(Element::H, 1.0)]).expect("hydrogen"),
         },
         Material {
-            name: "water",
+            name: String::from("water"),
             composition: water,
         },
     ]

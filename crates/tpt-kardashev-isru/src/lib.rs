@@ -19,6 +19,8 @@ extern crate alloc;
 pub mod closure;
 pub mod element;
 pub mod error;
+#[cfg(feature = "alloc")]
+pub mod format;
 pub mod material;
 #[cfg(feature = "alloc")]
 pub mod plan;
@@ -29,7 +31,11 @@ pub mod simplex;
 pub use closure::{Closure, closure};
 pub use element::{ELEMENT_COUNT, Element};
 pub use error::IsruError;
-pub use material::{Composition, Material, check_balance};
+#[cfg(feature = "alloc")]
+pub use format::{Problem, problem_to_text, read_problem};
+#[cfg(feature = "alloc")]
+pub use material::Material;
+pub use material::{Composition, check_balance};
 #[cfg(feature = "alloc")]
 pub use plan::{Plan, Process, plan_maximum, plan_maximum_with};
 #[cfg(feature = "alloc")]

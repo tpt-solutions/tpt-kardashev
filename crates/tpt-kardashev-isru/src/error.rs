@@ -35,6 +35,12 @@ pub enum IsruError {
         /// The quantity concerned.
         what: &'static str,
     },
+    /// A problem file line does not parse or is inconsistent. `line` is counted from 1; 0 means the file
+    /// as a whole (a missing `end` line).
+    Malformed {
+        /// The line.
+        line: usize,
+    },
     /// The linear program did not converge within its iteration limit.
     IterationLimit,
     /// The target species is not produced by any process: no plan can make it.
@@ -64,6 +70,9 @@ impl fmt::Display for IsruError {
             }
             IsruError::NotPositive { what } => write!(f, "{what} must be positive and finite"),
             IsruError::IterationLimit => f.write_str("the linear program hit its iteration limit"),
+            IsruError::Malformed { line } => {
+                write!(f, "the problem file is malformed at line {line}")
+            }
             IsruError::NoProducer => f.write_str("no process produces the target"),
             IsruError::Unbounded => f.write_str("the objective is unbounded"),
         }

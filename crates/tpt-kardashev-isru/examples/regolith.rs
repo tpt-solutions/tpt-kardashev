@@ -21,23 +21,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let water_mass = 2.0 * m_h + m_o;
     let species = vec![
         Material {
-            name: "hematite ore",
+            name: String::from("hematite ore"),
             composition: Composition::new(&[(Element::Fe, fe_fraction), (Element::O, o_fraction)])?,
         },
         Material {
-            name: "iron",
+            name: String::from("iron"),
             composition: Composition::new(&[(Element::Fe, 1.0)])?,
         },
         Material {
-            name: "oxygen",
+            name: String::from("oxygen"),
             composition: Composition::new(&[(Element::O, 1.0)])?,
         },
         Material {
-            name: "hydrogen",
+            name: String::from("hydrogen"),
             composition: Composition::new(&[(Element::H, 1.0)])?,
         },
         Material {
-            name: "water",
+            name: String::from("water"),
             composition: Composition::new(&[
                 (Element::H, 2.0 * m_h / water_mass),
                 (Element::O, m_o / water_mass),

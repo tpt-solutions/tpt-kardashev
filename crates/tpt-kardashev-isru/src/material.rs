@@ -54,11 +54,12 @@ impl Composition {
     }
 }
 
-/// A named material: a species that a process consumes or produces.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// A named material: a species that a process consumes or produces. Needs `alloc` for its name.
+#[cfg(feature = "alloc")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Material {
     /// The name, for reports.
-    pub name: &'static str,
+    pub name: alloc::string::String,
     /// The elemental composition.
     pub composition: Composition,
 }

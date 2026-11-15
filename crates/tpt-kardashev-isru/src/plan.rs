@@ -6,6 +6,7 @@
 //! program: the run counts are the variables, the stocks and run limits are the bounds, and the
 //! objective is the target produced. The solver is [`crate::simplex`].
 
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -21,7 +22,7 @@ pub const BALANCE_TOLERANCE: f64 = 1e-6;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Process {
     /// The name, for reports.
-    pub name: &'static str,
+    pub name: String,
     /// The species consumed per run: `(species index, kg per run)`.
     pub inputs: Vec<(usize, f64)>,
     /// The species produced per run: `(species index, kg per run)`.
@@ -36,7 +37,7 @@ impl Process {
     /// not positive and finite, and with [`IsruError::Unbalanced`] when the process does not conserve
     /// mass or any element.
     pub fn new(
-        name: &'static str,
+        name: impl Into<String>,
         species: &[Material],
         inputs: Vec<(usize, f64)>,
         outputs: Vec<(usize, f64)>,
@@ -62,7 +63,7 @@ impl Process {
         }
         check_balance(&in_kg, &out_kg, BALANCE_TOLERANCE)?;
         Ok(Self {
-            name,
+            name: name.into(),
             inputs,
             outputs,
             max_runs,
