@@ -8,7 +8,7 @@ None yet.
 
 ## Reference list (not yet reviewed)
 
-These repos are listed in the todo but have not been opened yet. Review is an open todo item.
+Both repos were read; see the sibling-review sections below.
 
 - tpt-equinox-tmr and tpt-for-redundancy (todo §1.3)
 
@@ -34,4 +34,4 @@ None.
 
 ## Sibling review (todo §1.3, completed)
 
-- `tpt-solutions/tpt-for-redundancy` (in `tpt-formal`, `no_std`, MIT OR Apache-2.0), read: `majority_vote` returns `None` without a strict majority, the same policy as this crate's `NoMajority`. `Tmr`, `Redundant<T, N>` and `Parity` overlap with this crate's TMR, N-modular and checksum types. No code taken.
+- `tpt-solutions/tpt-for-redundancy` (in `tpt-formal`, `crates/tpt-for-redundancy`, `no_std`, MIT OR Apache-2.0), read: `majority_vote` returns `None` without a strict majority, the same policy as this crate's `NoMajority`. `Tmr`, `Redundant<T, N>` and `Parity` overlap with this crate's TMR, N-modular and checksum types. Its `Tmr::vote` returns `None` when all three differ, as this crate's voter does. Its `Parity` is a single even-parity bit: it detects a flipped bit, and it cannot locate or correct one, so it is weaker than this crate's SECDED. Its `Redundant::new` documents N >= 1 but does not enforce it. This crate's `Nmr<T, N>` has the same gap: nothing enforces N >= 1 (it has no `N = 0` guard), so a zero-replica `Nmr` is accepted. No code taken.

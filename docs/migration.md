@@ -26,9 +26,36 @@ directory, outside this workspace.
 
 ## substrate (substrate-dtn) → dtn
 
-- Not readable. `tpt-solutions/substrate-dtn` and `PhillipC05/substrate-dtn` both return 404 without
-  credentials, and no other public repository of that name was found. No migration note can be written
-  until the repository is accessible or its owner is confirmed.
+- Source: `tpt-solutions/tpt-substrate`, crate `substrate-dtn` (the standalone `substrate-dtn` repository
+  is 404; the crate lives inside `tpt-substrate`, MIT licence only). Read: `bundle.rs`, `endpoint.rs`,
+  `router.rs`, `store.rs`; `lib.rs` lists the modules.
+- The bundle is not RFC 9171. It is a serde struct serialised with bincode, with a UUID, a `NodeId` custodian,
+  a hop limit and count, a priority, a creation time and a lifetime, and a `prev_hop` field. It has no CBOR,
+  no CRC, no block structure and no endpoint IDs of the `dtn:`/`ipn:` form. Nothing of the wire format
+  migrates; `dtn::bundle` stays the BPv7 codec.
+- Concepts that map onto `dtn` and were checked against it:
+  - Hop limit and loop detection. `router.rs` drops a bundle at or over its hop limit, and drops a bundle ID
+    it has already seen. `dtn` enforces its hop-count block in the simulator. A seen-ID set is a candidate
+    for `dtn`: `dtn` has no seen-ID check today, and one would need a bounded, deterministic structure.
+  - Expiry. `Bundle::is_expired` uses `>` against the lifetime; `dtn`'s lifetime check should be compared
+    with this boundary before either is relied on.
+  - Store-and-forward with a predicted contact (`RouteAction::Queue`). `dtn`'s `EarliestArrival` waits in
+    the contact plan instead of a separate queue state; the two give the same behaviour for a planned contact.
+- Not to migrate as written:
+  - Flood to every neighbour when no route is known (`router.rs`, the fallback). `dtn` routes over the
+    contact plan and does not flood. A flood needs a separate design decision and a loop bound.
+  - Neighbours, forwarding table, predicted contacts and the seen-ID set are `HashMap`/`HashSet`. Their
+    iteration order changes the flood order, and `BundleStore::evict_lowest_priority` breaks ties among equal
+    priorities by hash order. This breaks the determinism rule in CLAUDE.md. Any port needs ordered
+    collections.
+  - Priority classes (`Bulk`, `Normal`, `Expedited`, `Critical`) are not in RFC 9171 and are not in `dtn`.
+    If they are wanted, they belong in a dtn-level extension with a documented source (CCSDS class of service
+    or the extension block), not in the bundle type.
+  - `BundleStore::store` evicts the lowest-priority bundle when full and always returns `Ok`, so the
+    error type it declares is never returned. `ServerGroup`/`RoverGroup` endpoints and `would_forward_to`
+    are stubs (`TODO` in the source).
+- Dependencies: `substrate-core` (not in this repo), `serde`, `bincode`, `uuid`, `thiserror`, `tracing`.
+  `dtn` has none of these; the crate must not depend on `substrate-core`.
 
 ## tpt-equinox (tmr, orbital) → radhard, astrodynamics
 
@@ -72,15 +99,18 @@ directory, outside this workspace.
   and proof trees as structure only, and says soundness checking is left to downstream tools. Target:
   `tpt-kardashev-reflect`, if a proof representation is ever needed. It has no linear-arithmetic
   certificates, so the containment checker in reflect is not replaced by it.
-- Other `tpt-formal` crates (`tpt-for-sat`, `tpt-for-smt-lite`, `tpt-for-model-check`, `tpt-for-vcgen`,
-  and the rest) were listed but not read. Relevant later to reflect's Kani and certificate-generation items.
+- The other 18 `tpt-formal` crates were read at README level (their README opening, not their source). The
+  ones that bear on this workspace are recorded in `docs/provenance/tpt-kardashev-reflect.md` ("Sibling
+  review"): `tpt-for-sat` and `tpt-for-smt-lite` as candidate adapters for reflect, and
+  `tpt-for-det-proptest`, `tpt-for-deterministic-sim` and `tpt-for-verified-ode` for the test-convention,
+  simulator and integrator items.
 
 ## Repositories not reviewed
 
-- `tpt-writ`, `tpt-norma` (queued for reflect, todo §3.3): reachable on GitHub, not yet read. The note for
-  norma's interoperability is open.
-- `tpt-for-deterministic-sim`, `tpt-for-det-proptest` (in `tpt-formal`): relevant to the simulators in
-  dtn and causal-consensus; not yet read.
+- `tpt-writ`, `tpt-norma`: read at README and architecture level. The norma interoperability note is in
+  `docs/provenance/tpt-kardashev-reflect.md`. Source not read.
+- `tpt-for-deterministic-sim`, `tpt-for-det-proptest` (in `tpt-formal`): read at README level; relevant to
+  the simulators in dtn and causal-consensus, and to the shared test conventions. Source not read.
 
 ## Divergences recorded
 
