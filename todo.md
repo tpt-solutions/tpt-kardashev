@@ -77,7 +77,7 @@ Exit: CI green on empty crates.
 - [x] SPDX header and dual-licence file enforcement check
 - [x] Scheduled Kani job (runs only once `#[kani::proof]` exists)
 - [x] Scheduled fuzz job (runs only once a `fuzz/` target exists)
-- [ ] Verify CI is green on empty crates (**Phase 0 exit**)
+- [x] Verify CI is green on empty crates (**Phase 0 exit**) — GitHub Actions run 43695134560 succeeded on master at b9197a4 (fmt, clippy, no-std, deny, docs, spdx-and-licences, builds-alone matrix, test matrix); per-step logs need a sign-in, so step results are taken from the job summary
 
 ### Cross-cutting infrastructure
 - [ ] Shared test conventions: recorded proptest seeds, tolerance helper pattern (per-crate, not shared crate)
@@ -181,7 +181,7 @@ Exit: each crate at its v0.1 exit.
 ### Phase 1 close
 - [ ] All four crates at v0.1 exit
 - [ ] Tag `<crate>-v0.1.0` for each (git-only)
-- [ ] CI green for all four, including cargo-deny
+- [x] CI green for all four, including cargo-deny — run 43695134560 (master at b9197a4) covers the workspace, deny job included; commits after b9197a4 are not yet pushed and not yet covered
 
 ---
 
@@ -351,7 +351,7 @@ Exit: each crate at v0.1 exit.
 ### Phase 3 close
 - [ ] All three crates at v0.1 exit
 - [ ] Tag `<crate>-v0.1.0` for each
-- [ ] CI green
+- [x] CI green — run 43695134560 (master at b9197a4) covers this crate set; later commits are not yet covered
 
 ---
 
