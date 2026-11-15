@@ -341,8 +341,8 @@ Exit: each crate at v0.1 exit.
 - [x] Hash function choice (in-crate or `tpt-crypto` feature, licence-checked) — in-crate SHA-256, a copy of the causal-consensus module (no crate may depend on another); merging the copies is a phase 4 consolidation item
 - [ ] Kani proofs for checker arithmetic core
 - [x] Soundness property tests with random polytopes — random two-parameter systems, certificates built by combination with and without slack, and every accepted certificate checked on a grid of points (`tests/containment.rs`); polytopes here are the general systems, not only bounded ones
-- [ ] Adversarial tests: malformed and truncated certificates — partial: wrong shape, negative multiplier, coefficient mismatch, bound exceeded, dimension mismatch and overflow are tested; a fuzzed certificate parser does not exist yet
-- [ ] Fuzz: certificate parser
+- [x] Adversarial tests: malformed and truncated certificates — the text format (`text`) rejects malformed lines with their numbers, requires a terminating `end` line and a declared row or multiplier count, and every prefix of a valid constraint or certificate file is either rejected or reads to the same value (`tests/text.rs`); the property found two truncation bugs, both fixed: a file cut at a row boundary read as shorter, and a number cut inside a fraction read as a different value
+- [ ] Fuzz: certificate parser — partial: `fuzz/` target `text_read` (any accepted file writes back to an equal value) ran 2.5 minutes with no crash over 3.8 million inputs; a kept corpus and longer runs are still to do
 - [ ] `no_std` + `alloc` build
 - [ ] README states open research risk and that only linear bounds are supported
 - [ ] Later: optional adapters to `tpt-formal` and `tpt-solver`

@@ -14,3 +14,5 @@
 - Feature `crypto` (optional dependency `ed25519-compact`).
 - `certify::certify` (feature `alloc`): a certificate generator, not part of the trusted base. A phase-one simplex over exact rationals (Bland's rule) finds the multipliers, so the output needs no rounding; `verify` decides whether it is accepted. Tests in `tests/certify.rs`: a narrower interval is certified and accepted, a wider one gets `NoCertificate`, every constructed containment is certified, and every returned certificate passes the checker.
 - `ReflectError::NoCertificate`.
+- `text` (feature `alloc`): a text format for constraint systems and certificates, version 1, with readers and writers. Every file declares its counts and ends with an `end` line, so a truncated file is rejected rather than read as a different one. Tests in `tests/text.rs`: exact round trips, a hand-written file, malformed lines with their numbers, truncated certificates, and the every-prefix property for both formats. The property found two truncation bugs, both fixed before this entry.
+- `fuzz/`: the `text_read` target; a 2.5 minute run found no crash.

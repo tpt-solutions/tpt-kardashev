@@ -32,3 +32,7 @@ Verified self-modification: linear-invariant containment certificates, a checker
 ## Licence
 
 MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
+
+## Files
+
+- `text` reads and writes constraint systems and certificates in a versioned text format. A file declares its counts and ends with an `end` line, so truncation is detected.
