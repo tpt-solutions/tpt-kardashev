@@ -359,12 +359,12 @@ Exit: each crate at v0.1 exit.
 
 Exit: per-repo migration plans (notes, not code changes).
 
-- [ ] Migration notes: `tpt-zenith` (orbital-mechanics, rf-pipeline fec, routing) → astrodynamics, archive-codes, dtn
-- [ ] Migration notes: `substrate` (substrate-dtn) → dtn
-- [ ] Migration notes: `tpt-equinox` (tmr, orbital) → radhard, astrodynamics
-- [ ] Migration notes: `tpt-sci-astro` → astrodynamics
-- [ ] Migration notes: `tpt-transportation` (space) → astrodynamics
-- [ ] Migration notes: `tpt-formal` (tpt-for-redundancy, proof AST) → radhard, reflect
+- [x] Migration notes: `tpt-zenith` (orbital-mechanics, rf-pipeline fec, routing) → astrodynamics, archive-codes, dtn — written in `docs/migration.md`; `rf-pipeline` fec and framing are not read yet and are marked so
+- [ ] Migration notes: `substrate` (substrate-dtn) → dtn — blocked: the repository is not reachable (404) under either owner; the note is a placeholder in `docs/migration.md`
+- [x] Migration notes: `tpt-equinox` (tmr, orbital) → radhard, astrodynamics — in `docs/migration.md`
+- [x] Migration notes: `tpt-sci-astro` → astrodynamics — in `docs/migration.md`
+- [x] Migration notes: `tpt-transportation` (space) → astrodynamics — in `docs/migration.md`
+- [x] Migration notes: `tpt-formal` (tpt-for-redundancy, proof AST) → radhard, reflect — in `docs/migration.md`; the other tpt-formal crates are listed as not read
 - [ ] Decide ignis adoption of nuclear-plasma (coordinate when ignis reaches physics phase)
 - [ ] Cross-check tests of new crates against old implementations; record divergences
 - [ ] Public trait consolidation pass; decide path to 1.0

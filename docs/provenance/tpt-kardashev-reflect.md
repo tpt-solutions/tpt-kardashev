@@ -21,3 +21,7 @@ None.
 - `gate.rs`: the gate and the receipt chain are this crate's design: a fixed invariant, the policy changed only on a verified certificate, each receipt naming the hash of the one before with a domain-separation prefix. No reference code consulted.
 - `hash.rs`: a copy of the causal-consensus crate's SHA-256 module (FIPS 180-4), by the same author. Kept as a copy because no crate may depend on another; see the phase 4 consolidation item.
 - `attest.rs`: the attestation path is this crate's design: a fixed authority signs a message with a domain tag, the old invariant digest, the new digest and the log position. The signature is `ed25519-compact` 2.6.1 (MIT). No reference code consulted.
+
+## Sibling review (migration notes)
+
+- `tpt-solutions/tpt-formal`, `crates/tpt-for-proof-ast` (MIT OR Apache-2.0), read: first-order term, formula and proof-tree structure, with soundness left to downstream tools. It has no linear-arithmetic certificates, so it does not replace the containment checker here. No code taken.
