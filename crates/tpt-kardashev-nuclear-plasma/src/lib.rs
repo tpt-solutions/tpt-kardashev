@@ -19,6 +19,8 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 pub mod equilibrium;
 pub mod error;
+#[cfg(feature = "std")]
+pub mod layers;
 pub mod rng;
 #[cfg(feature = "std")]
 pub mod slab;
