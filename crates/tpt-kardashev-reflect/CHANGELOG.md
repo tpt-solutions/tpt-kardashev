@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: `rational::Rational::new` reduced the numerator by a gcd computed after clamping its magnitude to `i128::MAX`, so for `i128::MIN` the division was not exact and the result was not in lowest terms (`Rational::new(i128::MIN, 2)` stayed `-2^127/2`). The gcd is now taken over `u128` magnitudes. Tests in `tests/rational_reduction.rs`. Kani harnesses in `rational::kani_proofs` (see the todo for their bounds and results).
+
 - Phase 0 scaffold.
 - `rational::Rational`: exact rationals on checked `i128`, reduced, with a positive denominator. Sums, products and comparisons report `Overflow` rather than wrapping. Tests in `tests/rational.rs`.
 - `invariant::{Constraints, Row, Invariant, Update, Certificate}` (feature `alloc`): linear bounds over exact rationals, and Farkas-style certificates of containment. Tests in `tests/containment.rs`.

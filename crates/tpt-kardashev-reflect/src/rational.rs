@@ -11,8 +11,9 @@ pub struct Rational {
     den: i128,
 }
 
-fn gcd(mut a: i128, mut b: i128) -> i128 {
-    // Both arguments are non-negative and at most `i128::MAX` in magnitude, so this cannot overflow.
+/// The greatest common divisor, with `gcd(0, b) = b`. Over `u128`, so the magnitude of `i128::MIN`
+/// is an ordinary value.
+fn gcd(mut a: u128, mut b: u128) -> u128 {
     while b != 0 {
         let t = a % b;
         a = b;
@@ -36,8 +37,10 @@ impl Rational {
         } else {
             (num, den)
         };
-        let g = gcd(num.unsigned_abs().min(i128::MAX as u128) as i128, den);
-        let g = if g == 0 { 1 } else { g };
+        // `den` is positive, so the gcd is at least one and at most `den`, which fits in `i128`. It
+        // divides the numerator's magnitude exactly, so the division below is exact, and it cannot
+        // overflow: the only quotient that does is `i128::MIN / -1`, and `g` is positive.
+        let g = gcd(num.unsigned_abs(), den as u128) as i128;
         Ok(Self {
             num: num / g,
             den: den / g,
@@ -116,5 +119,85 @@ impl Rational {
             .checked_mul(self.den)
             .ok_or(ReflectError::Overflow)?;
         Ok(left.cmp(&right))
+    }
+}
+
+#[cfg(kani)]
+#[allow(clippy::expect_used)]
+mod kani_proofs {
+    use super::*;
+
+    /// A symbolic value with |x| < 2^8. The bound keeps the solver's problem small; the edge of the
+    /// range is covered by `tests/rational_reduction.rs`.
+    fn bounded() -> i128 {
+        let x: i128 = kani::any();
+        kani::assume(x > -(1 << 8) && x < (1 << 8));
+        x
+    }
+
+    fn nonzero() -> i128 {
+        let d = bounded();
+        kani::assume(d != 0);
+        d
+    }
+
+    /// The reduced form is in lowest terms, with a positive denominator, and has the same value.
+    #[kani::proof]
+    #[kani::unwind(32)]
+    fn new_is_in_lowest_terms_and_keeps_the_value() {
+        let num = bounded();
+        let den = nonzero();
+        let r = Rational::new(num, den).expect("nonzero denominator");
+        assert!(r.denominator() > 0);
+        assert_eq!(
+            gcd(r.numerator().unsigned_abs(), r.denominator() as u128),
+            1
+        );
+        assert_eq!(r.numerator() * den, num * r.denominator());
+    }
+
+    /// When the sum does not overflow, it equals the exact sum, in reduced form.
+    #[kani::proof]
+    #[kani::unwind(32)]
+    fn checked_add_is_the_exact_sum_when_it_succeeds() {
+        let (a_num, a_den) = (bounded(), nonzero());
+        let (b_num, b_den) = (bounded(), nonzero());
+        let a = Rational::new(a_num, a_den).expect("nonzero");
+        let b = Rational::new(b_num, b_den).expect("nonzero");
+        if let Ok(sum) = a.checked_add(b) {
+            let exact = Rational::new(
+                a.numerator() * b.denominator() + b.numerator() * a.denominator(),
+                a.denominator() * b.denominator(),
+            )
+            .expect("nonzero");
+            assert_eq!(sum, exact);
+        }
+    }
+
+    /// When the product does not overflow, it equals the exact product, in reduced form.
+    #[kani::proof]
+    #[kani::unwind(32)]
+    fn checked_mul_is_the_exact_product_when_it_succeeds() {
+        let a = Rational::new(bounded(), nonzero()).expect("nonzero");
+        let b = Rational::new(bounded(), nonzero()).expect("nonzero");
+        if let Ok(product) = a.checked_mul(b) {
+            let exact = Rational::new(
+                a.numerator() * b.numerator(),
+                a.denominator() * b.denominator(),
+            )
+            .expect("nonzero");
+            assert_eq!(product, exact);
+        }
+    }
+
+    /// The comparison agrees with the sign of the exact difference.
+    #[kani::proof]
+    #[kani::unwind(32)]
+    fn checked_cmp_agrees_with_the_exact_order() {
+        let a = Rational::new(bounded(), nonzero()).expect("nonzero");
+        let b = Rational::new(bounded(), nonzero()).expect("nonzero");
+        let ordering = a.checked_cmp(b).expect("bounded operands do not overflow");
+        let exact = (a.numerator() * b.denominator()).cmp(&(b.numerator() * a.denominator()));
+        assert_eq!(ordering, exact);
     }
 }
