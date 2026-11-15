@@ -252,7 +252,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 
 ### 2.3 `tpt-kardashev-nuclear-plasma`
 - [x] Review `tpt-ignis` (`tpt-physics-math`, `tpt-aether`); record in provenance; note overlap on equilibrium/MHD
-- [ ] Research: choose first cross-section format (ENDF-6, ACE, OpenMC multigroup, simple multigroup text); check licences of any reference parsers; record decision
+- [x] Research: choose first cross-section format (ENDF-6, ACE, OpenMC multigroup, simple multigroup text); check licences of any reference parsers; record decision — decided: a crate-specific multigroup text format, version 1 (`xs`), not ENDF-6 or ACE: no third-party format or licence is needed for the first version; ENDF-6 and ACE remain possible later readers
 - [ ] Decide feature layout (`equilibrium`, `neutronics`, `mhd`) and the sub-crate split trigger (size)
 - [ ] `Scalar` trait, error enum, grid types
 - [ ] **equilibrium:** (R, Z) grid and fixed-boundary Grad-Shafranov solver — partial: `equilibrium::Grid` and `solve_fixed_boundary` solve `Δ*ψ = κR²` (pressure-driven source only) by SOR with Dirichlet boundary values; the toroidal-field function F(ψ) is not included, so the general equation is not solved
@@ -261,7 +261,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] equilibrium: Solov'ev analytic benchmark — ψ = A R⁴ + B R² Z² (exact with κ = 8A + 2B), used as the boundary and as the reference (`tests/equilibrium.rs`)
 - [x] equilibrium: convergence-order tests — the discrete operator's residual on the exact function and the solver's interior error both fall by a factor of about 4 when the grid is halved (second order)
 - [ ] **neutronics:** constructive solid geometry
-- [ ] neutronics: multigroup cross-section types and the chosen format reader
+- [x] neutronics: multigroup cross-section types and the chosen format reader — `xs::Multigroup` and `xs::read_multigroup` (text format version 1), with a writer; tests in `tests/xs.rs` cover valid files, comments, round trips and malformed files with their line numbers
 - [x] neutronics: seeded RNG and fixed-source Monte Carlo transport — `rng::SplitMix64` and `slab::run_slab` (tests in `tests/neutronics.rs`)
 - [ ] neutronics: tallies (flux, reaction rates) — partial: tallies are the transmission, reflection, absorption, track length (the flux integrated over the slab) and collisions, each with its standard error; spatial flux bins and reaction-rate tallies per reaction are not written
 - [ ] neutronics: implicit capture, Russian roulette, splitting — partial: implicit capture and Russian roulette at one weight threshold (unbiased, checked against analog); splitting is not implemented
@@ -269,7 +269,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [x] neutronics: infinite-medium validation — track length 1/σa per source neutron in an infinite medium with scattering, checked at four standard errors
 - [x] neutronics: statistical tests with fixed seeds — fixed seeds, the square-root error law, the reproducibility and the weight conservation (partly; the wider suite is still to do)
 - [ ] Optional features for `tpt-math-prob-monte-carlo`, `tpt-math-pde-operators`, `tpt-math-linalg-*` (licence-checked)
-- [ ] Fuzz: cross-section file reader
+- [ ] Fuzz: cross-section file reader — partial: `fuzz/` target `xs_read` (any accepted file must write back to an equal set) ran 2.5 minutes on nightly with no crash over 8.6 million inputs; a kept corpus and longer runs are still to do
 - [ ] `no_std` + `alloc` build for the core where feasible
 - [ ] README states what is not modelled (no bundled data)
 - [ ] Later (post-v0.1): eigenvalue/criticality problems, free-boundary equilibrium, MHD 1D then 2D

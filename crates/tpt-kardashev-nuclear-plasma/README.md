@@ -19,7 +19,7 @@ Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronic
 
 ## What it does not model
 
-- No data: no cross-section library is bundled, and the cross-section reader is not written. The format decision is open.
+- No data: no cross-section library is bundled. The reader reads this crate's own multigroup text format (version 1), and ENDF-6 and ACE are not read.
 - One group, one dimension, normal incidence at the left face. No multigroup transport, no curved geometry, no anisotropic scattering.
 - No eigenvalue or criticality calculation. The runs are fixed-source only.
 - Russian roulette is played at one fixed weight threshold; splitting is not implemented.

@@ -10,3 +10,5 @@
 - `error::NeutronicsError`: `BadGrid`, `BadTolerance`, `NotConverged` added.
 - `surface::{contour, safety_factor, bilinear, gradient_magnitude}` (feature `alloc`): flux surfaces from a sampled flux function, found along rays from a given magnetic axis, and the safety factor `q = (F/2π)∮dl/(R|∇ψ|)` for a constant toroidal flux function. Tests in `tests/surface.rs`: bilinear interpolation, the gradient of the circular flux function, the contour as the circle about the axis, q against the closed form on three surfaces (within 2%) and monotone in radius, and the error paths.
 - `error::NeutronicsError::NoSurface`.
+- `xs::Multigroup` and `xs::read_multigroup` (features `std` and `alloc`): multigroup total and absorption cross sections in this crate's text format, version 1 (documented in the module). `Multigroup::to_text` writes the same format. Tests in `tests/xs.rs`. The format was chosen over ENDF-6 and ACE so that no third-party format is needed for the first version.
+- `fuzz/`: the `xs_read` target. A run of 2.5 minutes found no crash.
