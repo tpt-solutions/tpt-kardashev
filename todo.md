@@ -323,7 +323,7 @@ Exit: each crate at v0.1 exit.
 - [x] Conservation tests (total mass and each element through any plan) — the planner's plans conserve every element (`tests/planning.rs`)
 - [x] Closed-form toy systems with known optima — hematite reduction in exact proportions, and hydrogen reduction against its closed form
 - [ ] Closure monotonicity test (adding a process never lowers closure) — partial: the planner's optimum never falls when a route is added (`tests/planning.rs`); closure scores are not written, so the closure test is not yet
-- [ ] Worked lunar-regolith example
+- [ ] Worked lunar-regolith example — partial: `examples/regolith.rs` (run with `--features alloc`) plans two reductions of a stand-in ore (hematite, Fe2O3, not a measured regolith) against a demand for iron and oxygen and reports the closure and the imports (by hand: iron 699.4 kg, oxygen 150.3 kg, score 0.376); a measured regolith composition is still to come
 - [ ] `no_std` + `alloc` build — partial: the crate builds with no features on thumbv7em and with `alloc` on the host; the planner needs `alloc`, so it is not in the no-alloc build
 - [ ] README states what is not modelled
 - [ ] **v0.1 exit:** types, balance validation, LP planner, closure score, lunar-regolith example

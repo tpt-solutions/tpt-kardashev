@@ -11,3 +11,4 @@
 - `closure::closure` and `closure::Closure` (feature `alloc`): closure of a plan against a demand. Per demanded species, the in-situ net production over the demand, capped at 1; the score is the lowest ratio, and `limiting` and `imports_kg` name the shortfalls. Tests in `tests/closure.rs`.
 - `simplex::LpSolver` trait and `simplex::Simplex`; `plan::plan_maximum_with` takes any solver. A counting adapter is tested.
 - The empty `energy` feature is removed: the energy account is for the caller to combine with the energy ledger, since a library crate may not depend on it.
+- `examples/regolith.rs` (`cargo run --example regolith --features alloc`): an illustrative plan, with hematite standing in for an iron-bearing regolith mineral, against a demand for iron and oxygen. Not a measured lunar composition.

@@ -27,3 +27,7 @@ In-situ resource planning: elemental mass-balance checks, linear-program plannin
 ## Licence
 
 MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
+
+## Example
+
+- `cargo run --example regolith --features alloc`: two reductions of an iron oxide standing in for regolith, planned against a demand for iron and oxygen, with the closure and the imports. The ore is an illustration, not a measured lunar composition.

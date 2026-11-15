@@ -20,3 +20,7 @@ alloc = []
 
 [lints]
 workspace = true
+
+[[example]]
+name = "regolith"
+required-features = ["alloc"]
