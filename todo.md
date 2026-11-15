@@ -330,18 +330,18 @@ Exit: each crate at v0.1 exit.
 
 ### 3.3 `tpt-kardashev-reflect`
 - [ ] Review `tpt-formal`, `tpt-writ`, `tpt-norma` (queued); note interoperability with norma
-- [ ] `Invariant` type: linear inequality systems over policy parameters
-- [ ] `Update` and `Certificate` types
-- [ ] Exact or rational arithmetic choice for the checker (in-crate, no float surprises); document
-- [ ] `Verifier`: Farkas-style containment certificate checker
+- [x] `Invariant` type: linear inequality systems over policy parameters — `invariant::Constraints` (rows `coefficients · x <= bound` over exact rationals, `Invariant` and `Update` aliases), with exact `contains`
+- [x] `Update` and `Certificate` types — `invariant::Certificate`: one non-negative multiplier vector per invariant row, over the update's rows
+- [x] Exact or rational arithmetic choice for the checker (in-crate, no float surprises); document — `rational::Rational` on checked `i128`: every operation reduces or reports `Overflow`; the checker compares exactly, with no tolerance (tests in `tests/rational.rs`)
+- [x] `Verifier`: Farkas-style containment certificate checker — `verify::verify`: the checker; the soundness argument is in its module docs, and the property test in `tests/containment.rs` checks it on 2000 seeded systems
 - [ ] Certificate generation helper (not trusted) for tests/examples
 - [ ] `UpdateGate` issuing hash-chained `Receipt` or rejection with reason
 - [ ] Audit-log verification
 - [ ] Rule: checker not modifiable through the gate; external attestation path for replacement (design and docs)
 - [ ] Hash function choice (in-crate or `tpt-crypto` feature, licence-checked)
 - [ ] Kani proofs for checker arithmetic core
-- [ ] Soundness property tests with random polytopes
-- [ ] Adversarial tests: malformed and truncated certificates
+- [x] Soundness property tests with random polytopes — random two-parameter systems, certificates built by combination with and without slack, and every accepted certificate checked on a grid of points (`tests/containment.rs`); polytopes here are the general systems, not only bounded ones
+- [ ] Adversarial tests: malformed and truncated certificates — partial: wrong shape, negative multiplier, coefficient mismatch, bound exceeded, dimension mismatch and overflow are tested; a fuzzed certificate parser does not exist yet
 - [ ] Fuzz: certificate parser
 - [ ] `no_std` + `alloc` build
 - [ ] README states open research risk and that only linear bounds are supported
