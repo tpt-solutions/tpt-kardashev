@@ -271,7 +271,7 @@ Exit: each crate at v0.1 exit; `ContactPlan` flow from astrodynamics to dtn demo
 - [ ] Optional features for `tpt-math-prob-monte-carlo`, `tpt-math-pde-operators`, `tpt-math-linalg-*` (licence-checked)
 - [ ] Fuzz: cross-section file reader — partial: `fuzz/` target `xs_read` (any accepted file must write back to an equal set) ran 2.5 minutes on nightly with no crash over 8.6 million inputs; a kept corpus and longer runs are still to do
 - [ ] `no_std` + `alloc` build for the core where feasible
-- [ ] README states what is not modelled (no bundled data)
+- [x] README states what is not modelled (no bundled data) — `tpt-kardashev-nuclear-plasma` README "What it does not model"
 - [ ] Later (post-v0.1): eigenvalue/criticality problems, free-boundary equilibrium, MHD 1D then 2D
 - [ ] **v0.1 exit:** fixed-boundary G-S with Solov'ev, fixed-source MC with slab validation, tallies, one documented cross-section format
 
@@ -305,7 +305,7 @@ Exit: each crate at v0.1 exit.
 - [ ] Randomised partition/delay simulation tests — partial: the domain layer has seeded loss, duplication and partitions with per-step invariant checks (`tests/domain.rs`); GlobalAgreed now has 60 seeded schedules with jitter, loss, duplication and a random partition window and up to two crash windows (a crashed domain keeps its state), checking after every step that no key commits two values and that each commit is backed by a majority of domains that hold it (`tests/global_random.rs`, a mutation that drops the conflict rule is caught); the domain layer now has 40 seeded schedules with loss, duplication, pair partitions and crash windows, checking the Raft invariants after every step (`tests/domain_random.rs`; weakening the quorum makes it fail); crashes that lose state are not modelled
 - [ ] Fuzz: message decoders
 - [x] `no_std` + `alloc` build — builds with no features on thumbv7em (the clock, vector, consistency and error modules), and with `alloc` on the host; the `alloc` modules are not built for thumbv7em
-- [x] README states honest limits (CAP under partition); Byzantine tolerance deferred — `README.md` gives the choice per level with its test, and states the crash model, the clock bound, the history scope and the signature scope; a causal-layer partition test is still to do
+- [x] README states honest limits (CAP under partition); Byzantine tolerance deferred — `README.md` gives the choice per level with its test, and states the crash model, the clock bound, the history scope and the signature scope; the causal layer is tested across a cut (`tests/causal_partition.rs`)
 - [ ] Later: Byzantine tolerance behind a feature
 - [ ] **v0.1 exit:** causal layer, domain consensus, federation epochs, consistency API with bounds, simulator
 
@@ -325,7 +325,7 @@ Exit: each crate at v0.1 exit.
 - [x] Closure monotonicity test (adding a process never lowers closure) — `tests/closure_horizon.rs`: the closure score never falls as stock or run limits grow over a horizon, matching its closed form, and adding a magnetite process never lowers it and raises it for some demands; the planner-optimum check remains in `tests/planning.rs`
 - [ ] Worked lunar-regolith example — partial: `examples/regolith.rs` (run with `--features alloc`) plans two reductions of a stand-in ore (hematite, Fe2O3, not a measured regolith) against a demand for iron and oxygen and reports the closure and the imports (by hand: iron 699.4 kg, oxygen 150.3 kg, score 0.376); a measured regolith composition is blocked: the candidate table found (arXiv 2609.06496) has no column headers, so the oxide order is unverified; the primary source (the Lunar Sourcebook or NASA's simulant user guide) is not reachable from here, and the stand-in stays until it is checked
 - [ ] `no_std` + `alloc` build — partial: the crate builds with no features on thumbv7em and with `alloc` on the host; the planner needs `alloc`, so it is not in the no-alloc build
-- [ ] README states what is not modelled
+- [x] README states what is not modelled — `tpt-kardashev-isru` README "What it does not model"
 - [ ] **v0.1 exit:** types, balance validation, LP planner, closure score, lunar-regolith example
 
 ### 3.3 `tpt-kardashev-reflect`
@@ -344,7 +344,7 @@ Exit: each crate at v0.1 exit.
 - [x] Adversarial tests: malformed and truncated certificates — the text format (`text`) rejects malformed lines with their numbers, requires a terminating `end` line and a declared row or multiplier count, and every prefix of a valid constraint or certificate file is either rejected or reads to the same value (`tests/text.rs`); the property found two truncation bugs, both fixed: a file cut at a row boundary read as shorter, and a number cut inside a fraction read as a different value
 - [ ] Fuzz: certificate parser — partial: `fuzz/` target `text_read` (any accepted file writes back to an equal value) ran 2.5 minutes with no crash over 3.8 million inputs; a kept corpus and longer runs are still to do
 - [ ] `no_std` + `alloc` build
-- [ ] README states open research risk and that only linear bounds are supported
+- [x] README states open research risk and that only linear bounds are supported — `tpt-kardashev-reflect` README (status and "What it does not model")
 - [ ] Later: optional adapters to `tpt-formal` and `tpt-solver`
 - [ ] **v0.1 exit:** linear invariants, containment certificates + checker, gate with receipts, audit-chain verification
 

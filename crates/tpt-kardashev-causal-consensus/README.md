@@ -18,7 +18,7 @@ Causal ordering and hierarchical consensus (domains and federation) with consist
 
 **Partitions and the CAP trade-off.** Each level makes a different choice when the network splits. The tests state these choices.
 
-- `Commutative` and `Causal` (`causal::CausalBroadcast`) need no quorum, so they remain available under partition by construction. The causal layer has no partition test yet. It delivers in causal order, but two concurrent conflicting writes are not merged: the layer does not decide between them.
+- `Commutative` and `Causal` (`causal::CausalBroadcast`) need no quorum, so they remain available under partition by construction. `tests/causal_partition.rs` checks the causal layer across a cut: during the cut each side delivers only its own operations, and after the heal every node delivers every operation once, in causal order. Two concurrent conflicting writes are not merged: the layer does not decide between them.
 - `DomainLinearizable` (`domain::RaftNode`) chooses consistency over availability. A leader that is cut off from a majority cannot commit (`tests/domain.rs`, an isolated leader). The majority side keeps committing, and a client on the minority side cannot write until the partition heals.
 - `GlobalAgreed` (`global`) chooses the same way across domains. A proposal commits only when a majority of domains accept it, so a minority of domains cannot commit (`tests/global.rs`, a minority that cannot commit while the majority can).
 

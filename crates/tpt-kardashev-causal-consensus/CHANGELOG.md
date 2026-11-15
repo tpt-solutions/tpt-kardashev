@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Causal layer across a partition: `tests/causal_partition.rs`. Copies that cross the cut are held and delivered after the heal. During the cut each side delivers only its own operations; after the heal every node delivers every operation once, in causal order. Disabling the causal dependency check makes it fail.
 - README: rewritten to match the code. The status, transport, domain and federation sections no longer call implemented parts unwritten. A new section states the CAP choice per level (causal levels need no quorum; the domain and GlobalAgreed levels commit only with a majority), the crash model (state kept), the scope of the history checks, and the signature scope.
 - Domain consensus: `tests/domain_linearizable.rs` proposes writes and reads as log entries of a replicated register under partitions, loss and crashes (300 seeded schedules). It checks that the committed history is linearizable with `linearizable::is_linearizable`, and that all nodes agree on committed entries.
 - Domain consensus: `tests/domain_random.rs` runs 40 seeded schedules with loss, duplication, pair partitions and crash windows (state kept), checking the Raft invariants after every step: one leader per term, commit indexes that never fall, and agreement on committed entries. A mutation that weakens the quorum makes it fail.

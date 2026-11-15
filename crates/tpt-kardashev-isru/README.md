@@ -1,6 +1,6 @@
 # tpt-kardashev-isru
 
-In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and (not yet) closure scores.
+In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and closure scores against a demand.
 
 **Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, closure against a demand with its limiting imports, and a text format for materials and processes (`format`). Not yet: the resource type, the energy account (by decision, the caller's), the measured regolith composition, and a time horizon.
 
@@ -20,7 +20,7 @@ In-situ resource planning: elemental mass-balance checks, linear-program plannin
 
 - No time: a plan does not sequence runs, schedule power, or account for the time a process takes.
 - No energy: the energy account and closure in energy terms are not written.
-- No closure score yet, and no list of limiting imports.
+- The closure score is a ratio of in-situ supply to demand. It is not weighted by cost, time or energy.
 - Compositions are elemental. A species' oxide or mineral form is not modelled, only its elements.
 - The simplex is dense and suits small problems only; it has no sparse or revised form.
 
