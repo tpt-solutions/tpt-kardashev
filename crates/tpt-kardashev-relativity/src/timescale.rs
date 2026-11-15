@@ -6,10 +6,15 @@
 //! (about +/- 1.7 ms) are not, and neither is any epoch offset. Calendar handling belongs to
 //! `tpt-kardashev-astrodynamics`.
 //!
-//! Constants (to verify against the IAU texts before v0.1; see `docs/provenance/`):
-//! - `L_G = 6.969 290 134e-10` from IAU 1991 Resolution B1.9: TT and TCG rates.
-//! - `L_C = 1.480 826 867 41e-8` from IAU 2006 Resolution B3: TCB and TCG rates.
-//! - `L_B = 1.550 519 768e-8` from IAU 2006 Resolution B3: TDB and TCB rates.
+//! Constants, checked against the IAU 2000 explanatory supplement (arXiv:astro-ph/0303376, Appendix A
+//! and §5, 2026-11-16; see `docs/provenance/`):
+//! - `L_G = 6.969 290 134e-10` is a defining constant of IAU Resolution B1.9 (2000): TT and TCG rates.
+//! - `L_C = 1.480 826 867 41e-8` is the estimate of Irwin and Fukushima (1999), used as an input. It
+//!   is not defined by a resolution.
+//! - `L_B = 1.550 519 768e-8` is not defined by a resolution either. It follows from Resolution B1.9
+//!   and `L_C` through `1 - L_B = (1 - L_C)(1 - L_G)`, which gives 1.550 519 767 72e-8 (±2e-17). The
+//!   supplement warns that `L_B` has no unambiguous definition and should not be used where its value
+//!   is needed to about 1e-16.
 
 use crate::units::Seconds;
 
@@ -18,7 +23,7 @@ pub const L_G: f64 = 6.969_290_134e-10;
 /// `L_C`: `dTCB / dTCG = 1 + L_C`.
 pub const L_C: f64 = 1.480_826_867_41e-8;
 /// `L_B`: `dTDB / dTCB = 1 - L_B`.
-pub const L_B: f64 = 1.550_519_768e-8;
+pub const L_B: f64 = 1.550_519_767_72e-8;
 
 /// Converts a TT interval to the TCG interval it spans: `dTCG = dTT / (1 - L_G)`.
 pub fn tcg_from_tt(tt: Seconds) -> Seconds {
