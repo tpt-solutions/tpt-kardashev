@@ -42,8 +42,13 @@ pub struct Nmr<T, const N: usize> {
 pub type Tmr<T> = Nmr<T, 3>;
 
 impl<T: Copy + PartialEq, const N: usize> Nmr<T, N> {
+    /// A voter needs at least one replica. Checked at compile time: an `Nmr` with `N = 0` does not
+    /// build, so no run-time panic is needed.
+    const AT_LEAST_ONE_REPLICA: () = assert!(N >= 1, "an Nmr needs at least one replica");
+
     /// All replicas set to `value`.
     pub fn new(value: T) -> Self {
+        let () = Self::AT_LEAST_ONE_REPLICA;
         Self {
             replicas: [value; N],
         }
@@ -51,6 +56,7 @@ impl<T: Copy + PartialEq, const N: usize> Nmr<T, N> {
 
     /// Replicas as given.
     pub fn from_replicas(replicas: [T; N]) -> Self {
+        let () = Self::AT_LEAST_ONE_REPLICA;
         Self { replicas }
     }
 
