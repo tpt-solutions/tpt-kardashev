@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `global`: randomised GlobalAgreed runs. `tests/global_random.rs` runs 60 seeded schedules of random delay, loss, duplication and one partition window, checking after every step that no key commits two values and each commit has a majority of domains holding it, then that every chain verifies. A seed replays to the same outcome.
 - `global::Federation`: a set of domains that runs the `GlobalAgreed` accept round in process. `propose` commits when a majority accept, `seal_epoch` seals each domain's new accepted proposals, and `verify` checks every chain. Tests in `tests/federation_group.rs`.
 - `clock::HybridClock` and `clock::Timestamp`: hybrid logical clock. Timestamps are strictly increasing per node, strictly after any remote timestamp received, and a remote timestamp more than the configured drift ahead of local physical time is rejected without changing the clock. Tests in `tests/clocks.rs` (10 000 steps with physical time jumping and going backwards, causality along a three-node message chain, rejection leaves the clock unchanged, the wall part stays within the largest reading plus the bound across three nodes) and a unit test of counter overflow in `src/clock.rs`.
 - `vector::VectorClock<N>` and `vector::CausalRelation`: fixed-size vector clock with tick, merge (entry-wise maximum) and the four relations. Tests in `tests/clocks.rs`: each relation, merge commutativity and idempotence, and an out-of-range index.
