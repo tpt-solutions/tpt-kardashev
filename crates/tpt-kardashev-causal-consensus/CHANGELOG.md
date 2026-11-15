@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Domain consensus: `tests/domain_linearizable.rs` proposes writes and reads as log entries of a replicated register under partitions, loss and crashes (300 seeded schedules). It checks that the committed history is linearizable with `linearizable::is_linearizable`, and that all nodes agree on committed entries.
 - Domain consensus: `tests/domain_random.rs` runs 40 seeded schedules with loss, duplication, pair partitions and crash windows (state kept), checking the Raft invariants after every step: one leader per term, commit indexes that never fall, and agreement on committed entries. A mutation that weakens the quorum makes it fail.
 - `global`: randomised GlobalAgreed runs. `tests/global_random.rs` runs 60 seeded schedules of random delay, loss, duplication, one partition window and up to two crash windows (state kept), checking after every step that no key commits two values and each commit has a majority of domains holding it, then that every chain verifies. A seed replays to the same outcome.
 - `global::Federation`: a set of domains that runs the `GlobalAgreed` accept round in process. `propose` commits when a majority accept, `seal_epoch` seals each domain's new accepted proposals, and `verify` checks every chain. Tests in `tests/federation_group.rs`.
