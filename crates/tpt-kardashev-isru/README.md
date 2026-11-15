@@ -2,7 +2,7 @@
 
 In-situ resource planning: elemental mass-balance checks, linear-program planning over a horizon, and (not yet) closure scores.
 
-**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, and closure against a demand with its limiting imports. Not yet: the resource type, a loading format, the energy account (by decision, the caller's), and the worked lunar-regolith example.
+**Status:** Phase 3.2, in progress. Implemented: elements with atomic masses, compositions and materials, the elemental mass-balance check of a process, processes checked when built, a dense simplex solver behind a solver trait, a planner that maximises the amount of a target species made within stocks and run limits, closure against a demand with its limiting imports, and a text format for materials and processes (`format`). Not yet: the resource type, the energy account (by decision, the caller's), the measured regolith composition, and a time horizon.
 
 ## Features
 
@@ -31,3 +31,7 @@ MIT OR Apache-2.0. See the workspace `LICENSE-MIT` and `LICENSE-APACHE`.
 ## Example
 
 - `cargo run --example regolith --features alloc`: two reductions of an iron oxide standing in for regolith, planned against a demand for iron and oxygen, with the closure and the imports. The ore is an illustration, not a measured lunar composition.
+
+## Loading format
+
+- `format::read_problem` reads materials and processes from a versioned text file (see the module docs). A process is checked for balance when it is read; a malformed or unbalanced file is rejected with the line number.

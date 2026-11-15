@@ -24,3 +24,4 @@ None.
 - `plan.rs`: the planning formulation (run counts as variables; stock rows; run-limit rows; the target produced as the objective) is this crate's, from the mass balance. No reference code consulted.
 - `material.rs`: the elemental mass balance (total mass and each element), written from the definition of conservation. No reference code consulted.
 - `closure.rs`: the closure definition (in-situ net production over demand, capped at 1, the lowest ratio as the score) is this crate's, from the mass balance. No reference code consulted.
+- `format.rs`: the loading format is this crate's design, documented in the module; no third-party format copied.

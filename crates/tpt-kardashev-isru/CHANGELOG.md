@@ -12,3 +12,6 @@
 - `simplex::LpSolver` trait and `simplex::Simplex`; `plan::plan_maximum_with` takes any solver. A counting adapter is tested.
 - The empty `energy` feature is removed: the energy account is for the caller to combine with the energy ledger, since a library crate may not depend on it.
 - `examples/regolith.rs` (`cargo run --example regolith --features alloc`): an illustrative plan, with hematite standing in for an iron-bearing regolith mineral, against a demand for iron and oxygen. Not a measured lunar composition.
+- `format` (feature `alloc`): the loading format for materials and processes, version 1, with `read_problem`, `problem_to_text` and `Problem`. A process is checked for balance when read, and an unbalanced one is rejected at its line. Tests in `tests/format.rs`.
+- `IsruError::Malformed { line }`.
+- `Material` and `Process` names are owned strings now (so that a file can name them); `Material` needs `alloc`.
