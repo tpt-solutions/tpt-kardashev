@@ -37,3 +37,13 @@ None.
 - Implemented as checks, both optional (RFC 5326 alone does not limit these): `ltp::session::check_ccsds_session_number` (session numbers in [1, 2^32 − 1], §3.5.1) and `Config::check_ccsds_profile` (initial checkpoint and report serials in [1, 2^14 − 1], §3.5.2 and §3.5.5). Tests in `tests/ltp_ccsds_profile.rs`.
 - Not implemented: the choice of initial serial numbers at random (§3.5.3, §3.5.6, a sender choice, not a check); the cancel when a serial exceeds 2^32 (§3.5.4, §3.5.7; behaviour, not yet in the state machine); the security extensions (RFC 5327), and the aggregation client (§7).
 - No code taken from the document; the checks are from its stated limits.
+
+## RFC 9171 §5.8 and §5.9 (fragmentation and reassembly, 2026-11-16)
+
+- Read from `https://www.rfc-editor.org/rfc/rfc9171.txt`. `src/fragment.rs` implements §5.8 (fragments carry consecutive slices of the payload, each a bundle with the fragment flag and fragment fields, the primary CRC recomputed by encoding, extension blocks replicated in every fragment when flagged and otherwise in the offset-zero fragment) and §5.9 (reassembly by offset once the extents cover the application data unit).
+- Two deliberate stricter rules, recorded in the module: a fragment is not split again (the RFC allows one level at a time), and reassembly refuses overlaps (the RFC accepts overlapping material extents from different episodes).
+- Tests: `tests/fragment.rs` and `tests/fragment_sim.rs`. No code taken from any other implementation.
+
+## CCSDS 734.3-B-1 §2.4.5 (multiple copies, 2026-11-16)
+
+- `Network::send_copies` sends the first `k` first hops whose contacts open earliest (ties by node id). This is the simplest form of the multiple-copy rule, not the full contact-graph search. `send_critical` is the all-neighbours case. Tests in `tests/copies.rs`.

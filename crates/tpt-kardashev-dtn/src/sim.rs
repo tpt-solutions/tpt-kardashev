@@ -222,12 +222,40 @@ impl Network {
     /// destination can receive the bundle more than once. Returns as [`Network::send_routed`].
     /// The critical flag is an argument of this call, not a field of the bundle.
     pub fn send_critical(&mut self, from: u64, payload: Vec<u8>) -> Result<bool, Error> {
+        self.send_copies(from, payload, usize::MAX)
+    }
+
+    /// Accepts a bundle that originates at node `from` and sends up to `copies` copies, one through each
+    /// of the first `copies` neighbours of `from` whose contacts open earliest (ties broken by node id).
+    /// With `copies` of one, the bundle takes the earliest route, as an ordinary bundle does; with a
+    /// count at least the number of neighbours, it is sent as [`Network::send_critical`] sends it.
+    /// This is the multiple-copy rule of CCSDS 734.3-B-1 §2.4.5 in its simplest form: the copies are
+    /// chosen by when their first hop opens, not by the full contact-graph search. Returns as
+    /// [`Network::send_routed`]; fails with [`Error::InvalidBundle`] for zero copies.
+    pub fn send_copies(
+        &mut self,
+        from: u64,
+        payload: Vec<u8>,
+        copies: usize,
+    ) -> Result<bool, Error> {
         if !self.nodes.contains_key(&from) {
             return Err(Error::UnknownNode);
         }
-        let mut neighbours: Vec<u64> = self.plan.outgoing(from).map(|c| c.to).collect();
-        neighbours.sort_unstable();
-        neighbours.dedup();
+        if copies == 0 {
+            return Err(Error::InvalidBundle {
+                rule: "a bundle needs at least one copy",
+            });
+        }
+        let mut first_hops: Vec<(u64, u64)> = Vec::new();
+        for c in self.plan.outgoing(from) {
+            match first_hops.iter_mut().find(|(_, n)| *n == c.to) {
+                Some(entry) => entry.0 = entry.0.min(c.start),
+                None => first_hops.push((c.start, c.to)),
+            }
+        }
+        first_hops.sort_unstable();
+        first_hops.truncate(copies);
+        let neighbours: Vec<u64> = first_hops.iter().map(|(_, n)| *n).collect();
         let before = self.held.len();
         if !self.handle_bundle(from, from, payload) {
             return Ok(false);
@@ -247,6 +275,33 @@ impl Network {
             }
         }
         Ok(true)
+    }
+
+    /// Fragments a bundle and sends each fragment from node `from`, routed as [`Network::send_routed`]
+    /// sends a bundle. `bundle_bytes` is an encoded bundle that is not itself a fragment; each fragment
+    /// carries at most `max_payload` bytes of its application data. Returns the number of fragments
+    /// accepted. The destination's inbox holds the encoded fragments, in arrival order;
+    /// [`crate::fragment::reassemble_encoded`] turns them back into the bundle. Fails with [`Error::UnknownNode`], with the codec's error for an
+    /// undecodable bundle, and with the fragmentation error of [`crate::fragment::fragment`].
+    pub fn send_fragmented(
+        &mut self,
+        from: u64,
+        bundle_bytes: &[u8],
+        max_payload: usize,
+    ) -> Result<usize, Error> {
+        if !self.nodes.contains_key(&from) {
+            return Err(Error::UnknownNode);
+        }
+        let bundle = Bundle::decode(bundle_bytes)?;
+        let parts = crate::fragment::fragment(&bundle, max_payload)?;
+        let mut accepted = 0;
+        for part in &parts {
+            let bytes = part.encode()?;
+            if self.handle_bundle(from, from, bytes) {
+                accepted += 1;
+            }
+        }
+        Ok(accepted)
     }
 
     /// When the transmitter of `c`'s link can start carrying new data: after its last transmission,
