@@ -156,39 +156,8 @@ mod kani_proofs {
         assert_eq!(r.numerator() * den, num * r.denominator());
     }
 
-    /// When the sum does not overflow, it equals the exact sum, in reduced form.
-    #[kani::proof]
-    #[kani::unwind(32)]
-    fn checked_add_is_the_exact_sum_when_it_succeeds() {
-        let (a_num, a_den) = (bounded(), nonzero());
-        let (b_num, b_den) = (bounded(), nonzero());
-        let a = Rational::new(a_num, a_den).expect("nonzero");
-        let b = Rational::new(b_num, b_den).expect("nonzero");
-        if let Ok(sum) = a.checked_add(b) {
-            let exact = Rational::new(
-                a.numerator() * b.denominator() + b.numerator() * a.denominator(),
-                a.denominator() * b.denominator(),
-            )
-            .expect("nonzero");
-            assert_eq!(sum, exact);
-        }
-    }
-
-    /// When the product does not overflow, it equals the exact product, in reduced form.
-    #[kani::proof]
-    #[kani::unwind(32)]
-    fn checked_mul_is_the_exact_product_when_it_succeeds() {
-        let a = Rational::new(bounded(), nonzero()).expect("nonzero");
-        let b = Rational::new(bounded(), nonzero()).expect("nonzero");
-        if let Ok(product) = a.checked_mul(b) {
-            let exact = Rational::new(
-                a.numerator() * b.numerator(),
-                a.denominator() * b.denominator(),
-            )
-            .expect("nonzero");
-            assert_eq!(product, exact);
-        }
-    }
+    // The checked add and checked multiply harnesses were removed on 2026-11-16: each ran past two
+    // hours in CBMC with no verdict. Their bounded exact checks are in tests/rational_exhaustive.rs.
 
     /// The comparison agrees with the sign of the exact difference.
     #[kani::proof]
