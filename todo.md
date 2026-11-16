@@ -378,8 +378,8 @@ Exit: per-repo migration plans (notes, not code changes).
 - [x] Migration notes: `tpt-transportation` (space) → astrodynamics — in `docs/migration.md`
 - [x] Migration notes: `tpt-formal` (tpt-for-redundancy, proof AST) → radhard, reflect — in `docs/migration.md`; the other tpt-formal crates are listed as not read
 - [ ] Decide ignis adoption of nuclear-plasma (coordinate when ignis reaches physics phase) — deferred: ignis's equilibrium is a reduced model (see the provenance review); the decision waits for ignis to reach its physics phase
-- [ ] Cross-check tests of new crates against old implementations; record divergences
-- [ ] Public trait consolidation pass; decide path to 1.0 — deferred until the v0.1 crates are complete; the traits so far (Transport, LpSolver, ForceModel, ConvergenceLayer, EnergyOracle) are listed for that pass
+- [ ] Cross-check tests of new crates against old implementations; record divergences (2026-11-16: the old implementations are in sibling repositories that cannot be built in this workspace; the checks that exist are recorded per crate in the provenance files, and the rest is not claimed)
+- [x] Public trait consolidation pass and the path to 1.0 (decided 2026-11-16; see `docs/consolidation.md`: no shared trait crate, every trait stays in its crate, criteria for 1.0 listed). Earlier note: deferred until the v0.1 crates are complete; the traits so far (Transport, LpSolver, ForceModel, ConvergenceLayer, EnergyOracle) are listed for that pass
 - [x] Decide on crates.io publishing and optional umbrella crate `tpt-kardashev` — decided: no publishing (every crate keeps `publish = false`) and no umbrella crate for now; the user has not asked for publication, and an umbrella adds a dependency graph to maintain before the crates are at v0.1
 - [x] Decided 2026-11-16: no action, nothing depends on it. Licence inconsistency (MIT only vs dual) if it is to become a dependency — finding (2026-11-15): `tpt-solutions/tpt-substrate` has one LICENSE file, MIT (GitHub licence key `mit`), and no Apache text; the decision is the owner's, and it is not needed while nothing depends on it
 - [ ] Final spec update and retrospective
