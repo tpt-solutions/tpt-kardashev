@@ -140,7 +140,7 @@ Exit: each crate at its v0.1 exit.
 - [x] `proper_time(path)`
 - [x] Weak-field gravitational time dilation (Schwarzschild approximation)
 - [x] Proper time vs coordinate time for a moving, gravitating observer
-- [x] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented) (constants checked 2026-11-16 against the IAU 2000 explanatory supplement, arXiv:astro-ph/0303376: L_G is the defining constant of B1.9; L_B is derived, and its attribution to B3 in the code was wrong and is corrected)
+- [x] Time-scale rate relations TT, TCG, TCB, TDB as functions (IAU constants documented) (constants checked 2026-11-16 against the IERS Conventions 2010 appendix (IAU 2006 B3, item 14) and the IAU 2000 supplement: L_G is the defining constant of B1.9, and L_B is the defining constant of B3 at 1.550519768e-8; the earlier "derived" note was wrong and is reverted)
 - [x] `Metric` trait with Minkowski and Schwarzschild implementations
 - [x] Documented float-tolerance policy
 - [x] Property tests: interval invariance under boosts, composition law, `|v| ≥ c` rejected
