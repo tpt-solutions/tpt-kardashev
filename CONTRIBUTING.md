@@ -1,5 +1,9 @@
 # Contributing to tpt-kardashev
 
+## How to contribute
+
+Contributions are accepted as issues only. Open an issue to report a bug, ask a question, or propose a change. Pull requests and direct code submissions are not accepted.
+
 ## Licence of contributions
 
 The repository is dual-licensed under MIT OR Apache-2.0. Unless you state otherwise, any contribution you submit for inclusion is licensed under the same terms, without any additional conditions (the Apache-2.0 contribution clause, section 5).
@@ -21,7 +25,7 @@ A new crate is accepted only if it:
 3. contains no application code (no daemons, UIs, CLIs beyond `examples/`);
 4. builds alone with `cargo build -p <crate> --no-default-features`.
 
-## Checks before opening a change
+## Checks run on every change
 
 ```sh
 cargo fmt --all -- --check
