@@ -49,3 +49,11 @@ None.
 ## Third-party licences
 
 None.
+
+## TDB−TT periodic series (FB2001, 2026-11-16)
+
+- Data: `fb2001.dat` (1697 terms: order, amplitude in microseconds, frequency in radians per Julian millennium, phase in radians), from the IERS Conventions Center, chapter 10 software (`https://larochelle.obspm.fr/content/chapter10/software/fb2001.dat`, Irwin 2003, the mass-corrected coefficients). `src/fb2001_terms.rs` is generated from the file by a line-by-line transcription (order, amplitude, frequency, phase, in file order), with leading zeros added where the file omits them.
+- Method: the formula of IERS Conventions 2010 chapter 10 (the "FB" model), implemented from the description (sum of sine terms per power of t, t in Julian millennia from J2000). The reference program `fb2001.f` (GPL, Irwin) was read for the summation order and not copied; the code in `src/tdb.rs` is this crate's.
+- Verification: `tests/data/fb2001_reference.txt` is the IERS reference output `fb2001.out` (Irwin 2003, run with `fb2001.in`). `tests/tdb.rs` checks the series against it to under 1 ns over more than 200 epochs.
+- Not included: the constant offset TDB0 = −6.55e-5 s and the epoch T0 of IAU 2006 Resolution B3 (see the relativity crate's constants), and the TCB relation.
+- The WGS 84 zonal constants beyond J2 are still not bundled. The NGA host did not respond from here, the NASA EGM96 page now sends downloads through Earthdata sign-in, and the values found in search results were JGM-3 rather than EGM96; none was taken.

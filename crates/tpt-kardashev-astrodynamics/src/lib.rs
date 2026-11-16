@@ -28,6 +28,8 @@ pub mod ephemeris;
 pub mod equinoctial;
 pub mod error;
 #[cfg(feature = "std")]
+pub mod fb2001_terms;
+#[cfg(feature = "std")]
 pub mod force;
 #[cfg(feature = "std")]
 pub mod frames;
@@ -50,6 +52,8 @@ pub mod sgp4;
 pub mod spk;
 #[cfg(feature = "std")]
 pub mod symplectic;
+#[cfg(feature = "std")]
+pub mod tdb;
 pub mod time;
 pub mod units;
 pub mod vector;
