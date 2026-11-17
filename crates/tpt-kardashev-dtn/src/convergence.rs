@@ -9,7 +9,7 @@
 
 use crate::error::Error;
 use crate::ltp::segment::{Segment, SessionId};
-use crate::ltp::session::{Config, Receiver, Sender, Status};
+use crate::ltp::session::{Config, RTO_CEILING_FACTOR, Receiver, Sender, Status};
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
@@ -92,10 +92,10 @@ impl RttEstimate {
 /// The retransmission timeout for a neighbour: the smoothed round trip plus four times its
 /// variance, kept at most `ceiling` (the configured timeout). Until a neighbour has been measured,
 /// the ceiling is used.
-fn rto(rtt: &BTreeMap<u64, RttEstimate>, peer: u64, ceiling: u64) -> u64 {
+fn rto(rtt: &BTreeMap<u64, RttEstimate>, peer: u64, initial: u64, ceiling: u64) -> u64 {
     match rtt.get(&peer) {
         Some(e) if e.measured => e.srtt.saturating_add(4 * e.rttvar).clamp(1, ceiling.max(1)),
-        _ => ceiling,
+        _ => initial,
     }
 }
 
@@ -176,7 +176,12 @@ impl ConvergenceLayer for LtpConvergence {
 
     fn poll_outbound(&mut self, now: u64) -> Option<(u64, Vec<u8>)> {
         for (&(to, _), sender) in self.senders.iter_mut() {
-            sender.set_timeout(rto(&self.rtt, to, self.config.timeout_ms));
+            let ceiling = self.config.timeout_ms.saturating_mul(RTO_CEILING_FACTOR);
+            let base = rto(&self.rtt, to, self.config.timeout_ms, ceiling);
+            sender.set_timeout(
+                base.saturating_mul(1 << sender.backoff_shift())
+                    .min(ceiling),
+            );
             if let Some(bytes) = sender.poll(now).and_then(|seg| seg.encode().ok()) {
                 return Some((to, bytes));
             }

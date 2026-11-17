@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- LTP retransmission timeout: exponential backoff per session, up to 4 times the configured timeout (`RTO_CEILING_FACTOR`, `Sender::backoff_shift`). Two concurrent bundles over one contact now both arrive (`tests/concurrent.rs`). A silent link is declared failed after about 75 s, not 18 s; four routing tests were re-timed (`tests/routing_sim.rs`). The fitting send has an end-to-end test on a 10 kB/s link (`tests/fragment_sim.rs`).
+
 - `ltp::session::check_ccsds_session_number` and `Config::check_ccsds_profile`: the CCSDS profile of LTP (CCSDS 734.1-B-1, §3.5). Session numbers in [1, 2^32 − 1]; initial checkpoint and report serials in [1, 2^14 − 1]. Both are checks the caller opts into; RFC 5326 alone does not limit them. Constants `CCSDS_MAX_SESSION_NUMBER` and `CCSDS_MAX_INITIAL_SERIAL`. Tests in `tests/ltp_ccsds_profile.rs`.
 
 - `ltp::session`: cancellation. A cancel segment is repeated until its peer acknowledges it, up to `max_transmissions`, from either side, whether the cancel comes from the application (`Sender::cancel_session`, `Receiver::cancel_session`), a retransmission limit, or a peer. Once a cancel is acknowledged or given up, no timer remains. A cancel drops the queued segments, so no data is sent after it. Cancelling a session that has ended does nothing. Tests in `tests/ltp_cancel.rs`: an acknowledged cancel stops the repeats; a lost cancel is repeated; a cancel that is never acknowledged stops at the limit; a receiver cancel reaches the sender; both sides cancelling settle; a cancel after completion changes nothing.

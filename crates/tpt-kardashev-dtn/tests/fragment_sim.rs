@@ -103,20 +103,6 @@ fn two_windows_with_mtu(mtu: usize) -> Network {
 }
 
 #[test]
-#[ignore = "two concurrent LTP sessions on one contact stall in the simulator (pre-existing; reproduced with plain bundles, see docs/provenance); enable when that is fixed"]
-fn a_bundle_too_big_for_the_first_window_is_fragmented_to_fit_and_completes_in_the_second() {
-    let original = big_bundle(30_000);
-    let encoded = original.encode().expect("encode");
-    let mut net = two_windows_with_mtu(1400);
-    let sent = net.send_fitting(1, &encoded).expect("send");
-    assert!(sent >= 2, "the bundle must be split: {sent} fragment(s)");
-    net.run_until(200_000);
-    let pieces: Vec<Vec<u8>> = net.inbox(2).iter().map(|(_, p)| p.clone()).collect();
-    assert_eq!(pieces.len(), sent, "every fragment arrives once");
-    assert_eq!(reassemble_encoded(&pieces).expect("reassembles"), original);
-}
-
-#[test]
 fn a_bundle_that_fits_the_free_volume_is_sent_whole() {
     let original = big_bundle(5_000);
     let encoded = original.encode().expect("encode");
@@ -161,4 +147,33 @@ fn the_hop_limit_counts_each_fragment_on_its_own() {
         6,
         "every fragment arrives over two hops"
     );
+}
+
+/// Two 4 s windows from node 1 to node 2 at 10 kB/s (40 kB each), starting at 0 s and 10 s. At this rate
+/// LTP's checkpoint round trips are short against a window, so a fragment that the volume charge admits
+/// is carried within it.
+fn fast_two_windows(mtu: usize) -> Network {
+    let mut contacts = Vec::new();
+    for (start, end) in [(0, 4_000), (10_000, 14_000)] {
+        contacts.push(Contact::new(1, 2, start, end, 10_000, 10).expect("contact"));
+        contacts.push(Contact::new(2, 1, start, end, 10_000, 10).expect("contact"));
+    }
+    let mut net = Network::new(ContactPlan::new(contacts), Impairments::default(), 17);
+    net.set_routing(true);
+    net.add_node(1, Config { mtu, ..config() }).expect("node");
+    net.add_node(2, Config { mtu, ..config() }).expect("node");
+    net
+}
+
+#[test]
+fn a_bundle_too_big_for_the_first_window_is_fragmented_to_fit_and_completes_in_the_second() {
+    let original = big_bundle(50_000);
+    let encoded = original.encode().expect("encode");
+    let mut net = fast_two_windows(1400);
+    let sent = net.send_fitting(1, &encoded).expect("send");
+    assert!(sent >= 2, "the bundle must be split: {sent} fragment(s)");
+    net.run_until(120_000);
+    let pieces: Vec<Vec<u8>> = net.inbox(2).iter().map(|(_, p)| p.clone()).collect();
+    assert_eq!(pieces.len(), sent, "every fragment arrives once");
+    assert_eq!(reassemble_encoded(&pieces).expect("reassembles"), original);
 }

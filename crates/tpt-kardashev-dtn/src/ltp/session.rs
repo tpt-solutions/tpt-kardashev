@@ -138,6 +138,10 @@ pub fn check_ccsds_session_number(session: &SessionId) -> Result<(), Error> {
     Ok(())
 }
 
+/// The largest retransmission timeout, as a multiple of the configured timeout (see
+/// [`Sender::set_timeout`]).
+pub const RTO_CEILING_FACTOR: u64 = 4;
+
 /// Where a session stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -560,10 +564,28 @@ impl Sender {
         self.status
     }
 
+    /// How many doublings of the retransmission timeout the checkpoints still waiting for an answer have
+    /// earned: the largest number of resends of any of them, less one, capped at 16. Zero when none has been
+    /// resent. The convergence layer doubles its base timeout by this (exponential backoff, as TCP does).
+    pub fn backoff_shift(&self) -> u32 {
+        self.inflight
+            .values()
+            .map(|e| e.transmissions.saturating_sub(1))
+            .max()
+            .unwrap_or(0)
+            .min(16)
+    }
+
     /// Sets the retransmission timeout for checkpoints sent from now on. The value is kept between 1
     /// ms and the configured timeout, which is also the initial value.
     pub fn set_timeout(&mut self, ms: u64) {
-        self.rto_ms = ms.clamp(1, self.config.timeout_ms.max(1));
+        self.rto_ms = ms.clamp(
+            1,
+            self.config
+                .timeout_ms
+                .saturating_mul(RTO_CEILING_FACTOR)
+                .max(1),
+        );
     }
 
     /// Round-trip samples (checkpoint sent to report received) taken since the last call. Only

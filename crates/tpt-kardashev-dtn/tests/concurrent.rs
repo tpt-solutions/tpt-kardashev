@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Two bundles sent at once over one contact: both should arrive. Their LTP sessions share the link, so
-//! each one's acknowledgements wait behind the other's data. Ignored: this stalls in the simulator (open
-//! in the todo, found 2026-11-17). The cause and the candidate fixes are recorded there.
+//! each one's acknowledgements wait behind the other's data. Found 2026-11-17: this stalled, because the retransmission timeout stayed at its configured value under queueing;
+//! fixed by exponential backoff of the timeout (see the todo).
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_dtn::bundle::{CrcType, CreationTimestamp, PrimaryBlock};
@@ -49,7 +49,6 @@ fn bundle_bytes(len: usize, sequence: u64) -> Vec<u8> {
 }
 
 #[test]
-#[ignore = "two concurrent LTP sessions on one contact stall in the simulator (open; see the todo)"]
 fn two_bundles_in_one_contact_both_arrive() {
     let contacts = vec![
         Contact::new(1, 2, 0, 60_000, 1_000, 10).expect("contact"),

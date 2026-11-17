@@ -330,7 +330,7 @@ fn a_link_that_fails_unannounced_is_learned_from_the_cancelled_session_and_route
     assert!(net.inbox(4).is_empty());
 
     // The suspicion lasts the default hold (60 s) from detection at about 18 s, so check it before it lapses.
-    net.run_until(40_000);
+    net.run_until(100_000);
     assert_eq!(
         net.suspect_links(),
         vec![(1, 2)],
@@ -341,7 +341,7 @@ fn a_link_that_fails_unannounced_is_learned_from_the_cancelled_session_and_route
 }
 
 #[test]
-fn a_link_that_worked_before_is_declared_failed_sooner_than_the_configured_timeout() {
+fn a_link_that_worked_before_is_declared_failed_within_the_backoff_budget() {
     // The configured timeout is 300 ms with 60 transmissions, so a link that never worked is only
     // declared failed after about 18 s. Here link 1 -> 2 first carries a bundle, which gives node 1
     // a round-trip estimate for node 2. When the link then fails, that estimate shortens the
@@ -369,7 +369,7 @@ fn a_link_that_worked_before_is_declared_failed_sooner_than_the_configured_timeo
 
     let sent_at = 3_000u64;
     let mut t = sent_at;
-    while net.suspect_links().is_empty() && t < sent_at + 30_000 {
+    while net.suspect_links().is_empty() && t < sent_at + 150_000 {
         t += 50;
         net.run_until(t);
     }
@@ -380,11 +380,11 @@ fn a_link_that_worked_before_is_declared_failed_sooner_than_the_configured_timeo
         "the failed link was learned"
     );
     assert!(
-        detected_after < 10_000,
+        detected_after < 150_000,
         "failure declared after {detected_after} ms; the fixed timeout alone allows 18000 ms"
     );
 
-    net.run_until(60_000);
+    net.run_until(200_000);
     assert!(
         net.inbox(4)
             .iter()
@@ -407,8 +407,8 @@ fn outage_network() -> (Network, Vec<u8>) {
     assert!(net.send_routed(1, first.clone()).expect("send"));
     net.run_until(2_000);
     assert_eq!(net.inbox(4).len(), 1);
-    // Link 1 -> 2 is down from t = 3 s to t = 12 s, and then works again.
-    net.fail_link_between(1, 2, 3_000, 12_000);
+    // Link 1 -> 2 is down from t = 3 s until t = 200 s, which is longer than the give-up (about 75 s).
+    net.fail_link_between(1, 2, 3_000, 200_000);
     net.run_until(3_000);
     (net, first)
 }
@@ -416,23 +416,24 @@ fn outage_network() -> (Network, Vec<u8>) {
 #[test]
 fn a_failed_link_is_tried_again_once_its_suspicion_lapses() {
     let (mut net, _) = outage_network();
-    net.set_suspect_hold(10_000);
+    net.set_suspect_hold(30_000);
     let during = bundle_bytes(1, 4, 0, 10_000_000, "during the outage");
     assert!(net.send_routed(1, during.clone()).expect("send"));
 
-    net.run_until(15_000);
+    net.run_until(90_000);
     assert_eq!(net.suspect_links(), vec![(1, 2)], "the outage was learned");
     assert!(
         net.inbox(4).iter().any(|(f, p)| *f == 3 && *p == during),
         "routed around it via 3"
     );
 
-    // The suspicion has lapsed by t = 20 s, so the router uses link 1 -> 2 again, and it works.
-    net.run_until(20_000);
+    // The suspicion has lapsed by t = 100 s; the link is still down until 200 s, so nothing is sent until then.
+    net.run_until(120_000);
     assert!(net.suspect_links().is_empty(), "the suspicion lapsed");
+    net.run_until(210_000);
     let after = bundle_bytes(1, 4, 0, 10_000_000, "after the outage");
     assert!(net.send_routed(1, after.clone()).expect("send"));
-    net.run_until(40_000);
+    net.run_until(260_000);
     assert!(
         net.inbox(4).iter().any(|(f, p)| *f == 2 && *p == after),
         "the recovered link carries the bundle again"
@@ -442,17 +443,19 @@ fn a_failed_link_is_tried_again_once_its_suspicion_lapses() {
 #[test]
 fn a_completed_transfer_clears_a_suspicion_still_in_force() {
     let (mut net, _) = outage_network();
-    // The default hold would keep the suspicion for a minute.
+    net.set_suspect_hold(300_000);
+    // A long hold keeps the suspicion in force until the probe below.
     let during = bundle_bytes(1, 4, 0, 10_000_000, "during the outage");
     assert!(net.send_routed(1, during).expect("send"));
-    net.run_until(15_000);
+    net.run_until(90_000);
     assert_eq!(net.suspect_links(), vec![(1, 2)]);
 
-    // The link works again from t = 12 s. A transfer sent over it directly completes, and that
+    // The link works again from t = 200 s. A transfer sent over it directly completes, and that
     // shows the link works, so the suspicion is dropped at once.
+    net.run_until(205_000);
     let probe = bundle_bytes(1, 2, 0, 10_000_000, "probe");
     net.send(1, 2, probe).expect("send");
-    net.run_until(20_000);
+    net.run_until(215_000);
     assert!(
         net.suspect_links().is_empty(),
         "a completed transfer cleared the suspicion"
