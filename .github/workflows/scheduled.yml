@@ -8,18 +8,40 @@ on:
 
 jobs:
   kani:
+    # Runs the proof harnesses that have a verdict, one at a time, by name (decided 2026-11-18). A
+    # workspace-wide run would also start any harness that has no verdict yet; the list below is the
+    # one to change when a proof is added or retired. The reflect reduction and compare harnesses take
+    # about 25 and 35 minutes on a local run, so the job allows three hours.
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Run Kani proofs if any exist
+      - name: Install Kani
         run: |
-          if grep -rl --include='*.rs' '#\[kani::proof\]' crates; then
-            cargo install --locked kani-verifier
-            cargo kani setup
-            cargo kani --workspace
-          else
-            echo "No Kani proofs yet (first proofs land with radhard and archive-codes)."
-          fi
+          cargo install --locked kani-verifier
+          cargo kani setup
+      - name: Run the verified proof harnesses
+        run: |
+          set -euo pipefail
+          harnesses=(
+            "tpt-kardashev-archive-codes mul_is_commutative"
+            "tpt-kardashev-archive-codes mul_is_associative"
+            "tpt-kardashev-archive-codes one_is_identity_and_zero_annihilates"
+            "tpt-kardashev-archive-codes nonzero_elements_have_inverses"
+            "tpt-kardashev-archive-codes alpha_power_is_periodic_mod_255"
+            "tpt-kardashev-archive-codes dual_map_round_trips"
+            "tpt-kardashev-archive-codes dual_map_is_additive"
+            "tpt-kardashev-radhard no_single_corrupted_replica_changes_the_voter_result"
+            "tpt-kardashev-radhard secded_corrects_every_single_bit_error_for_8_bit_data"
+            "tpt-kardashev-radhard secded_detects_every_double_bit_error_for_8_bit_data"
+            "tpt-kardashev-reflect new_is_in_lowest_terms_and_keeps_the_value"
+            "tpt-kardashev-reflect checked_cmp_agrees_with_the_exact_order"
+          )
+          for entry in "${harnesses[@]}"; do
+            read -r crate harness <<< "$entry"
+            echo "== $crate $harness"
+            cargo kani -p "$crate" --harness "$harness"
+          done
 
   fuzz:
     runs-on: ubuntu-latest
