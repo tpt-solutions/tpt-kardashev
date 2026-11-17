@@ -61,9 +61,32 @@ impl<A: ForceModel, B: ForceModel> ForceModel for (A, B) {
 
 /// Equatorial radius of the Earth in km, from WGS 84 (NGA.STND.0036).
 pub const WGS84_EQUATORIAL_RADIUS_KM: f64 = 6_378.137;
-/// The Earth's second zonal harmonic coefficient J2, from WGS 84 (the value of EGM96, which WGS 84
-/// adopts).
-pub const WGS84_J2: f64 = 1.082_626_683_55e-3;
+/// The Earth's second zonal harmonic coefficient J2 of the WGS 84 reference ellipsoid: 1.08262982131e-3,
+/// from the NASA/NIMA EGM96 report (Lemoine et al., NASA/TP-1998-206861, eq. 11.4-4, checked 2026-11-17).
+/// This is the zero-tide value, the one the report adopts to define the reference ellipsoid (its eq.
+/// 3.3.1-5). An earlier version of this crate had 1.08262668355e-3: that is the tide-free J2, which is
+/// √5 times the magnitude of the JGM-2 coefficient C₂,₀ = −484.1654767e-6, and it is not the WGS 84 value.
+/// The two differ by 3e-6 relative.
+pub const WGS84_J2: f64 = 1.082_629_821_31e-3;
+
+/// The zonal harmonics `J₂, J₃, …, J₁₀` of the WGS 84 reference ellipsoid, in the slice order of
+/// [`ZonalHarmonics::new`]. From the EGM96 report, eq. 11.4-4: `J₄ = −2.370911200530e-6`,
+/// `J₆ = 6.083464988820e-9`, `J₈ = −1.426810879200e-11`, `J₁₀ = 1.214392758820e-14`. The odd zonals are
+/// zero, because the reference ellipsoid is symmetric about the equator.
+///
+/// These are the zonals of the ellipsoid, not of the Earth's gravity field. The field (EGM96) has odd
+/// zonals and higher even ones that differ from these, and its coefficients are not bundled.
+pub const WGS84_ZONAL_J2_TO_J10: [f64; 9] = [
+    WGS84_J2,
+    0.0,
+    -2.370_911_200_530e-6,
+    0.0,
+    6.083_464_988_820e-9,
+    0.0,
+    -1.426_810_879_200e-11,
+    0.0,
+    1.214_392_758_820e-14,
+];
 
 /// The perturbing acceleration of the J2 zonal harmonic of an oblate central body, in an inertial
 /// frame whose z axis is the body's spin axis:
