@@ -131,8 +131,9 @@ pub struct Network {
     /// Whether arriving bundles are routed on to their destinations.
     routing: bool,
     max_hops: u32,
-    /// Times each bundle has been handled at a node, for the hop limit.
-    handled: BTreeMap<BundleId, u32>,
+    /// Times each bundle has been handled at a node, for the hop limit. A fragment is counted on its own:
+    /// the key is the bundle identity with the fragment offset, since fragments share the identity.
+    handled: BTreeMap<(BundleId, Option<u64>), u32>,
     /// Bundles discarded because their lifetime ended or the hop limit was reached.
     discarded: u64,
     /// Bundles held at nodes, waiting for a route to open.
@@ -294,8 +295,57 @@ impl Network {
         }
         let bundle = Bundle::decode(bundle_bytes)?;
         let parts = crate::fragment::fragment(&bundle, max_payload)?;
+        self.send_parts(from, &parts)
+    }
+
+    /// Fragments a bundle so that each fragment fits the volume the sender's first hops have free now,
+    /// and sends them as [`Network::send_fragmented`] does (CCSDS 734.3-B-1 §2.4.4). The fragment size is
+    /// the largest payload whose reservation charge (the bytes plus the convergence-layer overhead) fits
+    /// the largest free volume among `from`'s outgoing contacts. A fragment that finds no room waits, as
+    /// any bundle does. A bundle that fits is sent whole. Returns the number of fragments accepted.
+    pub fn send_fitting(&mut self, from: u64, bundle_bytes: &[u8]) -> Result<usize, Error> {
+        if !self.nodes.contains_key(&from) {
+            return Err(Error::UnknownNode);
+        }
+        let bundle = Bundle::decode(bundle_bytes)?;
+        let free = self
+            .plan
+            .outgoing(from)
+            .map(|c| self.available(c))
+            .max()
+            .unwrap_or(0);
+        if free == 0 {
+            return self.send_parts(from, &[bundle]);
+        }
+        let payload_len = bundle.payload().map_or(0, |p| p.len()) as u64;
+        let overhead = (bundle_bytes.len() as u64).saturating_sub(payload_len);
+        let max_encoded = largest_charged_within(free);
+        // The fragment header adds bytes to the encoding: leave a margin, and shrink further if a
+        // fragment still does not fit once encoded.
+        let mut payload = max_encoded.saturating_sub(overhead + FRAGMENT_MARGIN_BYTES);
+        for _ in 0..16 {
+            let parts = crate::fragment::fragment(&bundle, payload as usize)?;
+            let mut oversized = false;
+            for part in &parts {
+                let encoded = part.encode()?.len() as u64;
+                if evc_of(encoded) > free {
+                    oversized = true;
+                }
+            }
+            if !oversized {
+                return self.send_parts(from, &parts);
+            }
+            payload = payload.saturating_sub(FRAGMENT_SHRINK_BYTES);
+        }
+        Err(Error::InvalidBundle {
+            rule: "no fragment size fits the free volume",
+        })
+    }
+
+    /// Hands each bundle in `parts` to node `from` as a new bundle; returns how many were accepted.
+    fn send_parts(&mut self, from: u64, parts: &[Bundle]) -> Result<usize, Error> {
         let mut accepted = 0;
-        for part in &parts {
+        for part in parts {
             let bytes = part.encode()?;
             if self.handle_bundle(from, from, bytes) {
                 accepted += 1;
@@ -384,7 +434,8 @@ impl Network {
             self.inbox.entry(at).or_default().push((from, payload));
             return true;
         }
-        let handled = self.handled.entry(bundle.id()).or_insert(0);
+        let key = (bundle.id(), bundle.primary.fragment.map(|f| f.offset));
+        let handled = self.handled.entry(key).or_insert(0);
         *handled += 1;
         if *handled > self.max_hops {
             self.discarded += 1;
@@ -868,4 +919,29 @@ fn contact_key(c: &Contact) -> (u64, u64, u64) {
 /// (CCSDS 734.3-B-1 §2.4.3).
 fn evc_of(len: u64) -> u64 {
     len + (3 * len).div_ceil(100).max(100)
+}
+
+/// Bytes left out of a fragment's payload budget for the fragment header, which is larger than a whole
+/// bundle's (fragment offset and total length are added to the primary block).
+const FRAGMENT_MARGIN_BYTES: u64 = 64;
+
+/// Bytes taken off a fragment's payload each time it is still too large once encoded.
+const FRAGMENT_SHRINK_BYTES: u64 = 16;
+
+/// The largest encoded length `len` whose reservation charge, [`evc_of`], is at most `free`. Zero if
+/// nothing fits.
+fn largest_charged_within(free: u64) -> u64 {
+    if evc_of(0) > free {
+        return 0;
+    }
+    let (mut lo, mut hi) = (0u64, free);
+    while lo < hi {
+        let mid = lo + (hi - lo).div_ceil(2);
+        if evc_of(mid) <= free {
+            lo = mid;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    lo
 }

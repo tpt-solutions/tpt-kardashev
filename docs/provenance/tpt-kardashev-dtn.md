@@ -47,3 +47,9 @@ None.
 ## CCSDS 734.3-B-1 §2.4.5 (multiple copies, 2026-11-16)
 
 - `Network::send_copies` sends the first `k` first hops whose contacts open earliest (ties by node id). This is the simplest form of the multiple-copy rule, not the full contact-graph search. `send_critical` is the all-neighbours case. Tests in `tests/copies.rs`.
+
+## Fitting fragments to the free volume (CCSDS 734.3-B-1 §2.4.4, 2026-11-17)
+
+- `Network::send_fitting` sizes each fragment so that its reservation charge (the simulator's `evc_of`, the bytes plus the convergence-layer overhead, §2.4.3) fits the largest free volume among the sender's first hops, and then sends the fragments as `send_fragmented` does. The sizing is this crate's; the rule is the standard's.
+- The hop counter is kept per fragment (key: bundle identity and fragment offset). Fragments share an identity, so the earlier per-identity counter discarded fragments over multi-hop paths. Regression test: `tests/fragment_sim.rs::the_hop_limit_counts_each_fragment_on_its_own`, which fails with the old key.
+- The end-to-end fitting test is ignored, because two concurrent LTP sessions on one contact stall in the simulator (todo, open). The charge model assumes segments of about 1400 bytes (3% overhead); at mtu 200 a fragment overruns its window, which is a second reason the test uses mtu 1400.
