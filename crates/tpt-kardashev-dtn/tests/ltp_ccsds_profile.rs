@@ -16,6 +16,7 @@ fn config(first_serial: u64) -> Config {
         timeout_ms: 1_000,
         max_transmissions: 5,
         first_serial,
+        max_rto_factor: 4,
     }
 }
 

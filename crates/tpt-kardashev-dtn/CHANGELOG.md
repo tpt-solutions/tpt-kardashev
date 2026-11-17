@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- LTP retransmission timeout: exponential backoff per session, up to 4 times the configured timeout (`RTO_CEILING_FACTOR`, `Sender::backoff_shift`). Two concurrent bundles over one contact now both arrive (`tests/concurrent.rs`). A silent link is declared failed after about 75 s, not 18 s; four routing tests were re-timed (`tests/routing_sim.rs`). The fitting send has an end-to-end test on a 10 kB/s link (`tests/fragment_sim.rs`).
+- LTP retransmission timeout: exponential backoff per session, up to 4 times the configured timeout (`max_rto_factor (default DEFAULT_MAX_RTO_FACTOR)`, `Sender::backoff_shift`). Two concurrent bundles over one contact now both arrive (`tests/concurrent.rs`). A silent link is declared failed after about 75 s, not 18 s; four routing tests were re-timed (`tests/routing_sim.rs`). The fitting send has an end-to-end test on a 10 kB/s link (`tests/fragment_sim.rs`).
 
 - `ltp::session::check_ccsds_session_number` and `Config::check_ccsds_profile`: the CCSDS profile of LTP (CCSDS 734.1-B-1, §3.5). Session numbers in [1, 2^32 − 1]; initial checkpoint and report serials in [1, 2^14 − 1]. Both are checks the caller opts into; RFC 5326 alone does not limit them. Constants `CCSDS_MAX_SESSION_NUMBER` and `CCSDS_MAX_INITIAL_SERIAL`. Tests in `tests/ltp_ccsds_profile.rs`.
 

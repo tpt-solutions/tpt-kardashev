@@ -18,6 +18,7 @@ fn config(max_transmissions: u32) -> Config {
         timeout_ms: 200,
         max_transmissions,
         first_serial: 0x41,
+        max_rto_factor: 4,
     }
 }
 

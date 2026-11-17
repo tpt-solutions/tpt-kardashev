@@ -9,7 +9,7 @@
 
 use crate::error::Error;
 use crate::ltp::segment::{Segment, SessionId};
-use crate::ltp::session::{Config, RTO_CEILING_FACTOR, Receiver, Sender, Status};
+use crate::ltp::session::{Config, Receiver, Sender, Status};
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
@@ -176,7 +176,10 @@ impl ConvergenceLayer for LtpConvergence {
 
     fn poll_outbound(&mut self, now: u64) -> Option<(u64, Vec<u8>)> {
         for (&(to, _), sender) in self.senders.iter_mut() {
-            let ceiling = self.config.timeout_ms.saturating_mul(RTO_CEILING_FACTOR);
+            let ceiling = self
+                .config
+                .timeout_ms
+                .saturating_mul(self.config.max_rto_factor);
             let base = rto(&self.rtt, to, self.config.timeout_ms, ceiling);
             sender.set_timeout(
                 base.saturating_mul(1 << sender.backoff_shift())

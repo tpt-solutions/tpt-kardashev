@@ -17,6 +17,7 @@ fn config() -> Config {
         timeout_ms: 200,
         max_transmissions: 3,
         first_serial: 0x77,
+        max_rto_factor: 4,
     }
 }
 

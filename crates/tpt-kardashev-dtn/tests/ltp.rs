@@ -366,6 +366,7 @@ fn config(mtu: usize, max_transmissions: u32) -> Config {
         timeout_ms: 200,
         max_transmissions,
         first_serial: 0x5EED,
+        max_rto_factor: 4,
     }
 }
 
@@ -446,6 +447,7 @@ fn invalid_configuration_is_refused() {
         },
         Config {
             first_serial: 0,
+            max_rto_factor: 4,
             ..config(10, 3)
         },
     ];

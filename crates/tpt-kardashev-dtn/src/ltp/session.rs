@@ -79,6 +79,11 @@ pub struct Config {
     /// First serial number used. A sender's checkpoint serials and a receiver's report serials
     /// count up from here. Must be non-zero. RFC 5326 §3.2.1 asks for it to be chosen at random.
     pub first_serial: u64,
+    /// The largest retransmission timeout, as a multiple of `timeout_ms`. Under queueing a checkpoint's
+    /// round trip includes the time it waits behind other sessions, so the timeout grows by exponential
+    /// backoff up to this multiple (see [`Sender::set_timeout`]). A silent link is declared failed after
+    /// about the sum of these timeouts over `max_transmissions`. At least 1. [`DEFAULT_MAX_RTO_FACTOR`] is 4.
+    pub max_rto_factor: u64,
 }
 
 impl Config {
@@ -101,6 +106,11 @@ impl Config {
         if self.first_serial == 0 {
             return Err(Error::Ltp {
                 what: "serial numbers must not start at zero",
+            });
+        }
+        if self.max_rto_factor == 0 {
+            return Err(Error::Ltp {
+                what: "the largest retransmission timeout is at least the configured timeout",
             });
         }
         Ok(())
@@ -140,7 +150,7 @@ pub fn check_ccsds_session_number(session: &SessionId) -> Result<(), Error> {
 
 /// The largest retransmission timeout, as a multiple of the configured timeout (see
 /// [`Sender::set_timeout`]).
-pub const RTO_CEILING_FACTOR: u64 = 4;
+pub const DEFAULT_MAX_RTO_FACTOR: u64 = 4;
 
 /// Where a session stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -583,7 +593,7 @@ impl Sender {
             1,
             self.config
                 .timeout_ms
-                .saturating_mul(RTO_CEILING_FACTOR)
+                .saturating_mul(self.config.max_rto_factor)
                 .max(1),
         );
     }

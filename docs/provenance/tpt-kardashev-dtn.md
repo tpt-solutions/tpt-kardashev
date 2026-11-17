@@ -56,6 +56,6 @@ None.
 
 ## LTP retransmission backoff (2026-11-17)
 
-- `LtpConvergence::poll_outbound` sets each session's checkpoint timeout to the base (the smoothed round trip once measured, else the configured timeout) doubled once per resend of its oldest unanswered checkpoint, capped at `RTO_CEILING_FACTOR` (4) times the configured timeout. This is the standard exponential backoff, applied per session. The RFC 5326 timers themselves are not changed: this crate's choice, recorded as a trade-off in the todo.
+- `LtpConvergence::poll_outbound` sets each session's checkpoint timeout to the base (the smoothed round trip once measured, else the configured timeout) doubled once per resend of its oldest unanswered checkpoint, capped at `max_rto_factor (default DEFAULT_MAX_RTO_FACTOR)` (4) times the configured timeout. This is the standard exponential backoff, applied per session. The RFC 5326 timers themselves are not changed: this crate's choice, recorded as a trade-off in the todo.
 - Measured against the simulator: a silent link is declared failed after about 75 s, not about 18 s. Tests in `tests/routing_sim.rs` were re-timed to this, with the reasons in their comments.
 - The cause the change addresses is the one Karn's rule creates under queueing: samples are discarded when every checkpoint is resent, so the estimate never adapts. Tests: `tests/concurrent.rs`.
