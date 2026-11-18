@@ -87,9 +87,9 @@ No crate has a mandatory dependency on another crate in the repo. Optional edges
 
 | From | To | Feature | Purpose |
 |---|---|---|---|
-| `tpt-kardashev-astrodynamics` | `tpt-kardashev-relativity` | `relativity` | Relativistic time-scale relations (TT, TCG, TCB, TDB) |
-| `tpt-kardashev-causal-consensus` | `tpt-kardashev-relativity` | `relativity` | Causal ordering across frames |
-| `tpt-kardashev-isru` | `tpt-kardashev-energy-ledger` | `energy` | Energy accounts for processes |
+| `tpt-kardashev-astrodynamics` | `tpt-kardashev-relativity` | none (decided 2026-11-18) | Not taken: CLAUDE.md forbids repo-internal dependencies |
+| `tpt-kardashev-causal-consensus` | `tpt-kardashev-relativity` | none (decided 2026-11-18) | Not taken, as above |
+| `tpt-kardashev-isru` | `tpt-kardashev-energy-ledger` | none (decided 2026-11-18) | Not taken, as above; the caller combines the two crates |
 | `tpt-kardashev-reflect` | none | | Independent |
 | `tpt-kardashev-nuclear-plasma` | none | | Independent |
 
