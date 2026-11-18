@@ -35,7 +35,7 @@ Checked against CCSDS 131.0-B-5 (September 2023) text: the RS field polynomial, 
 - LT: no RaptorQ precoding, no standard degree distribution, and no wire format for symbol ids. The decoder keeps all pending symbols in memory, so its memory is not bounded by a constant. The robust-soliton constructor needs `std`.
 - Turbo codes (deferred) and RaptorQ (excluded, patent exposure; see spec §11).
 - Forward error correction applied by the frame itself. The frame records parameters; the caller encodes and decodes the payload.
-- Fuzzing is smoke-tested only: `fuzz/` runs each libFuzzer target for 60 seconds (frame parser, RS decoding, soft Viterbi, LDPC) with no crashes. Longer campaigns and a corpus are not kept.
+- Fuzzing: `fuzz/` has four libFuzzer targets (frame parser, RS decoding, soft Viterbi, LDPC). Each ran one hour on nightly under WSL (about 0.6 billion runs in total) with no crash. The minimised corpus is kept in `fuzz/seeds/`. Results are in `docs/fuzzing.md`. Fuzzing is not a proof that the decoders never panic.
 - Kani proofs cover the GF(2^8) operations and the dual-basis maps only; the decoders are not proved.
 - ASM handling is byte-aligned only.
 - Bit-level frame synchronisation.
