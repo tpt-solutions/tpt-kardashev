@@ -1,50 +1,76 @@
-# dtn: custody transfer (design, 2026-11-18)
+# dtn: custody transfer (implemented 2026-11-18)
 
-Status: design only. Nothing here is implemented. It is the next Phase 2 item (dtn, bundle-level reliability,
-deferred in `crates/tpt-kardashev-dtn/README.md`), and it is the item that stands between dtn and its v0.1 exit.
+Status: implemented in `crates/tpt-kardashev-dtn` (`src/custody.rs`, the custody parts of `src/sim.rs`), with
+tests in `tests/custody.rs`, `tests/vectors.rs` and the unit tests of `custody.rs`. The decisions below are the
+ones the code follows. The reliability note in `crates/tpt-kardashev-dtn/README.md` describes the same design.
 
 ## What custody is
 
-A node that takes custody of a bundle accepts responsibility for delivering it onward, and keeps a copy until a
-custody signal shows the next custodian has it. A sender that requested custody keeps its copy until the signal
-arrives, and retransmits on timeout. Custody lets a bundle survive a hop-by-hop failure without an end-to-end
-path. Without it, a bundle is forwarded and then forgotten, which is what the simulator does now.
+A node that takes custody of a bundle accepts responsibility for delivering it onward, and keeps a copy until the
+next custodian has taken custody of it. The sender keeps its copy until a custodian takes it, and sends it again
+on timeout. Custody lets a bundle survive a hop-by-hop failure without an end-to-end path.
 
 ## Where the spec is
 
-- RFC 9171 (BPv7) does not define the custody transfer procedure. The `custody_transfer` field of substrate-dtn's bundle is not in RFC 9171, and dtn has no custody field.
-- CCSDS 734.2-B-1 (CCSDS Bundle Protocol) specifies custody transfer with its own signal and timers. That is the
-  source this design needs. It has not been read in this repository yet.
-- CCSDS 734.3-B-1 (SABR) refers to custody in §2.4.4 (custody refusal, the excluded neighbours) and in §3.2.5.
-  Those references are the ones the simulator already partly follows.
-
-**Next step:** read CCSDS 734.2-B-1 §(custody) and record it in `docs/provenance/tpt-kardashev-dtn.md`
-before any code. The design below assumes its signal and timer are the ones the standard gives.
-
-## Scope for the first slice
-
-1. Custody request: a bundle flag and a per-node decision whether to accept custody (refuse when the store is full).
-2. Custody signal: the custodian returns a signal to the previous custodian once it has taken custody.
-3. Custody copy: the previous custodian keeps its copy until the signal arrives, and drops it then.
-4. Custody timer: retransmit on timeout, with the attempt limit from configuration (as the LTP sessions do).
-5. Interaction with fragments: custody applies to each fragment as a bundle in its own right.
-
-Not in the first slice: custody across a contact plan change, custody of critical copies, and the status
-report that tells the source a bundle was taken into custody.
+- RFC 9171 (BPv7) defines no custody transfer. Its CDDL and processing rules were read for this design (the
+  texts were fetched to the session scratchpad and are not kept in the repository).
+- CCSDS 734.2-B-1 (CCSDS Bundle Protocol profile, September 2015) names RFC 5050 (BPv6) for custody. Its
+  §6.2.1.3 requires the custody signal processing of RFC 5050 §3.1, §4.2, §5.4, §5.10 to §5.12, §6.1 and §6.3.
+  Its Annex D describes the aggregate custody signal, which is not implemented here.
+- RFC 5050 §5.10 (custody acceptance: a succeeded signal to the current custodian, and the current custodian
+  asserted), §5.10.2 (release on the next custodian's succeeded signal), §5.12 (failure on timer expiry or a
+  failed signal, with re-forwarding), §5.6 (redundant reception) and §6.1.2 (the custody signal format and its
+  reason codes) were read and followed.
+- CCSDS 734.3-B-1 (SABR) §2.4.4 excludes the neighbours that refuse custody from the next hop of a bundle.
 
 ## Decisions
 
-- Custody is off by default, so every existing test keeps its behaviour.
-- The store refuses custody when full, and the refusal goes back as a signal, so the previous custodian keeps
-  its copy and can route elsewhere.
-- Timers and attempt limits are `Config` fields, as the LTP backoff ceiling now is.
-- The simulator gets custody through its existing `Held` entries: a custody copy is a held entry that is
-  released by the signal, not by the link.
+1. **BPv7 encodings of the BPv6 procedure.** RFC 9171 has no custody, so the custody request is a canonical block
+   and the custody signal is an administrative record, both of private-use type 192 (RFC 9171 §9.1 and §9.4). The
+   codes are not IANA-registered. A BPv6 node cannot read them, and nothing in this crate is interoperable with a
+   BPv6 custodian.
+2. **Signal format.** `[192, [status, time, source, creation time, creation sequence, fragment flag, fragment
+   offset]]`. The status byte is RFC 5050's: bit 7 is "succeeded" and the low seven bits are the reason. The
+   fragment offset is zero when there is no fragment, and a nonzero offset without the flag is rejected, so each
+   signal has one encoding.
+3. **Identity.** A custody record is keyed by the bundle's source node, creation time, creation sequence and,
+   for a fragment, its offset. Each fragment is a custody record of its own. Custody needs an `ipn` source.
+4. **Custodian.** A node takes custody when its store has room (a byte capacity, zero by default: no custody) and
+   a bundle would fit. It rewrites the custody request block to name itself, keeps its copy, and sends a succeeded
+   signal to the node that offered custody.
+5. **Release.** A copy is released by a succeeded signal from the next custodian, or by a redundant-reception
+   signal (RFC 5050 §5.6). Its held entries, including those waiting for a route, are dropped with it.
+6. **Timers and attempts.** A hand-off sets a timeout (`set_custody_timeout`). On expiry the copy is sent again,
+   up to `set_custody_attempts` hand-offs, and then given up. A failed hand-off of the session (LTP cancelled at
+   its retransmission limit) counts as a hand-off, so the attempt limit applies to it too (RFC 5050 §5.12).
+7. **Refusal.** A node that cannot take custody sends a depleted-storage signal and does not forward the bundle.
+   The previous custodian routes the bundle again with that node excluded from its next hop (SABR §2.4.4).
+8. **Redundancy.** A node that already holds custody of a bundle answers a further copy with a redundant-reception
+   signal. The sender releases its copy.
+9. **Destination.** The destination takes custody by delivering, and sends the succeeded signal. Retransmitted
+   copies are acknowledged again, and delivered only once.
+10. **Routing.** A bundle waiting for custody is routed like any held bundle, so a plan change re-routes it. A
+    node that has suspected a link waits for the suspicion to lapse, and the simulator wakes at that time.
+11. **Copies.** `send_custody_copies` sends copies over the route list. They share one custody record at the
+    origin: the first custodian to take custody releases the record, and copies still waiting at the origin are
+    dropped with it.
 
-## Tests that would define the slice
+## Not in this implementation
 
-- A bundle with custody requested over a relay whose second link fails after the first hop: the first custodian
-  retransmits, and the bundle arrives once.
-- A custodian with a full store refuses; the previous custodian keeps the copy and routes around the refusal.
-- A custody signal that is lost is recovered by the timer, and the copy is not dropped early.
-- With custody off, the existing routing and fragment tests are unchanged.
+- The CCSDS aggregate custody signal (CCSDS 734.2-B-1 Annex D).
+- Custody for `dtn` sources and status reports to `dtn` report-to endpoints (the simulator names nodes by
+  number).
+- Interoperation with a BPv6 node, and BPSec protection of the custody blocks.
+
+## Tests that define the behaviour
+
+- A bundle with custody over a chain: each custodian releases its copy when the next takes custody
+  (`custody_is_released_hop_by_hop_as_each_next_custodian_accepts`).
+- A custodian with no storage refuses; the previous custodian routes around it
+  (`a_custodian_without_storage_refuses_and_the_previous_custodian_routes_around_it`).
+- A lost signal is recovered by the timer, and the bundle is delivered once
+  (`a_lost_signal_is_recovered_by_the_timer_and_the_bundle_is_delivered_once`; mutation: no de-duplication fails).
+- A copy is given up after its attempt limit (`a_copy_is_given_up_after_its_attempt_limit`).
+- Copies over two routes, each taken into custody, delivered once; fragments each taken into custody and
+  reassembled; a bundle waiting for a route is routed when the plan changes.
+- Independent vectors for the custody signal and request (`tests/vectors/gen_bpv7.py`).

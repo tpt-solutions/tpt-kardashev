@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Custody transfer (`custody`, `sim::Network::send_custody`, `send_custody_copies`, `send_custody_fragmented`, `set_custody_capacity`, `set_custody_timeout`, `set_custody_attempts`, `custody_stats`): RFC 5050 §5.10 to §5.12 with BPv7 encodings (a private-use request block and signal record, both of type 192). Succeeded, depleted-storage and redundant-reception signals, release, timers and attempts, refusal with exclusion of the refusing node, and the destination. Tests in `tests/custody.rs`; independent vectors for the signal and the request in `tests/vectors`.
+- Bundle status reports (`report`, `StatusReport`, `Network::status_reports_sent`): RFC 9171 §6.1.1 records for reception, forwarding, delivery and deletion, with reason codes, status times and fragment fields. The simulator sends them to `ipn` report-to endpoints. Tests in `tests/status.rs`.
+- Contact-graph routing: `EarliestArrival::route_list` (one route per first neighbour, in order of arrival). Backlog is measured in volume and drained through each link’s windows (`drain_finish`), with waiting bundles counted first in first out. Copies use the route list (`tests/cgr.rs`).
+- LTP link-state scheduling: `LtpConvergence::set_link_open`, and `pause` and `resume` on `Sender` and `Receiver`. A closed link pauses its sessions (`tests/link_state.rs`).
+- Explicit reordering knob: `Impairments::reorder_percent` and `reorder_ms`.
+- Fragmentation and reassembly are in `fragment`; the typed extension blocks are in `extension`.
+- `cbor::Reader::read_bool`.
+- Fixes found while building the above: forwarding no longer drops bundles created during a pass; a suspicion that lapses wakes the simulator; the custody failure path counts the failed hand-off as an attempt; a custody signal with an offset but no fragment flag is rejected (found by the fuzzer).
+- Fuzzing: a fifth target, `custody_signal`.
+
+
 - LTP retransmission timeout: exponential backoff per session, up to 4 times the configured timeout (`max_rto_factor (default DEFAULT_MAX_RTO_FACTOR)`, `Sender::backoff_shift`). Two concurrent bundles over one contact now both arrive (`tests/concurrent.rs`). A silent link is declared failed after about 75 s, not 18 s; four routing tests were re-timed (`tests/routing_sim.rs`). The fitting send has an end-to-end test on a 10 kB/s link (`tests/fragment_sim.rs`).
 
 - `ltp::session::check_ccsds_session_number` and `Config::check_ccsds_profile`: the CCSDS profile of LTP (CCSDS 734.1-B-1, §3.5). Session numbers in [1, 2^32 − 1]; initial checkpoint and report serials in [1, 2^14 − 1]. Both are checks the caller opts into; RFC 5326 alone does not limit them. Constants `CCSDS_MAX_SESSION_NUMBER` and `CCSDS_MAX_INITIAL_SERIAL`. Tests in `tests/ltp_ccsds_profile.rs`.
