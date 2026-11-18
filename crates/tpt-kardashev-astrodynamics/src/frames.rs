@@ -5,11 +5,15 @@
 //! the orbit normal `h = r × v`, and T completes the right-handed triad, `T = N × R`. For a
 //! circular orbit the velocity is purely along T.
 //!
-//! LVLH is written with the axis convention documented on [`lvlh_matrix`]. Not written: the
-//! heliocentric ecliptic and Earth-fixed frames. The first needs a heliocentric origin, and the
-//! second needs UT1.
+//! LVLH is written with the axis convention documented on [`lvlh_matrix`]. The heliocentric
+//! ecliptic frame is written as a conversion from the Earth-centred equatorial frame,
+//! [`heliocentric_ecliptic`]. The Earth-fixed position transform is [`inertial_to_earth_fixed`],
+//! which takes the Earth rotation angle as an input: the angle itself needs UT1, which the crate
+//! does not bundle.
 
 use crate::elements::StateVector;
+use crate::ephemeris::{Body, Ephemeris};
+use crate::time::Epoch;
 use crate::{Error, Mat3, Vec3};
 
 /// The obliquity of the ecliptic at J2000, in arcseconds (IAU 2006: 84 381.406″).
@@ -21,6 +25,55 @@ pub fn ecliptic_to_equatorial(v: Vec3) -> Vec3 {
     let eps = (OBLIQUITY_J2000_ARCSEC / 3600.0).to_radians();
     let (s, c) = eps.sin_cos();
     Vec3::new(v.x, c * v.y - s * v.z, s * v.y + c * v.z)
+}
+
+/// Rotates a vector from the mean equator of J2000 to the mean ecliptic of J2000. This is the
+/// inverse of [`ecliptic_to_equatorial`]: a rotation about the x axis by minus the obliquity.
+pub fn equatorial_to_ecliptic(v: Vec3) -> Vec3 {
+    let eps = (OBLIQUITY_J2000_ARCSEC / 3600.0).to_radians();
+    let (s, c) = eps.sin_cos();
+    Vec3::new(v.x, c * v.y + s * v.z, -s * v.y + c * v.z)
+}
+
+/// Converts a position from the Earth-centred inertial frame (mean equator of J2000) to the
+/// heliocentric ecliptic frame of J2000: the origin is the Sun's centre, the fundamental plane is
+/// the mean ecliptic of J2000, and the x axis points to the J2000 equinox.
+///
+/// `geocentric_equatorial` is the position relative to the Earth's centre, in km, in the
+/// equatorial frame that the rest of this crate uses. The Sun's geocentric position comes from
+/// `ephemeris` at `epoch`, so the accuracy is that of the ephemeris (about 0.01° for the Sun's
+/// direction with [`crate::ephemeris::LowPrecision`]).
+///
+/// Fails with [`Error::NonFinite`] when the input is not finite.
+pub fn heliocentric_ecliptic<E: Ephemeris>(
+    geocentric_equatorial: Vec3,
+    epoch: Epoch,
+    ephemeris: &E,
+) -> Result<Vec3, Error> {
+    let p = geocentric_equatorial;
+    if !(p.x.is_finite() && p.y.is_finite() && p.z.is_finite()) {
+        return Err(Error::NonFinite { what: "position" });
+    }
+    let sun = ephemeris.geocentric_position(Body::Sun, epoch)?;
+    let e = equatorial_to_ecliptic(p);
+    // The Earth's heliocentric position is minus the Sun's geocentric position.
+    Ok(Vec3::new(e.x - sun.x, e.y - sun.y, e.z - sun.z))
+}
+
+/// Turns an inertial position into the Earth-fixed frame, given the angle of the Earth-fixed x axis
+/// from the inertial x axis (the Earth rotation angle). The same convention as
+/// [`crate::visibility::EarthRotation`].
+///
+/// The angle is an input: the crate does not compute it from UT1 or sidereal time, and bundles no
+/// Earth orientation data. Velocity is not transformed here, because the Earth-fixed velocity also
+/// needs the rotation rate and the position (`v_ef = R v - ω × r_ef`).
+pub fn inertial_to_earth_fixed(position: Vec3, earth_rotation_angle: f64) -> Vec3 {
+    let (s, c) = earth_rotation_angle.sin_cos();
+    Vec3::new(
+        c * position.x + s * position.y,
+        -s * position.x + c * position.y,
+        position.z,
+    )
 }
 
 /// The matrix whose rows are the RTN axes, as unit vectors in the state's own frame. Applying it
