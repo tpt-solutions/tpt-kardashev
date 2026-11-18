@@ -130,6 +130,7 @@ fn impairments_do_not_change_the_hop_count_rule() {
             jitter_ms: 30,
             loss_percent: 15,
             duplicate_percent: 15,
+            ..Impairments::default()
         },
         11,
     );

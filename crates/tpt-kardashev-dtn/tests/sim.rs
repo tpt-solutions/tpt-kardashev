@@ -139,6 +139,7 @@ fn impairments_do_not_duplicate_or_corrupt_the_bundle() {
         jitter_ms: 40,
         loss_percent: 25,
         duplicate_percent: 25,
+        ..Impairments::default()
     };
     let mut net = network(plan, imp, 42);
     relay_transfer(&mut net, &payload, 60_000).expect("delivered");
@@ -172,6 +173,7 @@ fn runs_are_deterministic_for_a_given_seed() {
         jitter_ms: 30,
         loss_percent: 20,
         duplicate_percent: 20,
+        ..Impairments::default()
     };
     let mut a = network(plan(), imp, 7);
     let mut b = network(plan(), imp, 7);
