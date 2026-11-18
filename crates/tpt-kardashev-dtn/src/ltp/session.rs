@@ -288,6 +288,8 @@ pub struct Sender {
     rtt_samples: Vec<u64>,
     /// The cancel segment waiting for its acknowledgment, if the session was cancelled.
     cancel: Option<CancelTimer>,
+    /// When the session was paused, if it is paused (see [`Sender::pause`]).
+    paused: Option<u64>,
 }
 
 impl Sender {
@@ -322,6 +324,7 @@ impl Sender {
             rto_ms: config.timeout_ms,
             rtt_samples: Vec::new(),
             cancel: None,
+            paused: None,
         };
         let mut segments = data_segments(
             block_len,
@@ -356,9 +359,46 @@ impl Sender {
         }
     }
 
+    /// Pauses the session at `now`. A paused session sends nothing and its timers do not run. The
+    /// convergence layer pauses sessions while the link to their peer is closed, so a checkpoint that
+    /// goes unanswered in a closed window is not counted as lost.
+    pub fn pause(&mut self, now: u64) {
+        if self.paused.is_none() {
+            self.paused = Some(now);
+        }
+    }
+
+    /// Resumes a paused session at `now`. Each running timer moves later by the time the session was
+    /// paused, so it has the time left that it had when the pause began.
+    pub fn resume(&mut self, now: u64) {
+        let Some(since) = self.paused.take() else {
+            return;
+        };
+        let shift = now.saturating_sub(since);
+        for entry in self.inflight.values_mut() {
+            if entry.deadline != NOT_TIMED {
+                entry.deadline = entry.deadline.saturating_add(shift);
+            }
+        }
+        if let Some(timer) = self.cancel.as_mut()
+            && timer.deadline != NOT_TIMED
+        {
+            timer.deadline = timer.deadline.saturating_add(shift);
+        }
+    }
+
+    /// Whether the session is paused.
+    pub fn is_paused(&self) -> bool {
+        self.paused.is_some()
+    }
+
     /// The next segment to transmit at virtual time `now`, if any. Expired timers are handled
-    /// first: an unanswered checkpoint is queued again, or the session is cancelled.
+    /// first: an unanswered checkpoint is queued again, or the session is cancelled. A paused
+    /// session returns nothing.
     pub fn poll(&mut self, now: u64) -> Option<Segment> {
+        if self.paused.is_some() {
+            return None;
+        }
         self.expire(now);
         expire_cancel(
             &mut self.cancel,
@@ -552,6 +592,9 @@ impl Sender {
 
     /// When the next countdown timer or cancel timer expires, if any.
     pub fn next_timeout(&self) -> Option<u64> {
+        if self.paused.is_some() {
+            return None;
+        }
         let checkpoints = if self.status == Status::Active {
             self.inflight
                 .values()
@@ -637,6 +680,8 @@ pub struct Receiver {
     green_end: Option<u64>,
     /// The cancel segment waiting for its acknowledgment, if the session was cancelled here.
     cancel: Option<CancelTimer>,
+    /// When the session was paused, if it is paused (see [`Receiver::pause`]).
+    paused: Option<u64>,
 }
 
 impl Receiver {
@@ -660,6 +705,7 @@ impl Receiver {
             green: BTreeMap::new(),
             green_end: None,
             cancel: None,
+            paused: None,
         })
     }
 
@@ -692,9 +738,43 @@ impl Receiver {
         }
     }
 
+    /// Pauses the session at `now`: a paused receiver sends no reports and its report timers do not
+    /// run, as for a sender (see [`Sender::pause`]).
+    pub fn pause(&mut self, now: u64) {
+        if self.paused.is_none() {
+            self.paused = Some(now);
+        }
+    }
+
+    /// Resumes a paused receiver at `now`, moving its running timers later by the paused time.
+    pub fn resume(&mut self, now: u64) {
+        let Some(since) = self.paused.take() else {
+            return;
+        };
+        let shift = now.saturating_sub(since);
+        for entry in self.inflight.values_mut() {
+            if entry.deadline != NOT_TIMED {
+                entry.deadline = entry.deadline.saturating_add(shift);
+            }
+        }
+        if let Some(timer) = self.cancel.as_mut()
+            && timer.deadline != NOT_TIMED
+        {
+            timer.deadline = timer.deadline.saturating_add(shift);
+        }
+    }
+
+    /// Whether the receiver is paused.
+    pub fn is_paused(&self) -> bool {
+        self.paused.is_some()
+    }
+
     /// The next segment to transmit at virtual time `now`, if any. Expired report timers are
-    /// handled first.
+    /// handled first. A paused receiver returns nothing.
     pub fn poll(&mut self, now: u64) -> Option<Segment> {
+        if self.paused.is_some() {
+            return None;
+        }
         self.expire(now);
         expire_cancel(
             &mut self.cancel,
@@ -917,6 +997,9 @@ impl Receiver {
 
     /// When the next report timer or cancel timer expires, if any.
     pub fn next_timeout(&self) -> Option<u64> {
+        if self.paused.is_some() {
+            return None;
+        }
         let reports = if self.status == Status::Active {
             self.inflight
                 .values()

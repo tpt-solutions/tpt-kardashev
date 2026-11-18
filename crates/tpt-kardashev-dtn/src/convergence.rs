@@ -64,6 +64,12 @@ pub struct LtpConvergence {
     completed: Vec<u64>,
     /// Round-trip estimate per neighbour, from the checkpoints this node has sent to it.
     rtt: BTreeMap<u64, RttEstimate>,
+    /// Whether the link from this node to each neighbour is open, as last reported. A neighbour not
+    /// listed is treated as open.
+    link_open: BTreeMap<u64, bool>,
+    /// The latest virtual time the layer was told about, used to pause sessions created while a
+    /// link is closed.
+    now_seen: u64,
 }
 
 /// Smoothed round-trip time and its variance for one neighbour (Jacobson and Karels, as used by
@@ -122,6 +128,8 @@ impl LtpConvergence {
             failed: Vec::new(),
             completed: Vec::new(),
             rtt: BTreeMap::new(),
+            link_open: BTreeMap::new(),
+            now_seen: 0,
         })
     }
 
@@ -158,6 +166,41 @@ impl LtpConvergence {
     pub fn local(&self) -> u64 {
         self.local
     }
+
+    /// Records whether the link from this node to `peer` is open at virtual time `now`. While the
+    /// link is closed, every session with that peer is paused: it sends nothing and its timers do not
+    /// run, so a closed window is not counted as a lost checkpoint. Opening the link resumes them,
+    /// each with the time it had left (link-state scheduling, as LTP's contact-driven operation needs).
+    pub fn set_link_open(&mut self, peer: u64, open: bool, now: u64) {
+        self.now_seen = now;
+        if self.link_is_open(peer) == open {
+            return;
+        }
+        self.link_open.insert(peer, open);
+        for (&(to, _), sender) in self.senders.iter_mut() {
+            if to == peer {
+                if open {
+                    sender.resume(now);
+                } else {
+                    sender.pause(now);
+                }
+            }
+        }
+        for (&(from, _), receiver) in self.receivers.iter_mut() {
+            if from == peer {
+                if open {
+                    receiver.resume(now);
+                } else {
+                    receiver.pause(now);
+                }
+            }
+        }
+    }
+
+    /// Whether the link to `peer` is open, as last reported. A link is open until it is reported closed.
+    pub fn link_is_open(&self, peer: u64) -> bool {
+        self.link_open.get(&peer).copied().unwrap_or(true)
+    }
 }
 
 impl ConvergenceLayer for LtpConvergence {
@@ -169,12 +212,16 @@ impl ConvergenceLayer for LtpConvergence {
             number,
         };
         self.outgoing.insert((to, number), payload.clone());
-        let sender = Sender::new(session, BUNDLE_CLIENT_SERVICE, payload, self.config)?;
+        let mut sender = Sender::new(session, BUNDLE_CLIENT_SERVICE, payload, self.config)?;
+        if !self.link_is_open(to) {
+            sender.pause(self.now_seen);
+        }
         self.senders.insert((to, number), sender);
         Ok(())
     }
 
     fn poll_outbound(&mut self, now: u64) -> Option<(u64, Vec<u8>)> {
+        self.now_seen = now;
         for (&(to, _), sender) in self.senders.iter_mut() {
             let ceiling = self
                 .config
@@ -216,7 +263,10 @@ impl ConvergenceLayer for LtpConvergence {
         }
         let key = (from, seg.session);
         if !self.receivers.contains_key(&key) {
-            let receiver = Receiver::new(seg.session, self.config)?;
+            let mut receiver = Receiver::new(seg.session, self.config)?;
+            if !self.link_is_open(from) {
+                receiver.pause(now);
+            }
             self.receivers.insert(key, receiver);
         }
         if let Some(receiver) = self.receivers.get_mut(&key) {
