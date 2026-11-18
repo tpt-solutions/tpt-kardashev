@@ -2,7 +2,7 @@
 
 Radiation-tolerant primitives: triple and N-modular redundancy with scrubbing, SECDED(72,64) words, CRC-protected cells and buffers, a checkpoint with rollback and a watchdog marker, and a seeded fault injector for tests.
 
-**Status:** Phase 1.3 implementation, missing only the Kani proofs for v0.1 exit (see below). Not published (`publish = false`).
+**Status:** v0.1 exit criteria met (2026-11-18). The Kani proofs are verified in WSL; the 64-bit SECDED proof is still open (see below). Not published (`publish = false`).
 
 ## What it provides
 

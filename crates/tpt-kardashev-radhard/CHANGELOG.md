@@ -9,4 +9,5 @@
 - Seeded fault injector.
 - `volatile` feature: `VolatileRegister<T>` with volatile read and write; the only `unsafe` in the crate.
 - `scrub_demo` example.
-- Exhaustive and injector-driven tests. Kani proofs are not yet implemented.
+- Exhaustive and injector-driven tests.
+- Kani proofs: the TMR voter result is unchanged by any single corrupted replica; SECDED(8-bit data) corrects every single-bit error and detects every double-bit error. Verified in WSL with Kani 0.68.0. The 64-bit SECDED proof is not included.

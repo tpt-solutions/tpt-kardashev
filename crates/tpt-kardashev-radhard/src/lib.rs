@@ -9,8 +9,9 @@
 //! `unsafe` is forbidden unless the `volatile` feature is enabled. That feature gates the only
 //! module allowed to use `unsafe`: volatile register access, which needs a caller-checked address.
 //!
-//! No Kani proofs are included yet. The verifier is not installed in this environment. The
-//! voter and SECDED properties are covered by exhaustive tests instead.
+//! Kani proofs cover the voter and SECDED for 8-bit data (`cargo kani`, behind `cfg(kani)`). The
+//! 64-bit SECDED proof did not finish in the solver, so the full width is covered by exhaustive
+//! tests.
 
 #![no_std]
 #![cfg_attr(not(feature = "volatile"), forbid(unsafe_code))]
