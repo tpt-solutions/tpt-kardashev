@@ -2,7 +2,7 @@
 //! SGP4 against the verification case of Vallado, Crawford, Hujsak and Kelso (AIAA 2006-6753): the
 //! element set of satellite 00005 under WGS-72, and the state the paper prints at seven epochs.
 //! Also: element parsing, deep-space rejection, and malformed input.
-#![cfg(feature = "std")]
+#![cfg(feature = "sgp4")]
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_astrodynamics::sgp4::{GravityConstants, Sgp4, parse_tle};

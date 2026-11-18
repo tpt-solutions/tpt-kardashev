@@ -3,7 +3,7 @@
 //! come back as `Ok` or `Err`, never as a panic. The generator is a fixed-seed LCG, so every run
 //! sees the same inputs. This is not a coverage-guided fuzzer; a `cargo-fuzz` target is a
 //! separate todo item.
-#![cfg(feature = "std")]
+#![cfg(feature = "sgp4")]
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_astrodynamics::sgp4::parse_tle;

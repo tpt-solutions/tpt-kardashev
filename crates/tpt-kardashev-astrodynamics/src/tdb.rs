@@ -9,7 +9,7 @@
 //! 1600 to 2200, and better near 2000 (Irwin and Fukushima 1999; the FB2001 README).
 //!
 //! The constant offset `TDB0` and the linear TCB–TDB rate are not in this series; they belong to
-//! [`crate::time`]'s TCB relation and the `relativity` crate's rate constants. Only the periodic part is
+//! [`crate::time`]'s TCB relation, not in this crate yet. Only the periodic part is
 //! evaluated here.
 //!
 //! The coefficient table is `fb2001_terms`, generated from the IERS data file; see its header.

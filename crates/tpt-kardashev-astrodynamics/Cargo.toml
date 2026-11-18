@@ -12,10 +12,11 @@ license.workspace = true
 publish.workspace = true
 
 [features]
-default = ["std"]
+default = ["std", "sgp4"]
 std = []
 alloc = []
-relativity = []
+# SGP4/SDP4 and TLE parsing (spec §12.4). Needs `std` for trigonometry.
+sgp4 = ["std"]
 
 [dependencies]
 

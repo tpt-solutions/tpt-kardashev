@@ -2,7 +2,7 @@
 //! The remaining deep-space and original Report #3 cases of the verification set of Vallado,
 //! Crawford, Hujsak and Kelso (AIAA 2006-6753), under WGS-72. The printed states are the paper's,
 //! cited as facts. Only rows whose printed dates agree with the element epoch are used.
-#![cfg(feature = "std")]
+#![cfg(feature = "sgp4")]
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_astrodynamics::sgp4::{GravityConstants, Sgp4, parse_tle};

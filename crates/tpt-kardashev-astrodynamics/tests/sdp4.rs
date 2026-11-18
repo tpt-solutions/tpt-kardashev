@@ -3,7 +3,7 @@
 //! Hujsak and Kelso (AIAA 2006-6753), under WGS-72: a non-resonant GPS-type orbit, the 12-hour
 //! Molniya-type resonance, and the one-day (synchronous) resonance of geostationary orbits. The
 //! printed states are the paper's, cited as facts.
-#![cfg(feature = "std")]
+#![cfg(feature = "sgp4")]
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_astrodynamics::sgp4::{GravityConstants, Sgp4, parse_tle};

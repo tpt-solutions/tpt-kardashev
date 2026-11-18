@@ -4,7 +4,7 @@
 //! simplified-drag branches for perigees under 220 km, and the sub-orbital and decaying cases, which
 //! the paper says must be trapped. The printed states are the paper's; they are cited, not copied
 //! from a data file.
-#![cfg(feature = "std")]
+#![cfg(feature = "sgp4")]
 #![allow(clippy::expect_used)]
 
 use tpt_kardashev_astrodynamics::Error;
