@@ -45,3 +45,10 @@ path = "fuzz_targets/sdnv_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "custody_signal"
+path = "fuzz_targets/custody_signal.rs"
+test = false
+doc = false
+bench = false

@@ -191,6 +191,17 @@ impl<'a> Reader<'a> {
             })
         }
     }
+
+    /// Reads a boolean: the simple values `false` (0xF4) and `true` (0xF5).
+    pub fn read_bool(&mut self) -> Result<bool, Error> {
+        match self.take_byte()? {
+            0xF4 => Ok(false),
+            0xF5 => Ok(true),
+            _ => Err(Error::UnexpectedItem {
+                expected: "boolean",
+            }),
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]

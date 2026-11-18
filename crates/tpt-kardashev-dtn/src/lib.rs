@@ -35,6 +35,8 @@ pub mod contact;
 #[cfg(feature = "alloc")]
 pub mod convergence;
 #[cfg(feature = "alloc")]
+pub mod custody;
+#[cfg(feature = "alloc")]
 pub mod eid;
 #[cfg(feature = "alloc")]
 pub mod extension;
@@ -42,6 +44,8 @@ pub mod extension;
 pub mod fragment;
 #[cfg(feature = "alloc")]
 pub mod ltp;
+#[cfg(feature = "alloc")]
+pub mod report;
 #[cfg(feature = "alloc")]
 pub mod route;
 #[cfg(feature = "alloc")]
