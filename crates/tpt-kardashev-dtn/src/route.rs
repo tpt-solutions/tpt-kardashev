@@ -12,9 +12,11 @@
 //! not fit there). The volume a route reserves is up to the caller: the simulator reserves the EVC
 //! on every contact of a route when it hands the bundle on.
 //!
-//! Not modelled: fragmentation of bundles across contacts, critical bundles sent along every
-//! plausible route, excluded neighbours, backlog measured in volume (the backlog is measured in
-//! time, through `free_at`), and route lists kept between computations.
+//! Route lists (CGR's set of routes, one per neighbour of the source) come from
+//! [`EarliestArrival::route_list`]: the best route is found, then the search is repeated with that
+//! route's first neighbour excluded, so each route in the list leaves the source by a different
+//! neighbour. Backlog is taken as a time through `free_at`; the simulator computes that time from
+//! the bytes queued ahead of a bundle on each link, drained through the link's windows.
 //!
 //! Dijkstra is exact here. Arrival time never decreases along a route, and waiting is allowed, so
 //! a node's earliest arrival is the right label to extend from. Ties are broken by hop count and
@@ -126,6 +128,47 @@ impl EarliestArrival {
             excluded: &[],
         };
         self.route_constrained(plan, source, destination, now, size, free_at, &constraints)
+    }
+
+    /// A route list: up to `max_routes` routes, each leaving `source` by a different neighbour, in
+    /// order of projected arrival (ties by hop count). The first is the best route; each later one is
+    /// the best route that avoids the first hops of those before it. Fewer routes are returned when
+    /// the plan does not offer that many distinct first hops. The `excluded` nodes of `constraints`
+    /// apply to every route. A bundle destined for `source` itself has one empty route.
+    #[allow(clippy::too_many_arguments)]
+    pub fn route_list(
+        &self,
+        plan: &ContactPlan,
+        source: u64,
+        destination: u64,
+        now: u64,
+        size: u64,
+        free_at: &dyn Fn(&Contact) -> u64,
+        constraints: &RouteConstraints<'_>,
+        max_routes: usize,
+    ) -> Vec<Route> {
+        let mut routes: Vec<Route> = Vec::new();
+        let mut excluded: Vec<u64> = constraints.excluded.to_vec();
+        while routes.len() < max_routes {
+            let current = RouteConstraints {
+                excluded: &excluded,
+                ..*constraints
+            };
+            let Some(route) =
+                self.route_constrained(plan, source, destination, now, size, free_at, &current)
+            else {
+                break;
+            };
+            let first = route.hops.first().map(|hop| hop.contact.to);
+            routes.push(route);
+            match first {
+                Some(neighbour) => excluded.push(neighbour),
+                // A route with no hops is the source itself: there is no other route to list.
+                None => break,
+            }
+        }
+        routes.sort_by_key(|r| (r.arrival, r.hops.len()));
+        routes
     }
 
     /// The earliest-delivering route for a bundle of `size` bytes, subject to `constraints` (see
