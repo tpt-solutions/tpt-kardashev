@@ -12,6 +12,7 @@ Double-entry energy accounting with explicit waste heat, Landauer bounds, Stefan
 - `radiator_capacity(emissivity, area, T)`: `emissivity * sigma * area * T^4`.
 - `HeatBudget`: radiator capacity, current load and headroom.
 - `EnergyOracle` trait, with `ErasureOracle` as the Landauer-based implementation.
+- Optional `units` feature: `From` conversions between the newtypes and `tpt-math-units` quantities (`Energy`, `Power`, `ThermodynamicTemperature`), using the crates.io release `tpt-math-units` 0.1.0.
 
 ## Constants
 
@@ -22,7 +23,7 @@ Double-entry energy accounting with explicit waste heat, Landauer bounds, Stefan
 - Supply systems, power electronics, batteries or conversion losses. Those stay in `tpt-equinox-power` and `tpt-energy`.
 - Thermal transients, radiator view factors, or temperature-dependent emissivity.
 - Device-level energy cost of computation. Landauer is a lower bound, not a model of any device.
-- The optional `units` feature (mapping to `tpt-math-units`). It is not implemented.
+- Dimensional checking beyond the newtypes. The optional `units` feature only converts `Joules`, `Watts` and `Kelvin` to and from the `tpt-math-units` quantities; the ledger itself still works on the bare `f64` newtypes.
 - Serialised forms are not a stable wire format. The `serde` feature (hand-written impls, no derive macro) covers the newtypes and `AccountKind`. `HeatBudget` and `Ledger` have no `serde` impls, because deserialising them would skip their checks. `Error` is serialise-only.
 
 ## Examples

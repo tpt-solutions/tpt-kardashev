@@ -16,10 +16,13 @@ default = ["std"]
 std = []
 alloc = []
 serde = ["dep:serde"]
+units = ["dep:tpt-math-units"]
 
 [dependencies]
 # No `derive` feature: serde_derive pulls in a Unicode-3.0 dependency, which the licence policy denies.
 serde = { version = "1.0.229", default-features = false, optional = true }
+# tpt-math-units (MIT OR Apache-2.0, on crates.io) wraps uom; its no_std build is clean.
+tpt-math-units = { version = "0.1.0", default-features = false, optional = true }
 
 [lints]
 workspace = true
