@@ -15,7 +15,6 @@ publish.workspace = true
 default = ["std"]
 std = []
 alloc = []
-relativity = []
 crypto = ["dep:ed25519-compact"]
 
 [dependencies]

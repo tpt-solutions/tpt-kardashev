@@ -10,9 +10,9 @@ Causal ordering and hierarchical consensus (domains and federation) with consist
 - `alloc`: enables heap-allocating APIs. Core is `no_std`.
 - `crypto`: Ed25519 signatures of epoch summaries (`ed25519-compact`, MIT).
 
-## Optional features
+## Dependencies on other repo crates
 
-- `relativity`: declared per spec §4.2; no code behind it yet.
+None. The spec's optional `relativity` edge is not taken: CLAUDE.md forbids a dependency on another crate in this repo (decided 2026-11-18, see `todo.md`). Causal ordering comes from the crate's own clocks and causal broadcast.
 
 ## What it does not model
 
