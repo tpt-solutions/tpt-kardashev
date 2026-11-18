@@ -133,6 +133,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         timeout_ms: 300,
         max_transmissions: 60,
         first_serial: 0x200,
+        max_rto_factor: 4,
     };
     let mut net = Network::new(ContactPlan::new(contacts), Impairments::default(), 1);
     net.set_routing(true);
