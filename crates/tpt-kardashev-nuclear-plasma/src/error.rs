@@ -33,6 +33,11 @@ pub enum NeutronicsError {
     NoSurface,
     /// The iteration did not converge within its limit.
     NotConverged,
+    /// A geometry is not usable: a surface has a non-finite or non-positive parameter, a plane has a zero
+    /// normal, a zone refers to a surface that does not exist, or a zone has no operands.
+    BadGeometry,
+    /// A ray direction is not finite or has zero length.
+    BadDirection,
 }
 
 impl fmt::Display for NeutronicsError {
@@ -52,6 +57,8 @@ impl fmt::Display for NeutronicsError {
             NeutronicsError::NoSurface => f.write_str("no flux surface found inside the grid"),
             NeutronicsError::Malformed { line } => write!(f, "cross-section file is malformed at line {line}"),
             NeutronicsError::NoGroups => f.write_str("a multigroup set needs at least one group"),
+            NeutronicsError::BadGeometry => f.write_str("the geometry is not usable"),
+            NeutronicsError::BadDirection => f.write_str("the ray direction must be finite and non-zero"),
         }
     }
 }

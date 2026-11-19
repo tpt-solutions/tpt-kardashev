@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Fixed-boundary Grad-Shafranov equilibrium and fixed-source Monte Carlo neutronics with a cross-section reader.
 //!
-//! Implemented: the error type and a seeded generator (always, `no_std`), and with the `std` feature a
-//! one-group fixed-source Monte Carlo for a slab and an infinite medium ([`slab`]), with analog and
-//! implicit-capture estimators. Not written yet: the equilibrium solver, the cross-section reader and
-//! the multigroup types, the constructive solid geometry, and the statistical suite beyond the slab
-//! checks. See the workspace `todo.md` for this crate's v0.1 scope.
+//! Implemented: the error type and a seeded generator (always, `no_std`); with `alloc`, the fixed-boundary
+//! equilibrium solver (`equilibrium`), flux surfaces and the safety factor (`surface`) and the
+//! multigroup cross-section reader (`xs`); with `std`, a one-group fixed-source Monte Carlo for a slab and
+//! an infinite medium ([`slab`]) with analog and implicit-capture estimators, one-dimensional layered
+//! geometry ([`layers`]), and three-dimensional constructive solid geometry for point location and ray
+//! crossings ([`csg`]). Not written yet: transport through the three-dimensional geometry, and the
+//! statistical suite beyond the slab checks. See the workspace `todo.md` for this crate's scope.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -16,6 +18,8 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+pub mod csg;
 #[cfg(feature = "alloc")]
 pub mod equilibrium;
 pub mod error;
