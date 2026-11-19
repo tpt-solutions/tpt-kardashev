@@ -41,6 +41,8 @@ pub enum Error {
     InvalidRadius,
     /// A time of flight must be positive and finite.
     InvalidTimeOfFlight,
+    /// A thrust acceleration must be positive and finite.
+    InvalidAcceleration,
     /// A coefficient that must not be negative is negative. `what` names it.
     Negative {
         /// The quantity that is negative.
@@ -110,6 +112,9 @@ impl fmt::Display for Error {
             Error::OutOfCoverage => f.write_str("the epoch is outside the segment's coverage"),
             Error::InvalidTimeOfFlight => {
                 f.write_str("the time of flight must be positive and finite")
+            }
+            Error::InvalidAcceleration => {
+                f.write_str("the thrust acceleration must be positive and finite")
             }
             Error::NoLeapSecondEntry => {
                 f.write_str("the instant is before the first leap-second table entry")

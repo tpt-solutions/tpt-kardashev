@@ -38,6 +38,8 @@ pub mod integrate;
 #[cfg(feature = "std")]
 pub mod lambert;
 #[cfg(feature = "std")]
+pub mod low_thrust;
+#[cfg(feature = "std")]
 pub mod manoeuvre;
 pub mod matrix;
 #[cfg(all(feature = "std", feature = "alloc"))]
