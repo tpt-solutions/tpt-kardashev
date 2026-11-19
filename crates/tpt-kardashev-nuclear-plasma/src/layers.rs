@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! A one-dimensional layered geometry: regions of different material in a row, with the neutron source
 //! at the left face. This is the one-dimensional case of constructive solid geometry; the three-dimensional
-//! case, for point location and ray crossings, is in [`crate::csg`]. Transport through the three-dimensional
-//! geometry is not written.
+//! case, for point location and ray crossings, is in [`crate::csg`], with analog transport through it in
+//! [`crate::csg_transport`].
 //!
 //! A neutron that reaches a boundary between regions crosses into the next region with its direction and
 //! weight unchanged. Free flights are sampled in the region the neutron is in; because the exponential

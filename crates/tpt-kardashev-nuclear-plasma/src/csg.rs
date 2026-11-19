@@ -7,8 +7,8 @@
 //! expression holds there, so zones are meant to be disjoint and the first match is then the only one.
 //! The model reports which zone a point is in and the distance along a ray to the next surface crossing.
 //!
-//! This module does not transport neutrons through the geometry: it gives the zone of a point and the
-//! distance to the next boundary, and a transport loop that uses them is not written. Surfaces are
+//! This module gives the zone of a point and the distance to the next boundary. Analog transport that uses
+//! them is in [`crate::csg_transport`]. Surfaces are
 //! exact quadrics, with no tolerance on the crossing, and a ray that starts on a surface is not handled:
 //! the crossing at distance zero is ignored, so a ray must start strictly inside or strictly outside.
 

@@ -6,8 +6,8 @@
 //! multigroup cross-section reader (`xs`); with `std`, a one-group fixed-source Monte Carlo for a slab and
 //! an infinite medium ([`slab`]) with analog and implicit-capture estimators, one-dimensional layered
 //! geometry ([`layers`]), and three-dimensional constructive solid geometry for point location and ray
-//! crossings ([`csg`]). Not written yet: transport through the three-dimensional geometry, and the
-//! statistical suite beyond the slab checks. See the workspace `todo.md` for this crate's scope.
+//! crossings ([`csg`]), and one-group analog transport through that geometry ([`csg_transport`]). Not
+//! written yet: multigroup or anisotropic transport, and the statistical suite beyond the slab checks. See the workspace `todo.md` for this crate's scope.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -20,6 +20,8 @@ extern crate alloc;
 
 #[cfg(feature = "std")]
 pub mod csg;
+#[cfg(feature = "std")]
+pub mod csg_transport;
 #[cfg(feature = "alloc")]
 pub mod equilibrium;
 pub mod error;
