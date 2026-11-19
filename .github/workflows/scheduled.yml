@@ -50,7 +50,9 @@ jobs:
       - name: Run fuzz targets if any exist
         run: |
           if ls crates/*/fuzz/Cargo.toml >/dev/null 2>&1; then
-            cargo install --locked cargo-fuzz
+            # The repo pins rustc 1.90.0 (rust-toolchain.toml), which cargo-fuzz's
+            # current dependencies do not support. Install with the stable toolchain.
+            cargo +stable install --locked cargo-fuzz
             for dir in crates/*/fuzz; do
               crate_dir="$(dirname "$dir")"
               (
