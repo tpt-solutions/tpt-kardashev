@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `csg` (feature `std`): three-dimensional constructive solid geometry. Surfaces are planes, spheres and cylinders about the z axis (`Surface`); zones are built from them by intersection, union and complement (`Expr`) and collected in a `Model`, which gives the first zone holding a point (`Model::zone_of`) and the nearest surface crossing along a ray (`Model::distance_to_surface`). Errors: `NeutronicsError::BadGeometry` and `BadDirection`. Tests in `tests/csg.rs`: ray crossings against closed forms, zone membership at seeded points against an independent formula, the zone volumes by Monte Carlo against the sphere in a box, unions and complements, the nearest of several surfaces, and rejection of invalid input. Transport through the geometry is not written.
+- Crate doc corrected: it had listed the equilibrium, the cross-section reader and the surfaces as not written, which was out of date.
+
 - `equilibrium::solve_with_source` and `equilibrium::max_residual`: the general fixed-boundary Grad-Shafranov source `Δ*ψ = S(R, ψ)`, with the source evaluated at each node. `solve_fixed_boundary` is now a call to it with `S = κR²`, and gives identical results (tests in `tests/equilibrium_source.rs`). The test with a constant additive source checks an exact closed form and second-order error; a flux-dependent source is checked by residual.
 
 - `slab::Estimator::Splitting { zones, copies }`: zone splitting for deep penetration. A neutron that first enters a deeper slice is split at that face into `copies` neutrons of equal share of the weight. The transport uses a stack for the copies. One zone or one copy is implicit capture draw for draw. `NeutronicsError::BadSplitting` for zero zones or copies. Tests in `tests/reactions.rs`, against analog for transmission, reflection, absorption and track length, including a deep slab.
